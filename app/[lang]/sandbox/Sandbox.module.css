@@ -1,0 +1,58 @@
+.container {
+  display: flex;
+  height: calc(100vh - 64px); /* Adjust this value based on your header height */
+  width: 100%;
+}
+
+.sidebar {
+  width: 300px;
+  padding: 20px;
+  background-color: #f0f0f0;
+  overflow-y: auto;
+}
+
+.canvasContainer {
+  flex-grow: 1;
+  position: relative;
+}
+
+.control {
+  margin-bottom: 15px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.input {
+  width: 100%;
+}
+
+.paramGroup {
+  margin-bottom: 20px;
+}
+
+.paramGroupTitle {
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 20px;
+  text-align: center;
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.errorContainer h2 {
+  margin-bottom: 10px;
+}
+

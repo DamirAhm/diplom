@@ -1,0 +1,45 @@
+.container {
+  min-height: 100vh;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(to bottom, #e6f7ff, #ffffff);
+}
+
+.content {
+  text-align: center;
+  max-width: 800px;
+  margin-bottom: 2rem;
+}
+
+.description {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.grid {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.card :global(.anticon) {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
