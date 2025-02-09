@@ -8,8 +8,8 @@ interface NotFoundProps {
   }
 }
 
-export default function NotFound({ params }: NotFoundProps) {
-  const { lang } = params || {}
+export default async function NotFound({ params }: NotFoundProps) {
+  const { lang } = await params || {}
   const dictionary = getDictionary(lang)
 
   return (

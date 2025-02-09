@@ -8,19 +8,19 @@ export async function generateStaticParams() {
   return [{ lang: "en" }, { lang: "ru" }]
 }
 
-export default function LangLayout({
+export default async function LangLayout({
   children,
   params,
 }: {
   children: React.ReactNode
   params: { lang: Locale }
 }) {
-  const { lang } = params || {}
-  const cookieStore = cookies()
+  const { lang } = await params || {}
+  const cookieStore = await cookies()
   const theme = cookieStore.get("theme")
 
   return (
-    <ThemeProvider initialTheme={theme?.value === "dark" ? "dark" : "light"}>
+    <ThemeProvider storedTheme={theme?.value === 'dark' ? 'dark' : 'light'}>
       <div className="min-h-screen flex flex-col">
         <Header lang={lang} />
         <main className="flex-grow">{children}</main>

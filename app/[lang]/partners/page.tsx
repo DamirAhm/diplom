@@ -13,19 +13,20 @@ const fetchPartners = async () => {
 };
 
 const PartnersPage = async ({
-  params: { lang },
+  params,
 }: {
   params: { lang: Locale };
 }) => {
+  const lang = (await params).lang;
   const dictionary = getDictionary(lang);
   const partnersData = await fetchPartners();
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>{dictionary.partners.title}</h1>
+    <div className="container mx-auto py-16">
+      <h1 className="text-4xl font-bold text-center mb-8">{dictionary.partners.title}</h1>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>
+      <section className="mb-12">
+        <h2 className="text-2xl text-bold mb-4">
           {dictionary.partners.universities}
         </h2>
         <div className={styles.logoGrid}>
@@ -35,8 +36,8 @@ const PartnersPage = async ({
         </div>
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>
+      <section className="mb-12">
+        <h2 className="text-2xl text-bold mb-4">
           {dictionary.partners.enterprises}
         </h2>
         <div className={styles.logoGrid}>
@@ -46,8 +47,8 @@ const PartnersPage = async ({
         </div>
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>
+      <section className="mb-12">
+        <h2 className="text-2xl text-bold mb-4">
           {dictionary.partners.jointProjects}
         </h2>
         <div className={styles.projectList}>
@@ -57,8 +58,8 @@ const PartnersPage = async ({
         </div>
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>
+      <section className="mb-12">
+        <h2 className="text-2xl text-bold mb-4">
           {dictionary.partners.jointPublications}
         </h2>
         <div className={styles.publicationList}>

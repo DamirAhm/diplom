@@ -13,18 +13,17 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
-export function ThemeProvider({ children, initialTheme }: { children: React.ReactNode; initialTheme: Theme }) {
-  const [theme, setTheme] = useState<Theme>(initialTheme)
-
-  useEffect(() => {
-    const storedTheme = getCookie("theme") as Theme | undefined
+export function ThemeProvider({ children, storedTheme }: React.PropsWithChildren<{ storedTheme: Theme }>) {
+  const [theme, setTheme] = useState<Theme>(() => {
     if (storedTheme) {
-      setTheme(storedTheme)
-    } else {
+      return storedTheme
+    } else if (typeof window !== 'undefined') {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-      setTheme(prefersDark ? "dark" : "light")
+      return prefersDark ? "dark" : "light"
     }
-  }, [])
+
+    return 'dark'
+  })
 
   useEffect(() => {
     setCookie("theme", theme, { maxAge: 60 * 60 * 24 * 365 }) // Set cookie for 1 year

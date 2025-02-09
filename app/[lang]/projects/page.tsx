@@ -10,10 +10,11 @@ const fetchProjects = async () => {
 };
 
 const ProjectsPage = async ({
-  params: { lang },
+  params,
 }: {
   params: { lang: Locale };
 }) => {
+  const { lang } = await params || {}
   const dictionary = getDictionary(lang);
   const projects = await fetchProjects();
 

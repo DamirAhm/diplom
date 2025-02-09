@@ -8,8 +8,8 @@ interface HomePageProps {
   };
 }
 
-export default function HomePage(args: HomePageProps) {
-  const { lang } = args.params || {};
+export default async function HomePage(args: HomePageProps) {
+  const { lang } = await args.params || {};
 
   const dictionary = getDictionary(lang);
 

@@ -14,10 +14,11 @@ const fetchResearchers = async () => {
 };
 
 const ResearchersPage = async ({
-  params: { lang },
+  params,
 }: {
   params: { lang: Locale };
 }) => {
+  const { lang } = await params || {};
   const researchers = await fetchResearchers();
   const dictionary = getDictionary(lang);
 

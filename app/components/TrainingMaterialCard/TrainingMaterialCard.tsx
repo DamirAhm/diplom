@@ -36,9 +36,9 @@ const TrainingMaterialCard: React.FC<TrainingMaterialCardProps> = ({ material, l
           <span className="text-gray-500 dark:text-gray-400">No Image</span>
         </div>
       )}
-      <div className="p-6 flex-grow flex flex-col">
+      <div className="p-6 flex-grow flex flex-col dark:bg-gray-800">
         <h3 className="text-xl font-semibold mb-2">{material.title[lang]}</h3>
-        <p className="text-gray-600 mb-4 flex-grow">{material.description[lang]}</p>
+        <p className="text-gray-600 mb-4 flex-grow dark:text-gray-400">{material.description[lang]}</p>
         <a
           href={material.url}
           target="_blank"

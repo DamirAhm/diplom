@@ -12,10 +12,11 @@ const fetchPublications = async () => {
 };
 
 const PublicationsPage = async ({
-  params: { lang },
+  params,
 }: {
   params: { lang: Locale };
 }) => {
+  const { lang } = await params || {};
   const dictionary = getDictionary(lang);
   const publications = await fetchPublications();
 
