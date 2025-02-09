@@ -1,27 +1,28 @@
-import { partnersData } from '../../mock/partnersData'
-import PartnerLogo from '../../components/PartnerLogo/PartnerLogo'
-import JointProject from '../../components/JointProject/JointProject'
-import JointPublication from '../../components/JointPublication/JointPublication'
-import styles from './Partners.module.css'
-import { Locale } from '../../types'
-import { getDictionary } from '../../dictionaries'
-
+import { partnersData } from "../../../mock/partnersData";
+import PartnerLogo from "../../components/PartnerLogo/PartnerLogo";
+import JointProject from "../../components/JointProject/JointProject";
+import JointPublication from "../../components/JointPublication/JointPublication";
+import styles from "./Partners.module.css";
+import { Locale } from "../../types";
+import { getDictionary } from "../../dictionaries";
 
 const fetchPartners = async () => {
-  await new Promise(r => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, 500));
 
   return partnersData;
-}
+};
 
-const PartnersPage = async ({ params: { lang } }: { params: { lang: Locale } }) => {
-  const dictionary = getDictionary(lang)
+const PartnersPage = async ({
+  params: { lang },
+}: {
+  params: { lang: Locale };
+}) => {
+  const dictionary = getDictionary(lang);
   const partnersData = await fetchPartners();
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>
-        {dictionary.partners.title}
-      </h1>
+      <h1 className={styles.title}>{dictionary.partners.title}</h1>
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>
@@ -62,13 +63,16 @@ const PartnersPage = async ({ params: { lang } }: { params: { lang: Locale } }) 
         </h2>
         <div className={styles.publicationList}>
           {partnersData.jointPublications.map((publication) => (
-            <JointPublication lang={lang as Locale} key={publication.id} {...publication} />
+            <JointPublication
+              lang={lang as Locale}
+              key={publication.id}
+              {...publication}
+            />
           ))}
         </div>
       </section>
     </div>
-  )
-}
+  );
+};
 
-export default PartnersPage
-
+export default PartnersPage;

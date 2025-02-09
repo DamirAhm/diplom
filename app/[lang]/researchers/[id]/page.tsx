@@ -1,46 +1,54 @@
-import Image from "next/image"
-import PublicationList from "../../../components/PublicationList"
-import { researchersData } from "../../../mock/researchersData"
-import type { Locale } from "@/app/types"
-import { getDictionary } from "@/app/dictionaries"
-import { ExternalLink } from "lucide-react"
+import Image from "next/image";
+import PublicationList from "../../../components/PublicationList";
+import { researchersData } from "../../../../mock/researchersData";
+import type { Locale } from "@/app/types";
+import { getDictionary } from "@/app/dictionaries";
+import { ExternalLink } from "lucide-react";
 
 interface Researcher {
-  id: number
-  name: string
-  title: { en: string; ru: string }
-  photo: string
-  bio: { en: string; ru: string }
+  id: number;
+  name: string;
+  title: { en: string; ru: string };
+  photo: string;
+  bio: { en: string; ru: string };
   profiles: {
-    researchgate?: string
-    googleScholar?: string
-    scopus?: string
-    publons?: string
-    orcid?: string
-  }
-  publications: Publication[]
+    researchgate?: string;
+    googleScholar?: string;
+    scopus?: string;
+    publons?: string;
+    orcid?: string;
+  };
+  publications: Publication[];
 }
 
 interface Publication {
-  id: number
-  title: { en: string; ru: string }
-  link: string
+  id: number;
+  title: { en: string; ru: string };
+  link: string;
 }
 
 const fetchResearcher = async (id: number) => {
   await new Promise((resolve) => {
-    setTimeout(() => resolve(null), 500) // Simulate API call
-  })
+    setTimeout(() => resolve(null), 500); // Simulate API call
+  });
 
-  return researchersData.find((r) => r.id === id)
-}
+  return researchersData.find((r) => r.id === id);
+};
 
-const ResearcherPage = async ({ params: { id, lang } }: { params: { id: string; lang: Locale } }) => {
-  const researcher = await fetchResearcher(Number.parseInt(id))
-  const dictionary = getDictionary(lang)
+const ResearcherPage = async ({
+  params: { id, lang },
+}: {
+  params: { id: string; lang: Locale };
+}) => {
+  const researcher = await fetchResearcher(Number.parseInt(id));
+  const dictionary = getDictionary(lang);
 
   if (!researcher) {
-    return <div className="text-center mt-8 text-xl">{dictionary.researchers.notFound}</div>
+    return (
+      <div className="text-center mt-8 text-xl">
+        {dictionary.researchers.notFound}
+      </div>
+    );
   }
 
   return (
@@ -58,14 +66,22 @@ const ResearcherPage = async ({ params: { id, lang } }: { params: { id: string; 
               />
             ) : (
               <div className="w-64 h-64 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-4 md:mb-0">
-                <svg className="h-32 w-32 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="h-32 w-32 text-gray-400"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
             )}
             <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">{researcher.name}</h1>
-              <p className="text-xl text-gray-700 dark:text-gray-300 mb-4">{researcher.title[lang]}</p>
+              <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">
+                {researcher.name}
+              </h1>
+              <p className="text-xl text-gray-700 dark:text-gray-300 mb-4">
+                {researcher.title[lang]}
+              </p>
               <div className="mb-4 flex flex-wrap gap-2">
                 {Object.entries(researcher.profiles).map(
                   ([key, value]) =>
@@ -100,8 +116,7 @@ const ResearcherPage = async ({ params: { id, lang } }: { params: { id: string; 
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ResearcherPage
-
+export default ResearcherPage;

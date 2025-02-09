@@ -1,32 +1,44 @@
-import PublicationList from "../../../components/PublicationList"
-import VideoEmbed from "../../../components/VideoEmbed"
-import { projectsData } from "../../../mock/projectsData"
-import type { Locale } from "@/app/types"
-import { getDictionary } from "@/app/dictionaries"
-import { Github } from "lucide-react"
+import PublicationList from "../../../components/PublicationList";
+import VideoEmbed from "../../../components/VideoEmbed";
+import { projectsData } from "../../../../mock/projectsData";
+import type { Locale } from "@/app/types";
+import { getDictionary } from "@/app/dictionaries";
+import { Github } from "lucide-react";
 
 const fetchProject = async (id: string) => {
   await new Promise((resolve) => {
-    setTimeout(resolve, 500)
-  })
+    setTimeout(resolve, 500);
+  });
 
-  return projectsData.find((p) => p.id === Number.parseInt(id))
-}
+  return projectsData.find((p) => p.id === Number.parseInt(id));
+};
 
-const ProjectPage = async ({ params: { id, lang } }: { params: { id: string; lang: Locale } }) => {
-  const dictionary = getDictionary(lang)
-  const project = await fetchProject(id)
+const ProjectPage = async ({
+  params: { id, lang },
+}: {
+  params: { id: string; lang: Locale };
+}) => {
+  const dictionary = getDictionary(lang);
+  const project = await fetchProject(id);
 
   if (!project) {
-    return <div className="text-center mt-8 text-xl">{dictionary.projects.notFound}</div>
+    return (
+      <div className="text-center mt-8 text-xl">
+        {dictionary.projects.notFound}
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
         <div className="p-6">
-          <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">{project.title[lang]}</h1>
-          <p className="text-lg text-gray-700 dark:text-gray-300 mb-6">{project.description[lang]}</p>
+          <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+            {project.title[lang]}
+          </h1>
+          <p className="text-lg text-gray-700 dark:text-gray-300 mb-6">
+            {project.description[lang]}
+          </p>
           {project.githubLink && (
             <a
               href={project.githubLink}
@@ -43,7 +55,10 @@ const ProjectPage = async ({ params: { id, lang } }: { params: { id: string; lan
               {dictionary.projects.significantPublications}
             </h2>
             <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
-              <PublicationList lang={lang} publications={project.publications} />
+              <PublicationList
+                lang={lang}
+                publications={project.publications}
+              />
             </div>
           </div>
           <div>
@@ -52,7 +67,10 @@ const ProjectPage = async ({ params: { id, lang } }: { params: { id: string; lan
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {project.videos.map((video) => (
-                <div key={video.id} className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                <div
+                  key={video.id}
+                  className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4"
+                >
                   <VideoEmbed lang={lang} video={video} />
                 </div>
               ))}
@@ -61,8 +79,7 @@ const ProjectPage = async ({ params: { id, lang } }: { params: { id: string; lan
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ProjectPage
-
+export default ProjectPage;
