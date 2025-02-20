@@ -1,0 +1,881 @@
+basePath: /api
+definitions:
+  handlers.AllPartnersResponse:
+    properties:
+      enterprises:
+        items:
+          $ref: '#/definitions/models.Partner'
+        type: array
+      jointProjects:
+        items:
+          $ref: '#/definitions/models.JointProject'
+        type: array
+      jointPublications:
+        items:
+          $ref: '#/definitions/models.JointPublication'
+        type: array
+      universities:
+        items:
+          $ref: '#/definitions/models.Partner'
+        type: array
+    type: object
+  models.JointProject:
+    properties:
+      id:
+        type: integer
+      partners:
+        items:
+          type: string
+        type: array
+      title:
+        $ref: '#/definitions/models.LocalizedString'
+      year:
+        type: integer
+    type: object
+  models.JointPublication:
+    properties:
+      authors:
+        type: string
+      id:
+        type: integer
+      journal:
+        type: string
+      link:
+        type: string
+      title:
+        $ref: '#/definitions/models.LocalizedString'
+      year:
+        type: integer
+    type: object
+  models.LocalizedString:
+    properties:
+      en:
+        type: string
+      ru:
+        type: string
+    type: object
+  models.Partner:
+    properties:
+      id:
+        type: integer
+      logo:
+        type: string
+      name:
+        type: string
+      url:
+        type: string
+    type: object
+  models.Project:
+    properties:
+      description:
+        $ref: '#/definitions/models.LocalizedString'
+      githubLink:
+        type: string
+      id:
+        type: integer
+      publications:
+        items:
+          $ref: '#/definitions/models.ProjectPublication'
+        type: array
+      title:
+        $ref: '#/definitions/models.LocalizedString'
+      videos:
+        items:
+          $ref: '#/definitions/models.ProjectVideo'
+        type: array
+    type: object
+  models.ProjectPublication:
+    properties:
+      id:
+        type: integer
+      link:
+        type: string
+      title:
+        $ref: '#/definitions/models.LocalizedString'
+    type: object
+  models.ProjectVideo:
+    properties:
+      embedUrl:
+        type: string
+      id:
+        type: integer
+      title:
+        $ref: '#/definitions/models.LocalizedString'
+    type: object
+  models.Publication:
+    properties:
+      authors:
+        type: string
+      id:
+        type: integer
+      journal:
+        type: string
+      link:
+        type: string
+      title:
+        $ref: '#/definitions/models.LocalizedString'
+      year:
+        type: integer
+    type: object
+  models.Researcher:
+    properties:
+      bio:
+        $ref: '#/definitions/models.LocalizedString'
+      id:
+        type: integer
+      name:
+        type: string
+      photo:
+        type: string
+      profiles:
+        $ref: '#/definitions/models.ResearcherProfiles'
+      publications:
+        items:
+          $ref: '#/definitions/models.Publication'
+        type: array
+      title:
+        $ref: '#/definitions/models.LocalizedString'
+    type: object
+  models.ResearcherProfiles:
+    properties:
+      googleScholar:
+        type: string
+      orcid:
+        type: string
+      publons:
+        type: string
+      researchgate:
+        type: string
+      scopus:
+        type: string
+    type: object
+  models.TrainingMaterial:
+    properties:
+      description:
+        $ref: '#/definitions/models.LocalizedString'
+      id:
+        type: integer
+      image:
+        type: string
+      title:
+        $ref: '#/definitions/models.LocalizedString'
+      url:
+        type: string
+    type: object
+host: localhost:8082
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is the API server for the Diplom project
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Diplom Backend API
+  version: "1.0"
+paths:
+  /partners:
+    get:
+      consumes:
+      - application/json
+      description: Get a comprehensive list of universities, enterprises, joint projects,
+        and joint publications
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.AllPartnersResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all partners data
+      tags:
+      - partners
+    post:
+      consumes:
+      - application/json
+      description: Create a new university or enterprise partner
+      parameters:
+      - description: Partner object
+        in: body
+        name: partner
+        required: true
+        schema:
+          $ref: '#/definitions/models.Partner'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Partner'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create a new partner
+      tags:
+      - partners
+  /partners/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a partner by ID
+      parameters:
+      - description: Partner ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a partner
+      tags:
+      - partners
+    put:
+      consumes:
+      - application/json
+      description: Update an existing partner's information
+      parameters:
+      - description: Partner ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Partner object
+        in: body
+        name: partner
+        required: true
+        schema:
+          $ref: '#/definitions/models.Partner'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Partner'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update a partner
+      tags:
+      - partners
+  /projects:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all projects
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Project'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all projects
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      description: Create a new project
+      parameters:
+      - description: Project object
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/models.Project'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Project'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create a new project
+      tags:
+      - projects
+  /projects/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a project by ID
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a project
+      tags:
+      - projects
+    get:
+      consumes:
+      - application/json
+      description: Get a single project by its ID
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Project'
+        "400":
+          description: Invalid project ID
+          schema:
+            type: string
+        "404":
+          description: Project not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get a project by ID
+      tags:
+      - projects
+    put:
+      consumes:
+      - application/json
+      description: Update an existing project's information
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Project object
+        in: body
+        name: project
+        required: true
+        schema:
+          $ref: '#/definitions/models.Project'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Project'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update a project
+      tags:
+      - projects
+  /publications:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all publications
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Publication'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all publications
+      tags:
+      - publications
+    post:
+      consumes:
+      - application/json
+      description: Create a new publication
+      parameters:
+      - description: Publication object
+        in: body
+        name: publication
+        required: true
+        schema:
+          $ref: '#/definitions/models.Publication'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create a new publication
+      tags:
+      - publications
+  /publications/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a publication by ID
+      parameters:
+      - description: Publication ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a publication
+      tags:
+      - publications
+    get:
+      consumes:
+      - application/json
+      description: Get a single publication by its ID
+      parameters:
+      - description: Publication ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "400":
+          description: Invalid publication ID
+          schema:
+            type: string
+        "404":
+          description: Publication not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get a publication by ID
+      tags:
+      - publications
+    put:
+      consumes:
+      - application/json
+      description: Update an existing publication's information
+      parameters:
+      - description: Publication ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Publication object
+        in: body
+        name: publication
+        required: true
+        schema:
+          $ref: '#/definitions/models.Publication'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update a publication
+      tags:
+      - publications
+  /researchers:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all researchers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Researcher'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all researchers
+      tags:
+      - researchers
+    post:
+      consumes:
+      - application/json
+      description: Create a new researcher
+      parameters:
+      - description: Researcher object
+        in: body
+        name: researcher
+        required: true
+        schema:
+          $ref: '#/definitions/models.Researcher'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Researcher'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create a new researcher
+      tags:
+      - researchers
+  /researchers/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a researcher by ID
+      parameters:
+      - description: Researcher ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a researcher
+      tags:
+      - researchers
+    get:
+      consumes:
+      - application/json
+      description: Get a single researcher by their ID
+      parameters:
+      - description: Researcher ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Researcher'
+        "400":
+          description: Invalid researcher ID
+          schema:
+            type: string
+        "404":
+          description: Researcher not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get a researcher by ID
+      tags:
+      - researchers
+    put:
+      consumes:
+      - application/json
+      description: Update an existing researcher's information
+      parameters:
+      - description: Researcher ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Researcher object
+        in: body
+        name: researcher
+        required: true
+        schema:
+          $ref: '#/definitions/models.Researcher'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Researcher'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update a researcher
+      tags:
+      - researchers
+  /training:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all training materials
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TrainingMaterial'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all training materials
+      tags:
+      - training
+    post:
+      consumes:
+      - application/json
+      description: Create a new training material
+      parameters:
+      - description: Training Material object
+        in: body
+        name: material
+        required: true
+        schema:
+          $ref: '#/definitions/models.TrainingMaterial'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.TrainingMaterial'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Create a new training material
+      tags:
+      - training
+  /training/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a training material by ID
+      parameters:
+      - description: Training Material ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a training material
+      tags:
+      - training
+    get:
+      consumes:
+      - application/json
+      description: Get a single training material by its ID
+      parameters:
+      - description: Training Material ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TrainingMaterial'
+        "400":
+          description: Invalid training material ID
+          schema:
+            type: string
+        "404":
+          description: Training material not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get a training material by ID
+      tags:
+      - training
+    put:
+      consumes:
+      - application/json
+      description: Update an existing training material's information
+      parameters:
+      - description: Training Material ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Training Material object
+        in: body
+        name: material
+        required: true
+        schema:
+          $ref: '#/definitions/models.TrainingMaterial'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TrainingMaterial'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Update a training material
+      tags:
+      - training
+swagger: "2.0"

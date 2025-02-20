@@ -1,0 +1,140 @@
+package repository
+
+import (
+	"database/sql"
+
+	"github.com/damirahm/diplom/backend/models"
+)
+
+type SQLiteTrainingMaterialRepo struct {
+	db *sql.DB
+	localizedStringRepo LocalizedStringRepo
+}
+
+func NewSQLiteTrainingMaterialRepo(db *sql.DB, lsRepo LocalizedStringRepo) *SQLiteTrainingMaterialRepo {
+	return &SQLiteTrainingMaterialRepo{db: db, localizedStringRepo: lsRepo}
+}
+
+func (r *SQLiteTrainingMaterialRepo) Create(material models.TrainingMaterial) error {
+	titleID, err := r.localizedStringRepo.Create(material.Title)
+	if err != nil {
+		return err
+	}
+
+	descriptionID, err := r.localizedStringRepo.Create(material.Description)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec(
+		"INSERT INTO training_materials (title_id, description_id, image, url) VALUES (?, ?, ?, ?)",
+		titleID, descriptionID, material.Image, material.URL,
+	)
+	return err
+}
+
+func (r *SQLiteTrainingMaterialRepo) GetByID(id int) (*models.TrainingMaterial, error) {
+	var material models.TrainingMaterial
+	var titleID, descriptionID int64
+
+	err := r.db.QueryRow(
+		"SELECT id, title_id, description_id, image, url FROM training_materials WHERE id = ?",
+		id,
+	).Scan(&material.ID, &titleID, &descriptionID, &material.Image, &material.URL)
+	if err != nil {
+		return nil, err
+	}
+
+	title, err := r.localizedStringRepo.Get(titleID)
+	if err != nil {
+		return nil, err
+	}
+	material.Title = *title
+
+	description, err := r.localizedStringRepo.Get(descriptionID)
+	if err != nil {
+		return nil, err
+	}
+	material.Description = *description
+
+	return &material, nil
+}
+
+func (r *SQLiteTrainingMaterialRepo) GetAll() ([]models.TrainingMaterial, error) {
+	rows, err := r.db.Query("SELECT id, title_id, description_id, image, url FROM training_materials")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var materials []models.TrainingMaterial
+	for rows.Next() {
+		var material models.TrainingMaterial
+		var titleID, descriptionID int64
+		if err := rows.Scan(&material.ID, &titleID, &descriptionID, &material.Image, &material.URL); err != nil {
+			return nil, err
+		}
+
+		title, err := r.localizedStringRepo.Get(titleID)
+		if err != nil {
+			return nil, err
+		}
+		material.Title = *title
+
+		description, err := r.localizedStringRepo.Get(descriptionID)
+		if err != nil {
+			return nil, err
+		}
+		material.Description = *description
+
+		materials = append(materials, material)
+	}
+	return materials, nil
+}
+
+func (r *SQLiteTrainingMaterialRepo) Update(material models.TrainingMaterial) error {
+	var titleID, descriptionID int64
+	err := r.db.QueryRow(
+		"SELECT title_id, description_id FROM training_materials WHERE id = ?",
+		material.ID,
+	).Scan(&titleID, &descriptionID)
+	if err != nil {
+		return err
+	}
+
+	if err := r.localizedStringRepo.Update(titleID, material.Title); err != nil {
+		return err
+	}
+
+	if err := r.localizedStringRepo.Update(descriptionID, material.Description); err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec(
+		"UPDATE training_materials SET image = ?, url = ? WHERE id = ?",
+		material.Image, material.URL, material.ID,
+	)
+	return err
+}
+
+func (r *SQLiteTrainingMaterialRepo) Delete(id int) error {
+	var titleID, descriptionID int64
+	err := r.db.QueryRow(
+		"SELECT title_id, description_id FROM training_materials WHERE id = ?",
+		id,
+	).Scan(&titleID, &descriptionID)
+	if err != nil {
+		return err
+	}
+
+	if err := r.localizedStringRepo.Delete(titleID); err != nil {
+		return err
+	}
+
+	if err := r.localizedStringRepo.Delete(descriptionID); err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec("DELETE FROM training_materials WHERE id = ?", id)
+	return err
+}

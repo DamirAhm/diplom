@@ -1,0 +1,165 @@
+package main
+
+import (
+	"context"
+	"database/sql"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
+	"time"
+
+	"github.com/damirahm/diplom/backend/config"
+	"github.com/damirahm/diplom/backend/db"
+	"github.com/damirahm/diplom/backend/docs"
+	"github.com/damirahm/diplom/backend/handlers"
+	"github.com/damirahm/diplom/backend/repository"
+	"github.com/gorilla/mux"
+	"github.com/rs/cors"
+	httpSwagger "github.com/swaggo/http-swagger"
+)
+
+// @title           Diplom Backend API
+// @version         1.0
+// @description     This is the API server for the Diplom project
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8082
+// @BasePath  /api
+
+type application struct {
+	server *http.Server
+	db     *sql.DB
+	config *config.Config
+}
+
+func main() {
+	cfg := config.LoadConfig()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dataDir := filepath.Dir(cfg.DBPath)
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := db.InitDB(cfg.DBPath); err != nil {
+		log.Fatal("Failed to initialize database:", err)
+	}
+
+	localizedStringRepo := repository.NewSQLiteLocalizedStringRepo(db.DB)
+	partnerRepo := repository.NewSQLitePartnerRepo(db.DB)
+	jointPublicationRepo := repository.NewSQLiteJointPublicationRepo(db.DB, localizedStringRepo)
+	jointProjectRepo := repository.NewSQLiteJointProjectRepo(db.DB, localizedStringRepo)
+	publicationRepo := repository.NewSQLitePublicationRepo(db.DB, localizedStringRepo)
+	researcherRepo := repository.NewSQLiteResearcherRepo(db.DB, localizedStringRepo, publicationRepo)
+	projectRepo := repository.NewSQLiteProjectRepo(db.DB, localizedStringRepo)
+	trainingMaterialRepo := repository.NewSQLiteTrainingMaterialRepo(db.DB, localizedStringRepo)
+
+	router := mux.NewRouter()
+
+	docs.SwaggerInfo.BasePath = "/api"
+	docs.SwaggerInfo.Host = cfg.Server.Host + ":" + cfg.Server.Port
+	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+
+	partnersHandler := handlers.NewPartnerHandler(partnerRepo, jointPublicationRepo, jointProjectRepo)
+	projectsHandler := handlers.NewProjectHandler(projectRepo)
+	researchersHandler := handlers.NewResearcherHandler(researcherRepo)
+	publicationsHandler := handlers.NewPublicationHandler(publicationRepo)
+	trainingHandler := handlers.NewTrainingHandler(trainingMaterialRepo)
+
+	api := router.PathPrefix("/api").Subrouter()
+
+	// Partners routes
+	api.HandleFunc("/partners", partnersHandler.GetAllPartners).Methods("GET")
+	api.HandleFunc("/partners", partnersHandler.CreatePartner).Methods("POST")
+	api.HandleFunc("/partners/{id}", partnersHandler.UpdatePartner).Methods("PUT")
+	api.HandleFunc("/partners/{id}", partnersHandler.DeletePartner).Methods("DELETE")
+
+	// Projects routes
+	api.HandleFunc("/projects", projectsHandler.GetProjects).Methods("GET")
+	api.HandleFunc("/projects", projectsHandler.CreateProject).Methods("POST")
+	api.HandleFunc("/projects/{id}", projectsHandler.GetProject).Methods("GET")
+	api.HandleFunc("/projects/{id}", projectsHandler.UpdateProject).Methods("PUT")
+	api.HandleFunc("/projects/{id}", projectsHandler.DeleteProject).Methods("DELETE")
+
+	// Researchers routes
+	api.HandleFunc("/researchers", researchersHandler.GetResearchers).Methods("GET")
+	api.HandleFunc("/researchers", researchersHandler.CreateResearcher).Methods("POST")
+	api.HandleFunc("/researchers/{id}", researchersHandler.GetResearcher).Methods("GET")
+	api.HandleFunc("/researchers/{id}", researchersHandler.UpdateResearcher).Methods("PUT")
+	api.HandleFunc("/researchers/{id}", researchersHandler.DeleteResearcher).Methods("DELETE")
+
+	// Publications routes
+	api.HandleFunc("/publications", publicationsHandler.GetPublications).Methods("GET")
+	api.HandleFunc("/publications", publicationsHandler.CreatePublication).Methods("POST")
+	api.HandleFunc("/publications/{id}", publicationsHandler.GetPublication).Methods("GET")
+	api.HandleFunc("/publications/{id}", publicationsHandler.UpdatePublication).Methods("PUT")
+	api.HandleFunc("/publications/{id}", publicationsHandler.DeletePublication).Methods("DELETE")
+
+	// Training routes
+	api.HandleFunc("/training", trainingHandler.GetTrainingMaterials).Methods("GET")
+	api.HandleFunc("/training", trainingHandler.CreateTrainingMaterial).Methods("POST")
+	api.HandleFunc("/training/{id}", trainingHandler.GetTrainingMaterial).Methods("GET")
+	api.HandleFunc("/training/{id}", trainingHandler.UpdateTrainingMaterial).Methods("PUT")
+	api.HandleFunc("/training/{id}", trainingHandler.DeleteTrainingMaterial).Methods("DELETE")
+
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+	})
+
+	app := &application{
+		server: &http.Server{
+			Addr:         ":" + cfg.Server.Port,
+			Handler:      c.Handler(router),
+			IdleTimeout:  time.Minute,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 30 * time.Second,
+		},
+		db:     db.DB,
+		config: cfg,
+	}
+
+	go func() {
+		log.Printf("Server starting on %s:%s...", cfg.Server.Host, cfg.Server.Port)
+		log.Printf("Swagger documentation available at http://%s:%s/swagger/index.html", cfg.Server.Host, cfg.Server.Port)
+		if err := app.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("Server error: %v", err)
+			cancel()
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-quit:
+		log.Println("Shutting down server...")
+	case <-ctx.Done():
+		log.Printf("Shutting down server due to context cancellation... %v", ctx.Err())
+	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+
+	if err := app.server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	if err := app.db.Close(); err != nil {
+		log.Printf("Error closing database: %v", err)
+	}
+
+	log.Println("Server exited properly")
+}
