@@ -4,17 +4,25 @@ import (
 	"log"
 	"os"
 
+	"github.com/damirahm/diplom/backend/utils"
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
 	DBPath string
 	Server ServerConfig
+	Auth   AuthConfig
 }
 
 type ServerConfig struct {
 	Host string
 	Port string
+}
+
+type AuthConfig struct {
+	AdminUsername string
+	AdminPassword string
+	CookieName    string
 }
 
 func LoadConfig() *Config {
@@ -27,6 +35,11 @@ func LoadConfig() *Config {
 		Server: ServerConfig{
 			Host: getEnv("HOST", "localhost"),
 			Port: getEnv("PORT", "8082"),
+		},
+		Auth: AuthConfig{
+			AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
+			AdminPassword: utils.HashPassword(getEnv("ADMIN_PASSWORD", "changeme")),
+			CookieName:    "admin_session",
 		},
 	}
 }

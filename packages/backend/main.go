@@ -77,46 +77,56 @@ func main() {
 	researchersHandler := handlers.NewResearcherHandler(researcherRepo)
 	publicationsHandler := handlers.NewPublicationHandler(publicationRepo)
 	trainingHandler := handlers.NewTrainingHandler(trainingMaterialRepo)
+	authHandler := handlers.NewAuthHandler(cfg)
 
 	api := router.PathPrefix("/api").Subrouter()
 
+	// Auth routes
+	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
+
+	// Protected routes subrouter
+	protected := api.PathPrefix("").Subrouter()
+	protected.Use(handlers.AuthMiddleware(cfg))
+
 	// Partners routes
 	api.HandleFunc("/partners", partnersHandler.GetAllPartners).Methods("GET")
-	api.HandleFunc("/partners", partnersHandler.CreatePartner).Methods("POST")
-	api.HandleFunc("/partners/{id}", partnersHandler.UpdatePartner).Methods("PUT")
-	api.HandleFunc("/partners/{id}", partnersHandler.DeletePartner).Methods("DELETE")
+	protected.HandleFunc("/partners", partnersHandler.CreatePartner).Methods("POST")
+	protected.HandleFunc("/partners/{id}", partnersHandler.UpdatePartner).Methods("PUT")
+	protected.HandleFunc("/partners/{id}", partnersHandler.DeletePartner).Methods("DELETE")
 
 	// Projects routes
 	api.HandleFunc("/projects", projectsHandler.GetProjects).Methods("GET")
-	api.HandleFunc("/projects", projectsHandler.CreateProject).Methods("POST")
 	api.HandleFunc("/projects/{id}", projectsHandler.GetProject).Methods("GET")
-	api.HandleFunc("/projects/{id}", projectsHandler.UpdateProject).Methods("PUT")
-	api.HandleFunc("/projects/{id}", projectsHandler.DeleteProject).Methods("DELETE")
+	protected.HandleFunc("/projects", projectsHandler.CreateProject).Methods("POST")
+	protected.HandleFunc("/projects/{id}", projectsHandler.UpdateProject).Methods("PUT")
+	protected.HandleFunc("/projects/{id}", projectsHandler.DeleteProject).Methods("DELETE")
 
 	// Researchers routes
 	api.HandleFunc("/researchers", researchersHandler.GetResearchers).Methods("GET")
-	api.HandleFunc("/researchers", researchersHandler.CreateResearcher).Methods("POST")
 	api.HandleFunc("/researchers/{id}", researchersHandler.GetResearcher).Methods("GET")
-	api.HandleFunc("/researchers/{id}", researchersHandler.UpdateResearcher).Methods("PUT")
-	api.HandleFunc("/researchers/{id}", researchersHandler.DeleteResearcher).Methods("DELETE")
+	protected.HandleFunc("/researchers", researchersHandler.CreateResearcher).Methods("POST")
+	protected.HandleFunc("/researchers/{id}", researchersHandler.UpdateResearcher).Methods("PUT")
+	protected.HandleFunc("/researchers/{id}", researchersHandler.DeleteResearcher).Methods("DELETE")
 
 	// Publications routes
 	api.HandleFunc("/publications", publicationsHandler.GetPublications).Methods("GET")
-	api.HandleFunc("/publications", publicationsHandler.CreatePublication).Methods("POST")
 	api.HandleFunc("/publications/{id}", publicationsHandler.GetPublication).Methods("GET")
-	api.HandleFunc("/publications/{id}", publicationsHandler.UpdatePublication).Methods("PUT")
-	api.HandleFunc("/publications/{id}", publicationsHandler.DeletePublication).Methods("DELETE")
+	protected.HandleFunc("/publications", publicationsHandler.CreatePublication).Methods("POST")
+	protected.HandleFunc("/publications/{id}", publicationsHandler.UpdatePublication).Methods("PUT")
+	protected.HandleFunc("/publications/{id}", publicationsHandler.DeletePublication).Methods("DELETE")
 
 	// Training routes
 	api.HandleFunc("/training", trainingHandler.GetTrainingMaterials).Methods("GET")
-	api.HandleFunc("/training", trainingHandler.CreateTrainingMaterial).Methods("POST")
 	api.HandleFunc("/training/{id}", trainingHandler.GetTrainingMaterial).Methods("GET")
-	api.HandleFunc("/training/{id}", trainingHandler.UpdateTrainingMaterial).Methods("PUT")
-	api.HandleFunc("/training/{id}", trainingHandler.DeleteTrainingMaterial).Methods("DELETE")
+	protected.HandleFunc("/training", trainingHandler.CreateTrainingMaterial).Methods("POST")
+	protected.HandleFunc("/training/{id}", trainingHandler.UpdateTrainingMaterial).Methods("PUT")
+	protected.HandleFunc("/training/{id}", trainingHandler.DeleteTrainingMaterial).Methods("DELETE")
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type", "Cookie"},
+		AllowCredentials: true,
 	})
 
 	app := &application{

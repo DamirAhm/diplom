@@ -1,0 +1,74 @@
+{
+  "home": {
+    "title": "Welcome to ETU CAD Laboratory",
+    "description": "Explore our research, publications, and resources in Computer-Aided Design.",
+    "researchersDescription": "Meet our team of expert researchers and their work.",
+    "sandboxDescription": "Experiment with our interactive CAD tools and simulations.",
+    "partnersDescription": "Discover our collaborations with industry leaders and academic institutions.",
+    "trainingDescription": "Access educational materials and courses in CAD technologies."
+  },
+  "navigation": {
+    "projects": "Projects",
+    "publications": "Publications",
+    "researchers": "Researchers",
+    "sandbox": "Sandbox",
+    "partners": "Partners",
+    "training": "Training",
+    "home": "Home"
+  },
+  "footer": {
+    "copyright": "© 2025 ETU CAD Laboratory. All rights reserved."
+  },
+  "notFound": {
+    "title": "Page Not Found",
+    "description": "The page you are looking for does not exist or has been moved.",
+    "goHome": "Go to Homepage"
+  },
+  "common": {
+    "learnMore": "Learn More"
+  },
+  "projects": {
+    "title": "Project Activity",
+    "noProjectsFound": "No projects found.",
+    "notFound": "Project not found",
+    "viewOnGitHub": "View on GitHub",
+    "significantPublications": "Significant Publications",
+    "projectVideos": "Project Videos"
+  },
+  "publications": {
+    "title": "Publication Activity",
+    "sortBy": "Sort by:",
+    "year": "Year",
+    "filterByYear": "Filter by year:",
+    "allYears": "All years",
+    "viewPublication": "View Publication"
+  },
+  "researchers": {
+    "title": "Principal Researchers",
+    "viewProfile": "View Profile",
+    "significantPublications": "Significant Publications",
+    "notFound": "Researcher not found"
+  },
+  "training": {
+    "title": "Training Materials"
+  },
+  "partners": {
+    "title": "Our Partners",
+    "universities": "Partner Universities",
+    "enterprises": "Partner Enterprises",
+    "jointProjects": "Joint Projects",
+    "jointPublications": "Joint Publications"
+  },
+  "sandbox": {
+    "errorOccurred": "An error occurred",
+    "lorenzSystemControls": "Lorenz System Controls",
+    "axesSize": "Axes Size",
+    "systemSelection": "System Selection",
+    "systemParameters": "System Parameters",
+    "initialPosition": "Initial Position",
+    "visualization": "Visualization",
+    "simulationParameters": "Simulation parameters",
+    "simulationTime": "Simulation time",
+    "simulationStep": "Simulation step"
+  }
+}
