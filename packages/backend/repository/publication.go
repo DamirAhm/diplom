@@ -56,7 +56,7 @@ func (r *SQLitePublicationRepo) GetAll() ([]models.Publication, error) {
 	}
 	defer rows.Close()
 
-	var publications []models.Publication
+	publications := []models.Publication{}
 	for rows.Next() {
 		var pub models.Publication
 		var titleID int64

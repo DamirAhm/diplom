@@ -2,16 +2,17 @@
 
 // Inspired by react-hot-toast library
 import * as React from "react"
+import { toast as sonnerToast } from "sonner"
 
 import type {
   ToastActionElement,
-  ToastProps,
+  ToastProps as OriginalToastProps,
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 1000
 
-type ToasterToast = ToastProps & {
+type ToasterToast = OriginalToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
@@ -171,7 +172,13 @@ function toast({ ...props }: Toast) {
   }
 }
 
-function useToast() {
+type ToastProps = {
+  title?: string
+  description?: string
+  variant?: "default" | "destructive"
+}
+
+export function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
@@ -191,4 +198,4 @@ function useToast() {
   }
 }
 
-export { useToast, toast }
+export { toast }

@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	DBPath string
-	Server ServerConfig
-	Auth   AuthConfig
+	DBPath      string
+	Server      ServerConfig
+	Auth        AuthConfig
+	ClientHost  string
 }
 
 type ServerConfig struct {
@@ -34,13 +35,14 @@ func LoadConfig() *Config {
 		DBPath: getEnv("DB_PATH", "./data/database.db"),
 		Server: ServerConfig{
 			Host: getEnv("HOST", "localhost"),
-			Port: getEnv("PORT", "8082"),
+			Port: getEnv("PORT", "8080"),
 		},
 		Auth: AuthConfig{
 			AdminUsername: getEnv("ADMIN_USERNAME", "admin"),
 			AdminPassword: utils.HashPassword(getEnv("ADMIN_PASSWORD", "changeme")),
 			CookieName:    "admin_session",
 		},
+		ClientHost: getEnv("CLIENT_HOST", "http://localhost:3000"),
 	}
 }
 

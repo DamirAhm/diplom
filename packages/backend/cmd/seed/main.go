@@ -3,16 +3,13 @@ package main
 import (
 	"log"
 
-	"github.com/damirahm/diplom/backend/config"
 	"github.com/damirahm/diplom/backend/db"
 	"github.com/damirahm/diplom/backend/models"
 	"github.com/damirahm/diplom/backend/repository"
 )
 
 func main() {
-	cfg := config.LoadConfig()
-
-	if err := db.InitDB(cfg.DBPath); err != nil {
+	if err := db.InitDB("../../data/database.db"); err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
 

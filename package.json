@@ -9,6 +9,6 @@
     "dev:backend": "cd packages/backend && go run main.go",
     "swag:generate": "rm -rf packages/backend/data",
     "db:drop": "rm -rf packages/backend/data",
-    "db:seed": "cd packages/backend && go run seed.go"
+    "db:seed": "cd packages/backend/cmd/seed && go run main.go"
   }
 }

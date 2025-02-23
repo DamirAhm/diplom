@@ -2,20 +2,21 @@ import ProjectCard from "../../components/ProjectCard/ProjectCard";
 import { Locale, Project } from "../../types";
 import { getDictionary } from "../../dictionaries";
 
-const fetchProjects = async (): Promise<Project[]> => {
-  const response = await fetch('http://localhost:8080/api/projects');
-  if (!response.ok) {
-    throw new Error('Failed to fetch projects');
+async function fetchProjects(): Promise<Project[]> {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  if (!API_URL) {
+    throw new Error("API_URL environment variable is not defined");
   }
-  return response.json();
-};
 
-const ProjectsPage = async ({
-  params,
-}: {
-  params: { lang: Locale };
-}) => {
-  const { lang } = await params || {}
+  const res = await fetch(`${API_URL}/projects`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("Failed to fetch projects");
+  }
+  return res.json();
+}
+
+const ProjectsPage = async ({ params }: { params: { lang: Locale } }) => {
+  const { lang } = (await params) || {};
   const dictionary = getDictionary(lang);
   const projects = await fetchProjects();
 

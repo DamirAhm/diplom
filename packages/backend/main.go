@@ -78,11 +78,13 @@ func main() {
 	publicationsHandler := handlers.NewPublicationHandler(publicationRepo)
 	trainingHandler := handlers.NewTrainingHandler(trainingMaterialRepo)
 	authHandler := handlers.NewAuthHandler(cfg)
+	fileHandler := handlers.NewFileHandler()
 
 	api := router.PathPrefix("/api").Subrouter()
 
 	// Auth routes
 	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
+	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST", "OPTIONS")
 
 	// Protected routes subrouter
 	protected := api.PathPrefix("").Subrouter()
@@ -122,11 +124,19 @@ func main() {
 	protected.HandleFunc("/training/{id}", trainingHandler.UpdateTrainingMaterial).Methods("PUT")
 	protected.HandleFunc("/training/{id}", trainingHandler.DeleteTrainingMaterial).Methods("DELETE")
 
+	// File upload route
+	protected.HandleFunc("/upload", fileHandler.UploadFile).Methods("POST")
+
+	// Serve static files
+	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Content-Type", "Cookie"},
+		AllowedOrigins:   []string{cfg.ClientHost},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "Cookie"},
+		ExposedHeaders:   []string{"Set-Cookie"},
 		AllowCredentials: true,
+		MaxAge:           86400,
 	})
 
 	app := &application{

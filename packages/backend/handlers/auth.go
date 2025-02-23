@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/damirahm/diplom/backend/config"
-	"github.com/damirahm/diplom/backend/utils"
 )
 
 type LoginRequest struct {
@@ -31,8 +31,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword := utils.HashPassword(req.Password)
-	if req.Username != h.config.Auth.AdminUsername || hashedPassword != h.config.Auth.AdminPassword {
+	// The password should already be hashed from frontend
+	// Use constant-time comparison to prevent timing attacks
+	usernameMatch := subtle.ConstantTimeCompare([]byte(req.Username), []byte(h.config.Auth.AdminUsername)) == 1
+	passwordMatch := subtle.ConstantTimeCompare([]byte(req.Password), []byte(h.config.Auth.AdminPassword)) == 1
+
+	if !usernameMatch || !passwordMatch {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -48,6 +52,20 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Login successful"})
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:  h.config.Auth.CookieName,
+		Value: "",
+
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logout successful"})
 }
 
 func AuthMiddleware(config *config.Config) func(http.Handler) http.Handler {

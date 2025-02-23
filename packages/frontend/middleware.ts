@@ -1,38 +1,43 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-// List of supported languages
-export const locales = ["en", "ru"]
-export const defaultLocale = "en"
-
-// Get the preferred locale from request
-function getLocale(request: NextRequest) {
-  const acceptLanguage = request.headers.get("accept-language")
-  return acceptLanguage?.split(",")[0].split("-")[0] || defaultLocale
-}
+let locales = ["en", "ru"];
 
 export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname
+  const pathname = request.nextUrl.pathname;
 
-  // Check if the pathname already has a locale
-  const pathnameHasLocale = locales.some((locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`)
+  // Check if the pathname is missing a locale
+  const pathnameIsMissingLocale = locales.every(
+    (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
+  );
 
-  // Get the theme from the cookie
-  const theme = request.cookies.get("theme")?.value || "light"
+  // Redirect if there is no locale in the pathname
+  if (pathnameIsMissingLocale) {
+    const locale = locales[0];
+    return NextResponse.redirect(
+      new URL(
+        `/${locale}${pathname.startsWith("/") ? "" : "/"}${pathname}`,
+        request.url
+      )
+    );
+  }
 
-  // Clone the response
-  const response = NextResponse.next()
+  // Check if this is an admin route
+  if (pathname.includes("/admin")) {
+    // Skip auth check for the admin login page
+    if (pathname.endsWith("/admin")) {
+      return NextResponse.next();
+    }
 
-  // Set the theme class on the html element
-  response.headers.set("Set-Cookie", `theme=${theme}; Path=/; Max-Age=31536000`)
-  response.headers.set('x-pathname', request.nextUrl.pathname)
+    const authCookie = request.cookies.get("admin_session");
 
-  if (pathnameHasLocale) return response
+    if (!authCookie) {
+      const locale = pathname.split("/")[1];
+      return NextResponse.redirect(new URL(`/${locale}/admin`, request.url));
+    }
+  }
 
-  // Redirect if there is no locale
-  const locale = getLocale(request)
-  request.nextUrl.pathname = `/${locale}${pathname}`
-  return NextResponse.redirect(request.nextUrl)
+  return NextResponse.next();
 }
 
 export const config = {
@@ -40,5 +45,4 @@ export const config = {
     // Skip all internal paths (_next)
     "/((?!_next|api|favicon.ico).*)",
   ],
-}
-
+};
