@@ -15,6 +15,7 @@ import (
 	"github.com/damirahm/diplom/backend/db"
 	"github.com/damirahm/diplom/backend/docs"
 	"github.com/damirahm/diplom/backend/handlers"
+	"github.com/damirahm/diplom/backend/middleware"
 	"github.com/damirahm/diplom/backend/repository"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -81,6 +82,8 @@ func main() {
 	fileHandler := handlers.NewFileHandler()
 
 	api := router.PathPrefix("/api").Subrouter()
+
+	api.Use(middleware.Logger)
 
 	// Auth routes
 	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")

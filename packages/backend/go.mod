@@ -27,4 +27,5 @@ require (
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/swaggo/files v1.0.1 // indirect
 	golang.org/x/net v0.35.0 // indirect
+	winterdrache.de/goformat v0.0.0-20180512004123-256ef38c4271 // indirect
 )

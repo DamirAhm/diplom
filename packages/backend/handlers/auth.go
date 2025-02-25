@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/subtle"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -30,6 +31,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request format", http.StatusBadRequest)
 		return
 	}
+
+	fmt.Println("req.Username: %s | %s", req.Username, req.Password)
+	fmt.Println("req.Username: %s | %s", h.config.Auth.AdminUsername, h.config.Auth.AdminPassword)
 
 	// The password should already be hashed from frontend
 	// Use constant-time comparison to prevent timing attacks

@@ -29,7 +29,7 @@ func NewPublicationHandler(pr repository.PublicationRepo) *PublicationHandler {
 // @Router /publications [get]
 func (h *PublicationHandler) GetPublications(w http.ResponseWriter, r *http.Request) {
 	publications, err := h.publicationRepo.GetAll()
-	if (err != nil) {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -166,6 +166,4 @@ func (h *PublicationHandler) DeletePublication(w http.ResponseWriter, r *http.Re
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(http.StatusNoContent)
 }

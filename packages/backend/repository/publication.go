@@ -33,9 +33,9 @@ func (r *SQLitePublicationRepo) GetByID(id int) (*models.Publication, error) {
 	var titleID int64
 
 	err := r.db.QueryRow(
-		"SELECT id, title_id, link FROM publications WHERE id = ?",
+		"SELECT id, title_id, link, authors, journal, year FROM publications WHERE id = ?",
 		id,
-	).Scan(&pub.ID, &titleID, &pub.Link)
+	).Scan(&pub.ID, &titleID, &pub.Link, &pub.Authors, &pub.Journal, &pub.Year)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (r *SQLitePublicationRepo) GetByID(id int) (*models.Publication, error) {
 }
 
 func (r *SQLitePublicationRepo) GetAll() ([]models.Publication, error) {
-	rows, err := r.db.Query("SELECT id, title_id, link FROM publications")
+	rows, err := r.db.Query("SELECT id, title_id, link, authors, journal, year FROM publications")
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (r *SQLitePublicationRepo) GetAll() ([]models.Publication, error) {
 	for rows.Next() {
 		var pub models.Publication
 		var titleID int64
-		if err := rows.Scan(&pub.ID, &titleID, &pub.Link); err != nil {
+		if err := rows.Scan(&pub.ID, &titleID, &pub.Link, &pub.Authors, &pub.Journal, &pub.Year); err != nil {
 			return nil, err
 		}
 
