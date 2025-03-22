@@ -17,9 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "../../../../../lib/api";
+import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 
 const emptyPartner: Omit<Partner, "id"> = {
-  name: { en: "", ru: "" },
+  name: "",
   type: "university",
   logo: "",
   url: "",
@@ -151,41 +152,15 @@ export default function PartnerFormPage({
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="space-y-4">
           <div>
-            <Label>{dictionary.admin.name}</Label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="nameEn" className="text-xs">
-                  English
-                </Label>
-                <Input
-                  id="nameEn"
-                  value={partner.name.en}
-                  onChange={(e) =>
-                    setPartner((prev) => ({
-                      ...prev,
-                      name: { ...prev.name, en: e.target.value },
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="nameRu" className="text-xs">
-                  Russian
-                </Label>
-                <Input
-                  id="nameRu"
-                  value={partner.name.ru}
-                  onChange={(e) =>
-                    setPartner((prev) => ({
-                      ...prev,
-                      name: { ...prev.name, ru: e.target.value },
-                    }))
-                  }
-                  required
-                />
-              </div>
-            </div>
+            <Label htmlFor="name">{dictionary.admin.name}</Label>
+            <Input
+              id="name"
+              value={partner.name}
+              onChange={(e) =>
+                setPartner((prev) => ({ ...prev, name: e.target.value }))
+              }
+              required
+            />
           </div>
 
           <div>
@@ -214,10 +189,12 @@ export default function PartnerFormPage({
             <Label htmlFor="logo">{dictionary.admin.photo}</Label>
             <div className="flex items-center gap-4">
               {partner.logo && (
-                <img
+                <ImageWithFallback
                   src={partner.logo}
-                  alt={partner.name[lang]}
-                  className="h-20 w-20 object-contain"
+                  alt={partner.name}
+                  width={80}
+                  height={80}
+                  className="object-contain"
                 />
               )}
               <Input

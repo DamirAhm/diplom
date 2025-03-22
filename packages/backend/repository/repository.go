@@ -10,7 +10,7 @@ type LocalizedStringRepo interface {
 }
 
 type PartnerRepo interface {
-	Create(partner models.Partner, partnerType string) error
+	Create(partner models.Partner, partnerType string) (int64, error)
 	GetByID(id int) (*models.Partner, error)
 	GetAll(partnerType string) ([]models.Partner, error)
 	Update(partner models.Partner) error
@@ -18,7 +18,7 @@ type PartnerRepo interface {
 }
 
 type JointProjectRepo interface {
-	Create(pub models.JointProject) error
+	Create(pub models.JointProject) (int64, error)
 	GetByID(id int) (*models.JointProject, error)
 	GetAll() ([]models.JointProject, error)
 	Update(pub models.JointProject) error
@@ -26,7 +26,7 @@ type JointProjectRepo interface {
 }
 
 type JointPublicationRepo interface {
-	Create(pub models.JointPublication) error
+	Create(pub models.JointPublication) (int64, error)
 	GetByID(id int) (*models.JointPublication, error)
 	GetAll() ([]models.JointPublication, error)
 	Update(pub models.JointPublication) error
@@ -34,16 +34,19 @@ type JointPublicationRepo interface {
 }
 
 type PublicationRepo interface {
-	Create(pub models.Publication) error
+	Create(pub models.Publication) (int64, error)
 	GetByID(id int) (*models.Publication, error)
+	GetByIDs(ids []int) ([]models.Publication, error)
 	GetAll() ([]models.Publication, error)
 	Update(pub models.Publication) error
 	Delete(id int) error
+	GetAuthors(id int) ([]models.Researcher, error)
 }
 
 type ResearcherRepo interface {
-	Create(researcher models.Researcher) error
+	Create(researcher models.Researcher) (int64, error)
 	GetByID(id int) (*models.Researcher, error)
+	GetByIDs(ids []int) ([]models.Researcher, error)
 	GetAll() ([]models.Researcher, error)
 	Update(researcher models.Researcher) error
 	Delete(id int) error
@@ -52,7 +55,7 @@ type ResearcherRepo interface {
 }
 
 type ProjectRepo interface {
-	Create(project models.Project) error
+	Create(project models.Project) (int64, error)
 	GetByID(id int) (*models.Project, error)
 	GetAll() ([]models.Project, error)
 	Update(project models.Project) error
@@ -62,7 +65,7 @@ type ProjectRepo interface {
 }
 
 type TrainingMaterialRepo interface {
-	Create(material models.TrainingMaterial) error
+	Create(material models.TrainingMaterial) (int64, error)
 	GetByID(id int) (*models.TrainingMaterial, error)
 	GetAll() ([]models.TrainingMaterial, error)
 	Update(material models.TrainingMaterial) error

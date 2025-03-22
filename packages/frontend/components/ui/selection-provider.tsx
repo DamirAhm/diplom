@@ -16,10 +16,10 @@ interface SelectionContextType<T> {
 
 const SelectionContext = createContext<SelectionContextType<any>>({
   selectedItems: [],
-  toggleSelection: () => {},
+  toggleSelection: () => { },
   isSelected: () => false,
-  selectAll: () => {},
-  clearSelection: () => {},
+  selectAll: () => { },
+  clearSelection: () => { },
 });
 
 interface SelectionProviderProps<T> {
@@ -149,6 +149,7 @@ export function SelectionCheckbox<T>({ item }: SelectionCheckboxProps<T>) {
 
   return (
     <Checkbox
+      className="w-4 h-4 border-primary dark:border-primary-foreground"
       checked={item ? isSelected(item) : false}
       onCheckedChange={() => item && toggleSelection(item)}
     />

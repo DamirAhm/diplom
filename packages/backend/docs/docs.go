@@ -639,6 +639,59 @@ const docTemplate = `{
                 }
             }
         },
+        "/publications/{id}/authors": {
+            "get": {
+                "description": "Get all researchers who are authors of a specific publication",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "publications"
+                ],
+                "summary": "Get authors of a publication",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Publication ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Researcher"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid publication ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Publication not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/researchers": {
             "get": {
                 "description": "Get a list of all researchers",
@@ -854,6 +907,52 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/scholar/scrape": {
+            "post": {
+                "description": "Fetches all publications from a Google Scholar researcher profile URL",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scholar"
+                ],
+                "summary": "Scrape publications from Google Scholar",
+                "parameters": [
+                    {
+                        "description": "Google Scholar URL with optional sort_by parameter ('pubdate', 'citations', or empty for default)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ScholarScraperRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ScholarScraperResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "type": "string"
                         }
@@ -1114,6 +1213,76 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.Publication": {
+            "type": "object",
+            "properties": {
+                "abstract": {
+                    "type": "string"
+                },
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "citations": {
+                    "type": "integer"
+                },
+                "issue": {
+                    "type": "string"
+                },
+                "journal": {
+                    "type": "string"
+                },
+                "pages": {
+                    "type": "string"
+                },
+                "publisher": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.ScholarScraperRequest": {
+            "type": "object",
+            "properties": {
+                "sort_by": {
+                    "description": "Optional: \"pubdate\", \"citations\", \"title\" or empty for default",
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.ScholarScraperResponse": {
+            "type": "object",
+            "properties": {
+                "publications": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.Publication"
+                    }
+                },
+                "sort_by": {
+                    "type": "string"
+                },
+                "total_count": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.JointProject": {
             "type": "object",
             "properties": {
@@ -1246,7 +1415,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "authors": {
-                    "type": "string"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "id": {
                     "type": "integer"
@@ -1274,8 +1446,11 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "lastName": {
+                    "$ref": "#/definitions/models.LocalizedString"
+                },
                 "name": {
-                    "type": "string"
+                    "$ref": "#/definitions/models.LocalizedString"
                 },
                 "photo": {
                     "type": "string"
@@ -1288,9 +1463,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.Publication"
                     }
-                },
-                "title": {
-                    "$ref": "#/definitions/models.LocalizedString"
                 }
             }
         },

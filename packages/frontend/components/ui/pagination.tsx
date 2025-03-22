@@ -8,7 +8,7 @@ import {
   ChevronsRight,
   MoreHorizontal,
 } from "lucide-react";
-import { Button } from "./button";
+import { Button, ButtonProps, buttonVariants } from "./button";
 import {
   Select,
   SelectContent,
@@ -18,9 +18,7 @@ import {
 } from "./select";
 import { getDictionary } from "@/app/dictionaries";
 import type { Locale } from "@/app/types";
-
 import { cn } from "@/lib/utils";
-import { ButtonProps, buttonVariants } from "@/components/ui/button";
 
 interface PaginationProps {
   currentPage: number;
@@ -51,23 +49,35 @@ export function Pagination({
   const handleLast = () => onPageChange(totalPages);
 
   return (
-    <div className="flex items-center justify-between px-2">
+    <div className="flex items-center justify-between px-2 py-4">
       <div className="flex items-center space-x-6">
-        <Select
-          value={pageSize.toString()}
-          onValueChange={(value) => onPageSizeChange(Number(value))}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PAGE_SIZE_OPTIONS.map((size) => (
-              <SelectItem key={size} value={size.toString()}>
-                {size} {dictionary.common.itemsPerPage}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-muted-foreground">
+            {dictionary.common.show}
+          </span>
+          <Select
+            value={pageSize.toString()}
+            onValueChange={(value) => onPageSizeChange(Number(value))}
+          >
+            <SelectTrigger className="w-[100px] hover:bg-accent">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-background">
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem
+                  key={size}
+                  value={size.toString()}
+                  className="cursor-pointer bg-background hover:bg-accent focus:bg-accent data-[highlighted]:bg-accent"
+                >
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">
+            {dictionary.common.itemsPerPage}
+          </span>
+        </div>
 
         <span className="text-sm text-muted-foreground">
           {dictionary.common.page} {currentPage} {dictionary.common.of}{" "}
@@ -138,23 +148,21 @@ type PaginationLinkProps = {
 } & Pick<ButtonProps, "size"> &
   React.ComponentProps<"a">;
 
-const PaginationLink = ({
-  className,
-  isActive,
-  size = "icon",
-  ...props
-}: PaginationLinkProps) => (
-  <a
-    aria-current={isActive ? "page" : undefined}
-    className={cn(
-      buttonVariants({
-        variant: isActive ? "outline" : "ghost",
-        size,
-      }),
-      className
-    )}
-    {...props}
-  />
+const PaginationLink = React.forwardRef<HTMLAnchorElement, PaginationLinkProps>(
+  ({ className, isActive, size = "icon", ...props }, ref) => (
+    <a
+      ref={ref}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        buttonVariants({
+          variant: isActive ? "outline" : "ghost",
+          size,
+        }),
+        className
+      )}
+      {...props}
+    />
+  )
 );
 PaginationLink.displayName = "PaginationLink";
 

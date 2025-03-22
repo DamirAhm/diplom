@@ -7,7 +7,7 @@ import (
 )
 
 type SQLiteTrainingMaterialRepo struct {
-	db *sql.DB
+	db                  *sql.DB
 	localizedStringRepo LocalizedStringRepo
 }
 
@@ -15,22 +15,27 @@ func NewSQLiteTrainingMaterialRepo(db *sql.DB, lsRepo LocalizedStringRepo) *SQLi
 	return &SQLiteTrainingMaterialRepo{db: db, localizedStringRepo: lsRepo}
 }
 
-func (r *SQLiteTrainingMaterialRepo) Create(material models.TrainingMaterial) error {
+func (r *SQLiteTrainingMaterialRepo) Create(material models.TrainingMaterial) (int64, error) {
 	titleID, err := r.localizedStringRepo.Create(material.Title)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	descriptionID, err := r.localizedStringRepo.Create(material.Description)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	_, err = r.db.Exec(
+	res, err := r.db.Exec(
 		"INSERT INTO training_materials (title_id, description_id, image, url) VALUES (?, ?, ?, ?)",
 		titleID, descriptionID, material.Image, material.URL,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	return id, err
 }
 
 func (r *SQLiteTrainingMaterialRepo) GetByID(id int) (*models.TrainingMaterial, error) {

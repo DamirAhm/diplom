@@ -17,22 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dictionary } from "@/app/types";
-
-type ProfileDialogDictionary = {
-  admin: Pick<
-    Dictionary["admin"],
-    "addProfile" | "enterProfileType" | "enterProfileUrl"
-  >;
-  common: Pick<Dictionary["common"], "add" | "cancel">;
-};
-
+import { useDictionary } from "@/hooks/use-dictionary";
 interface ProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (type: string, url: string) => void;
   availableTypes: Array<{ key: string; label: string }>;
-  dictionary: ProfileDialogDictionary;
 }
 
 export function ProfileDialog({
@@ -40,10 +30,10 @@ export function ProfileDialog({
   onOpenChange,
   onSubmit,
   availableTypes,
-  dictionary,
 }: ProfileDialogProps) {
   const [selectedType, setSelectedType] = React.useState<string>("");
   const [url, setUrl] = React.useState("");
+  const dictionary = useDictionary();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,10 +53,10 @@ export function ProfileDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="type">{dictionary.admin.enterProfileType}</Label>
+            <Label htmlFor="type">{dictionary.admin.profileType}</Label>
             <Select value={selectedType} onValueChange={setSelectedType}>
               <SelectTrigger>
-                <SelectValue placeholder="Select profile type" />
+                <SelectValue placeholder={dictionary.admin.selectProfileType} />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -81,11 +71,12 @@ export function ProfileDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="url">{dictionary.admin.enterProfileUrl}</Label>
+            <Label htmlFor="url">{dictionary.admin.url}</Label>
             <Input
               id="url"
               type="url"
               value={url}
+              placeholder={dictionary.admin.enterProfileUrl}
               onChange={(e) => setUrl(e.target.value)}
               required
             />

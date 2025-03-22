@@ -1,14 +1,7 @@
 import { Locale, Publication } from "../../types";
 import { getDictionary } from "../../dictionaries";
 import { PublicationsTable } from "./PublicationsTable";
-
-const fetchPublications = async (): Promise<Publication[]> => {
-  const response = await fetch('http://localhost:8080/api/publications');
-  if (!response.ok) {
-    throw new Error('Failed to fetch publications');
-  }
-  return response.json();
-};
+import { api } from "@/lib/api";
 
 const PublicationsPage = async ({
   params,
@@ -17,7 +10,7 @@ const PublicationsPage = async ({
 }) => {
   const { lang } = await params || {};
   const dictionary = getDictionary(lang);
-  const publications = await fetchPublications();
+  const publications = await api.publications.getAll();
 
   return (
     <div className="container mx-auto px-4 py-8">

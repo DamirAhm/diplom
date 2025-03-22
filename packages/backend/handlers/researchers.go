@@ -88,11 +88,12 @@ func (h *ResearcherHandler) CreateResearcher(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	err := h.researcherRepo.Create(researcher)
+	id, err := h.researcherRepo.Create(researcher)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	researcher.ID = int(id)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(researcher)

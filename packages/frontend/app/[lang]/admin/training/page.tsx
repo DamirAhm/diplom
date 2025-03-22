@@ -11,6 +11,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
+import { ImagePreview } from "@/app/components/ImagePreview";
 
 export default function TrainingAdminPage({
   params: { lang },
@@ -92,31 +93,44 @@ export default function TrainingAdminPage({
       sortable: true,
     },
     {
-      header: dictionary.admin.type,
-      accessorKey: (material: TrainingMaterial) => (
-        <Badge className={getTypeBadgeColor(material.type)}>
-          {material.type}
-        </Badge>
-      ),
-      sortable: true,
-    },
-    {
       header: dictionary.admin.description,
       accessorKey: (material: TrainingMaterial) => material.description[lang],
       sortable: true,
       className: "max-w-md truncate",
     },
     {
-      header: dictionary.admin.actions,
+      header: dictionary.admin.url,
       accessorKey: (material: TrainingMaterial) => (
-        <div className="flex justify-end space-x-2">
-          <Link href={`/${lang}/admin/training/${material.id}`} passHref>
-            <Button variant="outline" size="sm">
-              {dictionary.common.edit}
-            </Button>
-          </Link>
-        </div>
+        <a
+          href={material.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800"
+        >
+          {material.url}
+        </a>
       ),
+      sortable: true,
+      className: "max-w-md truncate",
+    },
+    {
+      header: dictionary.admin.image,
+      accessorKey: (material: TrainingMaterial) => (
+        material.image ? (
+          <div className="flex items-center justify-center relative w-12 h-12 flex-shrink-0 overflow-hidden">
+            <ImagePreview
+              src={new URL(material.image, process.env.NEXT_PUBLIC_API_URL).toString()}
+              alt={material.title[lang]}
+              width={48}
+              height={48}
+              className="rounded object-cover w-full h-full"
+            />
+          </div>
+        ) : (
+          <span className="text-muted-foreground">No image</span>
+        )
+      ),
+      sortable: true,
       className: "w-[100px]",
     },
   ];
@@ -139,9 +153,10 @@ export default function TrainingAdminPage({
         isLoading={isLoading}
         identifier={(material) => material.id}
         onDelete={handleDelete}
-        searchPlaceholder={dictionary.common.searchTraining}
+        searchPlaceholder={dictionary.common.search}
         tableId="training"
         lang={lang}
+        editPath={(material) => `/${lang}/admin/training/${material.id}`}
       />
 
       <ConfirmDialog

@@ -103,11 +103,12 @@ func (h *PartnerHandler) CreatePartner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Pass partner type based on request URL or body
-	err := h.partnerRepo.Create(partner, "university") // TODO: Get type from request
+	id, err := h.partnerRepo.Create(partner, "university") // TODO: Get type from request
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	partner.ID = int(id)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(partner)

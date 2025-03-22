@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { getDictionary } from "@/app/dictionaries";
-import type { Locale, Publication } from "@/app/types";
+import type { Locale, Publication, Researcher } from "@/app/types";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { DataTable } from "@/components/ui/data-table";
+import { Column, DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api } from "@/lib/api";
 
@@ -71,16 +71,25 @@ export default function PublicationsAdminPage({
     }
   };
 
+  // Helper function to get author names from author objects
+  const getAuthorNames = (authors: Researcher[]) => {
+    return authors
+      ? authors
+        .map(author => `${author.name[lang]} ${author.lastName[lang]}`)
+        .join(', ')
+      : '';
+  };
+
   const columns: Column<Publication>[] = [
     {
       header: dictionary.admin.title,
-      accessorKey: "title",
+      accessorKey: (publication: Publication) => publication.title[lang],
       sortable: true,
       className: "w-1/3",
     },
     {
       header: dictionary.publications.authors,
-      accessorKey: "authors",
+      accessorKey: (publication: Publication) => getAuthorNames(publication.authors),
       sortable: true,
     },
     {
@@ -90,22 +99,9 @@ export default function PublicationsAdminPage({
       className: "w-1/4",
     },
     {
-      header: dictionary.admin.year,
-      accessorKey: "year",
+      header: dictionary.publications.publishedAt,
+      accessorKey: "publishedAt",
       sortable: true,
-      className: "w-20",
-    },
-    {
-      header: dictionary.admin.actions,
-      accessorKey: (publication: Publication) => (
-        <div className="flex justify-end gap-2">
-          <Link href={`/${lang}/admin/publications/${publication.id}`}>
-            <Button variant="ghost" size="icon">
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-      ),
       className: "w-20",
     },
   ];
@@ -128,9 +124,10 @@ export default function PublicationsAdminPage({
         isLoading={isLoading}
         identifier={(publication) => publication.id}
         onDelete={handleDelete}
-        searchPlaceholder={dictionary.common.searchPublications}
+        searchPlaceholder={dictionary.admin.searchPublications}
         tableId="publications"
         lang={lang}
+        editPath={(publication) => `/${lang}/admin/publications/${publication.id}`}
       />
 
       <ConfirmDialog

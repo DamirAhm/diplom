@@ -19,6 +19,52 @@ definitions:
           $ref: '#/definitions/models.Partner'
         type: array
     type: object
+  handlers.Publication:
+    properties:
+      abstract:
+        type: string
+      authors:
+        items:
+          type: string
+        type: array
+      citations:
+        type: integer
+      issue:
+        type: string
+      journal:
+        type: string
+      pages:
+        type: string
+      publisher:
+        type: string
+      title:
+        type: string
+      url:
+        type: string
+      volume:
+        type: string
+      year:
+        type: integer
+    type: object
+  handlers.ScholarScraperRequest:
+    properties:
+      sort_by:
+        description: 'Optional: "pubdate", "citations", "title" or empty for default'
+        type: string
+      url:
+        type: string
+    type: object
+  handlers.ScholarScraperResponse:
+    properties:
+      publications:
+        items:
+          $ref: '#/definitions/handlers.Publication'
+        type: array
+      sort_by:
+        type: string
+      total_count:
+        type: integer
+    type: object
   models.JointProject:
     properties:
       id:
@@ -105,7 +151,9 @@ definitions:
   models.Publication:
     properties:
       authors:
-        type: string
+        items:
+          type: integer
+        type: array
       id:
         type: integer
       journal:
@@ -123,8 +171,10 @@ definitions:
         $ref: '#/definitions/models.LocalizedString'
       id:
         type: integer
+      lastName:
+        $ref: '#/definitions/models.LocalizedString'
       name:
-        type: string
+        $ref: '#/definitions/models.LocalizedString'
       photo:
         type: string
       profiles:
@@ -133,8 +183,6 @@ definitions:
         items:
           $ref: '#/definitions/models.Publication'
         type: array
-      title:
-        $ref: '#/definitions/models.LocalizedString'
     type: object
   models.ResearcherProfiles:
     properties:
@@ -584,6 +632,41 @@ paths:
       summary: Update a publication
       tags:
       - publications
+  /publications/{id}/authors:
+    get:
+      consumes:
+      - application/json
+      description: Get all researchers who are authors of a specific publication
+      parameters:
+      - description: Publication ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Researcher'
+            type: array
+        "400":
+          description: Invalid publication ID
+          schema:
+            type: string
+        "404":
+          description: Publication not found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get authors of a publication
+      tags:
+      - publications
   /researchers:
     get:
       consumes:
@@ -731,6 +814,38 @@ paths:
       summary: Update a researcher
       tags:
       - researchers
+  /scholar/scrape:
+    post:
+      consumes:
+      - application/json
+      description: Fetches all publications from a Google Scholar researcher profile
+        URL
+      parameters:
+      - description: Google Scholar URL with optional sort_by parameter ('pubdate',
+          'citations', or empty for default)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ScholarScraperRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ScholarScraperResponse'
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      summary: Scrape publications from Google Scholar
+      tags:
+      - scholar
   /training:
     get:
       consumes:

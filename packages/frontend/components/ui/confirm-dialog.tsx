@@ -11,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { getDictionary } from "@/app/dictionaries";
 import type { Locale } from "@/app/types";
 
@@ -36,7 +35,7 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="bg-primary dark:bg-primary">
         <AlertDialogHeader>
           <AlertDialogTitle>
             {title || dictionary.admin.confirmDelete}
@@ -46,10 +45,10 @@ export function ConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{dictionary.common.cancel}</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} variant="destructive">
             {dictionary.common.delete}
           </AlertDialogAction>
+          <AlertDialogCancel>{dictionary.common.cancel}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

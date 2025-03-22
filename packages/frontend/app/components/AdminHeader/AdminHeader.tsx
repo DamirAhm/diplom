@@ -60,41 +60,48 @@ export const AdminHeader = ({
   };
 
   return (
-    <div className="border-b">
-      <div className="grid h-16 grid-cols-[1fr_auto_1fr] items-center px-4 gap-4">
-        <div />
-        <nav className="grid grid-flow-col gap-4 auto-cols-max">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const href = `/${lang}${item.href}`;
-            const isActive = pathname === href;
+    <header className="bg-primary dark:bg-primary text-white">
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex justify-between items-center">
+          <Link href={`/${lang}/admin/dashboard`} className="text-2xl font-bold">
+            Admin Panel
+          </Link>
+          <nav className="flex items-center space-x-4">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              const href = `/${lang}${item.href}`;
+              const isActive = pathname.startsWith(href);
 
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 text-sm font-medium relative transition-colors duration-200 ease-in-out rounded-xl border-2 border-transparent",
-                  isActive
-                    ? "bg-slate-700 text-accent-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:border-slate-700 border-solid border-2"
-                )}
-              >
-                <Icon size={4} className={"h-4 w-4"} />
-                <span>{dictionary.admin[item.title]}</span>
-              </Link>
-            );
-          })}
-        </nav>
-        {isAuthorized && (
-          <div className="flex items-center space-x-4 flex-1 justify-end">
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors duration-200 ease-in-out rounded-lg",
+                    isActive
+                      ? "bg-accent dark:bg-gray-700 text-white"
+                      : "text-white hover:bg-accent dark:hover:bg-gray-700"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{dictionary.admin[item.title]}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          {isAuthorized && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-white hover:bg-accent dark:hover:bg-gray-700"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               {dictionary.admin.logout}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </header>
   );
 };

@@ -3,16 +3,19 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/damirahm/diplom/backend/utils"
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	DBPath      string
-	Server      ServerConfig
-	Auth        AuthConfig
-	ClientHost  string
+	DBPath     string
+	Server     ServerConfig
+	Auth       AuthConfig
+	ClientHost string
+	Cron       CronConfig
 }
 
 type ServerConfig struct {
@@ -26,9 +29,37 @@ type AuthConfig struct {
 	CookieName    string
 }
 
+type CronConfig struct {
+	Enabled       bool
+	CrawlInterval time.Duration
+	ScopusAPIKey  string
+}
+
 func LoadConfig() *Config {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: .env file not found, using default values")
+	}
+
+	// Parse cron enabled flag
+	cronEnabled := true
+	if val := os.Getenv("CRON_ENABLED"); val != "" {
+		var err error
+		cronEnabled, err = strconv.ParseBool(val)
+		if err != nil {
+			log.Printf("Warning: invalid CRON_ENABLED value, using default (true)")
+			cronEnabled = true
+		}
+	}
+
+	// Parse crawl interval
+	crawlInterval := 24 * time.Hour // Default: once per day
+	if val := os.Getenv("CRON_INTERVAL_HOURS"); val != "" {
+		hours, err := strconv.Atoi(val)
+		if err != nil {
+			log.Printf("Warning: invalid CRON_INTERVAL_HOURS value, using default (24)")
+		} else {
+			crawlInterval = time.Duration(hours) * time.Hour
+		}
 	}
 
 	return &Config{
@@ -43,6 +74,11 @@ func LoadConfig() *Config {
 			CookieName:    "admin_session",
 		},
 		ClientHost: getEnv("CLIENT_HOST", "http://localhost:3000"),
+		Cron: CronConfig{
+			Enabled:       cronEnabled,
+			CrawlInterval: crawlInterval,
+			ScopusAPIKey:  getEnv("SCOPUS_API_KEY", ""),
+		},
 	}
 }
 

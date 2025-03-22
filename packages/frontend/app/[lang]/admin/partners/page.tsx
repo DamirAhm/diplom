@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { DataTable } from "@/components/ui/data-table";
+import { Column, DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import Image from "next/image";
+import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 import { api } from "../../../../lib/api";
 
 export default function PartnersAdminPage({
@@ -77,15 +77,16 @@ export default function PartnersAdminPage({
     }
   };
 
-  const columns = [
+  const columns: Column<Partner>[] = [
     {
-      header: dictionary.admin.name,
+      header: dictionary.admin.photo,
       accessorKey: (partner: Partner) => (
-        <div className="h-12 w-12 relative">
-          <Image
-            src={partner.logo || "/placeholder-logo.svg"}
-            alt={partner.name[lang]}
-            fill
+        <div className="h-12 w-12">
+          <ImageWithFallback
+            src={partner.logo}
+            alt={partner.name}
+            width={48}
+            height={48}
             className="object-contain"
           />
         </div>
@@ -94,14 +95,14 @@ export default function PartnersAdminPage({
     },
     {
       header: dictionary.admin.name,
-      accessorKey: (partner: Partner) => partner.name[lang],
+      accessorKey: (partner: Partner) => partner.name,
       sortable: true,
     },
     {
       header: dictionary.admin.type,
       accessorKey: (partner: Partner) =>
         dictionary.partners[
-          partner.type === "university" ? "universities" : "enterprises"
+        partner.type === "university" ? "universities" : "enterprises"
         ],
       sortable: true,
     },
@@ -117,19 +118,6 @@ export default function PartnersAdminPage({
           {partner.url}
         </a>
       ),
-    },
-    {
-      header: dictionary.admin.actions,
-      accessorKey: (partner: Partner) => (
-        <div className="flex justify-end space-x-2">
-          <Link href={`/${lang}/admin/partners/${partner.id}`} passHref>
-            <Button variant="outline" size="sm">
-              {dictionary.common.edit}
-            </Button>
-          </Link>
-        </div>
-      ),
-      className: "w-[100px]",
     },
   ];
 
@@ -154,6 +142,7 @@ export default function PartnersAdminPage({
         searchPlaceholder={dictionary.common.search}
         tableId="partners"
         lang={lang}
+        editPath={(partner) => `/${lang}/admin/partners/${partner.id}`}
       />
 
       <ConfirmDialog

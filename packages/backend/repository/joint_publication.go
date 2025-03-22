@@ -15,17 +15,22 @@ func NewSQLiteJointPublicationRepo(db *sql.DB, lsRepo LocalizedStringRepo) *SQLi
 	return &SQLiteJointPublicationRepo{db: db, localizedStringRepo: lsRepo}
 }
 
-func (r *SQLiteJointPublicationRepo) Create(pub models.JointPublication) error {
+func (r *SQLiteJointPublicationRepo) Create(pub models.JointPublication) (int64, error) {
 	titleID, err := r.localizedStringRepo.Create(pub.Title)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	_, err = r.db.Exec(
+	res, err := r.db.Exec(
 		"INSERT INTO joint_publications (title_id, authors, journal, link, year) VALUES (?, ?, ?, ?, ?)",
 		titleID, pub.Authors, pub.Journal, pub.Link, pub.Year,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	return id, err
 }
 
 func (r *SQLiteJointPublicationRepo) GetByID(id int) (*models.JointPublication, error) {

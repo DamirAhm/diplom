@@ -106,67 +106,74 @@ export default function AdminDashboard({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">{dictionary.admin.dashboard}</h1>
-        <p className="mt-2 text-muted-foreground">{dictionary.admin.welcome}</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          {dictionary.admin.dashboard}
+        </h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          {dictionary.admin.welcome}
+        </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
         <StatsCard
           title={dictionary.admin.researchers}
           value={stats.researchers}
-          icon={<Users />}
+          icon={<Users className="h-6 w-6 text-blue-500" />}
         />
         <StatsCard
           title={dictionary.admin.projects}
           value={stats.projects}
-          icon={<BookOpen />}
+          icon={<BookOpen className="h-6 w-6 text-green-500" />}
         />
         <StatsCard
           title={dictionary.admin.publications}
           value={stats.publications}
-          icon={<FileText />}
+          icon={<FileText className="h-6 w-6 text-purple-500" />}
         />
         <StatsCard
           title={dictionary.admin.partners}
           value={stats.partners}
-          icon={<Building2 />}
+          icon={<Building2 className="h-6 w-6 text-orange-500" />}
         />
         <StatsCard
           title={dictionary.admin.training}
           value={stats.trainingMaterials}
-          icon={<Book />}
+          icon={<Book className="h-6 w-6 text-red-500" />}
         />
       </div>
 
-      <Card>
+      <Card className="border border-gray-200 dark:border-gray-700">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-xl text-gray-900 dark:text-gray-100">
+            <Activity className="h-5 w-5 text-blue-500" />
             {dictionary.admin.recentActivity}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-8">
+          <div className="space-y-6">
             {stats.recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-center">
+              <div
+                key={activity.id}
+                className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              >
                 <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {activity.title}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     {
                       dictionary.admin.activityTypes[
-                        activity.type as keyof typeof dictionary.admin.activityTypes
+                      activity.type as keyof typeof dictionary.admin.activityTypes
                       ]
                     }{" "}
                     {
                       dictionary.admin.activityActions[
-                        activity.action as keyof typeof dictionary.admin.activityActions
+                      activity.action as keyof typeof dictionary.admin.activityActions
                       ]
                     }
                   </p>
                 </div>
-                <div className="ml-auto text-sm text-muted-foreground">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
                   {new Date(activity.timestamp).toLocaleDateString(
                     lang === "ru" ? "ru-RU" : "en-US",
                     {

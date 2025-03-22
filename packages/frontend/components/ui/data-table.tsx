@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "./table";
-import { SearchInput } from "./search-input";
+import { Input } from "./input";
 import { Pagination } from "./pagination";
 import { Spinner } from "./spinner";
 import {
@@ -17,11 +17,14 @@ import {
   SelectionHeader,
   SelectionCheckbox,
 } from "./selection-provider";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Pencil, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTableState } from "@/hooks/use-table-state";
 import { getDictionary } from "@/app/dictionaries";
 import type { Locale } from "@/app/types";
+import Link from "next/link";
+import { Button } from "./button";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 export interface Column<T> {
   header: string;
@@ -39,6 +42,7 @@ interface DataTableProps<T> {
   searchPlaceholder?: string;
   tableId: string;
   lang: Locale;
+  editPath?: (item: T) => string;
 }
 
 export function DataTable<T>({
@@ -50,6 +54,7 @@ export function DataTable<T>({
   searchPlaceholder,
   tableId,
   lang,
+  editPath,
 }: DataTableProps<T>) {
   const dictionary = getDictionary(lang);
   const { state, updateState } = useTableState(tableId);
@@ -142,19 +147,29 @@ export function DataTable<T>({
     [state.sortColumn, state.sortDirection, updateState]
   );
 
+  const isSorted = (column: Column<T>) => {
+    const columnKey =
+      typeof column.accessorKey === "function"
+        ? column.accessorKey.name
+        : String(column.accessorKey);
+
+    return state.sortColumn === columnKey;
+  }
+
   return (
     <SelectionProvider identifier={identifier}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <SearchInput
-            ref={searchInputRef}
-            defaultValue={state.search}
-            onSearch={(value) => updateState({ search: value, page: 1 })}
-            placeholder={
-              searchPlaceholder || dictionary.common.searchPlaceholder
-            }
-            className="w-64"
-          />
+          <div className="relative w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              ref={searchInputRef}
+              defaultValue={state.search}
+              onChange={(e) => updateState({ search: e.target.value, page: 1 })}
+              placeholder={searchPlaceholder || dictionary.common.searchPlaceholder}
+              className="pl-8"
+            />
+          </div>
         </div>
 
         <SelectionHeader
@@ -173,15 +188,28 @@ export function DataTable<T>({
                     key={index}
                     className={cn(
                       column.className,
-                      column.sortable && "cursor-pointer hover:bg-accent"
+                      column.sortable && "cursor-pointer select-none hover:bg-primary hover:text-primary-foreground"
                     )}
-                    onClick={() => handleSort(column)}
+                    onClick={() => column.sortable && handleSort(column)}
                   >
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <span>{column.header}</span>
                       {column.sortable && (
-                        <div className="w-4 h-4">
-                          {getSortIcon(column, state)}
+                        <div className="flex flex-col">
+                          {isSorted(column) && state.sortDirection === "asc" && (
+                            <ChevronUp
+                              className={cn(
+                                "h-3 w-3",
+                              )}
+                            />
+                          )}
+                          {isSorted(column) && state.sortDirection === "desc" && (
+                            <ChevronDown
+                              className={cn(
+                                "h-3 w-3",
+                              )}
+                            />
+                          )}
                         </div>
                       )}
                     </div>
@@ -210,9 +238,9 @@ export function DataTable<T>({
                 </TableRow>
               ) : (
                 paginatedData.map((item) => (
-                  <TableRow key={identifier(item)}>
+                  <TableRow key={identifier(item)} className="group transition-colors">
                     {onDelete && (
-                      <TableCell>
+                      <TableCell className="w-10">
                         <SelectionCheckbox item={item} />
                       </TableCell>
                     )}
@@ -223,6 +251,15 @@ export function DataTable<T>({
                           : String(item[column.accessorKey])}
                       </TableCell>
                     ))}
+                    {editPath && (
+                      <TableCell className="w-20">
+                        <Link href={editPath(item)}>
+                          <Button variant="ghost" size="icon">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
@@ -242,26 +279,4 @@ export function DataTable<T>({
       </div>
     </SelectionProvider>
   );
-}
-
-function getSortIcon<T>(
-  column: Column<T>,
-  state: { sortColumn: string | null; sortDirection: "asc" | "desc" }
-) {
-  if (!column.sortable) return null;
-
-  const columnKey =
-    typeof column.accessorKey === "function"
-      ? column.accessorKey.name
-      : String(column.accessorKey);
-
-  if (state.sortColumn === columnKey) {
-    return state.sortDirection === "asc" ? (
-      <ArrowUp className="h-4 w-4" />
-    ) : (
-      <ArrowDown className="h-4 w-4" />
-    );
-  }
-
-  return <ArrowUpDown className="h-4 w-4 opacity-0 group-hover:opacity-100" />;
 }

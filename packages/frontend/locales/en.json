@@ -59,6 +59,7 @@
     "of": "of",
     "next": "Next",
     "previous": "Previous",
+    "show": "Show",
     "errorBoundary": {
       "title": "Something went wrong",
       "description": "An error occurred while rendering this page. This is likely a temporary issue that can be resolved by refreshing the page.",
@@ -73,7 +74,10 @@
     },
     "add": "Add",
     "invalidInput": "Invalid input",
-    "logout": "Log out"
+    "logout": "Log out",
+    "translationRequired": "Translation is required for all languages",
+    "enterEnglishText": "Enter English text...",
+    "enterRussianText": "Enter Russian text..."
   },
   "projects": {
     "title": "Project Activity",
@@ -91,7 +95,9 @@
     "allYears": "All years",
     "viewPublication": "View Publication",
     "authors": "Authors",
-    "journal": "Journal"
+    "journal": "Journal",
+    "citations": "Citations",
+    "publishedAt": "Publication Date"
   },
   "researchers": {
     "title": "Principal Researchers",
@@ -110,16 +116,43 @@
     "jointPublications": "Joint Publications"
   },
   "sandbox": {
-    "errorOccurred": "An error occurred",
+    "errorOccurred": "An error occurred while running the simulation",
     "lorenzSystemControls": "Lorenz System Controls",
     "axesSize": "Axes Size",
     "systemSelection": "System Selection",
     "systemParameters": "System Parameters",
     "initialPosition": "Initial Position",
     "visualization": "Visualization",
-    "simulationParameters": "Simulation parameters",
-    "simulationTime": "Simulation time",
-    "simulationStep": "Simulation step"
+    "simulationParameters": "Simulation Parameters",
+    "simulationTime": "Simulation Time",
+    "simulationStep": "Simulation Step",
+    "neuronDynamics": "Neuron Dynamics",
+    "modelConfiguration": "Model Configuration",
+    "modelType": "Model Type",
+    "testType": "Test Type",
+    "parameters": "Parameters",
+    "excitabilityClass": "Excitability Class",
+    "rheobase": "Rheobase",
+    "threshold": "Threshold",
+    "results": "Results",
+    "graph": "Graph",
+    "analysis": "Analysis",
+    "visualizationPlaceholder": "Visualization will appear here",
+    "graphPlaceholder": "Graph will appear here",
+    "analysisPlaceholder": "Analysis results will appear here",
+    "runSimulation": "Run Simulation",
+    "membraneVoltage": "Membrane Voltage",
+    "noData": "No simulation data available",
+    "analysisNotAvailable": "Analysis is not available yet",
+    "chart": {
+      "time": "Time (ms)",
+      "voltage": "Membrane Potential (mV)",
+      "models": {
+        "hh": "Hodgkin-Huxley Model",
+        "fhn": "FitzHugh-Nagumo Model",
+        "hr": "Hindmarsh-Rose Model"
+      }
+    }
   },
   "admin": {
     "signIn": "Sign in to Admin Panel",
@@ -142,13 +175,18 @@
     "fetchError": "Failed to fetch data",
     "confirmDelete": "Are you sure you want to delete this item?",
     "name": "Name",
+    "lastName": "Last Name",
     "title": "Title",
+    "position": "Position",
     "bio": "Biography",
     "photo": "Photo",
+    "uploadPhoto": "Upload Photo",
     "profiles": "Social Profiles",
     "addProfile": "Add Profile",
     "enterProfileType": "Enter profile type (e.g., Google Scholar, ORCID)",
     "enterProfileUrl": "Enter profile URL",
+    "selectProfileType": "Select profile type",
+    "profileType": "Profile Type",
     "researchers": "Researchers",
     "addResearcher": "Add Researcher",
     "editResearcher": "Edit Researcher",
@@ -200,6 +238,11 @@
     "searchPartners": "Search partners...",
     "searchTraining": "Search training materials...",
     "noMoreProfiles": "All profile types have been added",
-    "content": "Content"
+    "content": "Content",
+    "tutorial": "Tutorial",
+    "documentation": "Documentation",
+    "video": "Video",
+    "image": "Image",
+    "urlPlaceholder": "Enter URL (e.g., https://example.com)"
   }
 }

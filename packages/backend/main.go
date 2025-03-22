@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/damirahm/diplom/backend/config"
+	"github.com/damirahm/diplom/backend/cron"
 	"github.com/damirahm/diplom/backend/db"
 	"github.com/damirahm/diplom/backend/docs"
 	"github.com/damirahm/diplom/backend/handlers"
+	"github.com/damirahm/diplom/backend/middleware"
 	"github.com/damirahm/diplom/backend/repository"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
@@ -37,9 +39,10 @@ import (
 // @BasePath  /api
 
 type application struct {
-	server *http.Server
-	db     *sql.DB
-	config *config.Config
+	server             *http.Server
+	db                 *sql.DB
+	config             *config.Config
+	publicationCrawler *cron.PublicationCrawler
 }
 
 func main() {
@@ -61,12 +64,18 @@ func main() {
 	partnerRepo := repository.NewSQLitePartnerRepo(db.DB)
 	jointPublicationRepo := repository.NewSQLiteJointPublicationRepo(db.DB, localizedStringRepo)
 	jointProjectRepo := repository.NewSQLiteJointProjectRepo(db.DB, localizedStringRepo)
-	publicationRepo := repository.NewSQLitePublicationRepo(db.DB, localizedStringRepo)
+	// First create an empty publicationRepo to resolve circular dependency
+	publicationRepo := &repository.SQLitePublicationRepo{}
 	researcherRepo := repository.NewSQLiteResearcherRepo(db.DB, localizedStringRepo, publicationRepo)
+	// Now initialize the publicationRepo with researcherRepo
+	*publicationRepo = *repository.NewSQLitePublicationRepo(db.DB, localizedStringRepo, researcherRepo)
 	projectRepo := repository.NewSQLiteProjectRepo(db.DB, localizedStringRepo)
 	trainingMaterialRepo := repository.NewSQLiteTrainingMaterialRepo(db.DB, localizedStringRepo)
 
 	router := mux.NewRouter()
+
+	// Apply logging middleware to capture all request/response details including errors
+	router.Use(middleware.Logger)
 
 	docs.SwaggerInfo.BasePath = "/api"
 	docs.SwaggerInfo.Host = cfg.Server.Host + ":" + cfg.Server.Port
@@ -79,6 +88,7 @@ func main() {
 	trainingHandler := handlers.NewTrainingHandler(trainingMaterialRepo)
 	authHandler := handlers.NewAuthHandler(cfg)
 	fileHandler := handlers.NewFileHandler()
+	scholarScraperHandler := handlers.NewScholarScraperHandler()
 
 	api := router.PathPrefix("/api").Subrouter()
 
@@ -124,11 +134,14 @@ func main() {
 	protected.HandleFunc("/training/{id}", trainingHandler.UpdateTrainingMaterial).Methods("PUT")
 	protected.HandleFunc("/training/{id}", trainingHandler.DeleteTrainingMaterial).Methods("DELETE")
 
+	// Google Scholar scraper route
+	api.HandleFunc("/scholar/scrape", scholarScraperHandler.ScrapePublications).Methods("POST", "OPTIONS")
+
 	// File upload route
 	protected.HandleFunc("/upload", fileHandler.UploadFile).Methods("POST")
 
-	// Serve static files
-	router.PathPrefix("/uploads/").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+	// Serve uploaded files
+	router.HandleFunc("/uploads/{filename}", fileHandler.ServeFile).Methods("GET")
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{cfg.ClientHost},
@@ -139,6 +152,19 @@ func main() {
 		MaxAge:           86400,
 	})
 
+	var publicationCrawler *cron.PublicationCrawler
+	if cfg.Cron.Enabled {
+		publicationCrawler = cron.NewPublicationCrawler(
+			db.DB,
+			researcherRepo,
+			publicationRepo,
+			cfg.Cron.CrawlInterval,
+			ctx,
+		)
+
+		publicationCrawler.AddSource(cron.NewGoogleScholarSource())
+	}
+
 	app := &application{
 		server: &http.Server{
 			Addr:         ":" + cfg.Server.Port,
@@ -147,8 +173,14 @@ func main() {
 			ReadTimeout:  10 * time.Second,
 			WriteTimeout: 30 * time.Second,
 		},
-		db:     db.DB,
-		config: cfg,
+		db:                 db.DB,
+		config:             cfg,
+		publicationCrawler: publicationCrawler,
+	}
+
+	if cfg.Cron.Enabled && publicationCrawler != nil {
+		go publicationCrawler.Start()
+		log.Printf("Publication crawler started with interval: %v", cfg.Cron.CrawlInterval)
 	}
 
 	go func() {
@@ -166,6 +198,7 @@ func main() {
 	select {
 	case <-quit:
 		log.Println("Shutting down server...")
+		cancel()
 	case <-ctx.Done():
 		log.Printf("Shutting down server due to context cancellation... %v", ctx.Err())
 	}

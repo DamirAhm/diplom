@@ -87,11 +87,12 @@ func (h *TrainingHandler) CreateTrainingMaterial(w http.ResponseWriter, r *http.
 		return
 	}
 
-	err := h.trainingMaterialRepo.Create(material)
+	id, err := h.trainingMaterialRepo.Create(material)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	material.ID = int(id)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(material)

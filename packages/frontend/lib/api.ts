@@ -110,9 +110,9 @@ export const api = {
   researchers: {
     getAll: () => request<Researcher[]>("/researchers"),
     getOne: (id: string) => request<Researcher>(`/researchers/${id}`),
-    create: (data: Omit<Researcher, "id">) =>
+    create: (data: Omit<Researcher, "id" | "publications" | "totalCitations">) =>
       request<Researcher>("/researchers", { method: "POST", data }),
-    update: (id: string, data: Partial<Researcher>) =>
+    update: (id: string, data: Partial<Omit<Researcher, "publications">>) =>
       request<Researcher>(`/researchers/${id}`, { method: "PUT", data }),
     delete: (id: string) =>
       request<void>(`/researchers/${id}`, { method: "DELETE" }),

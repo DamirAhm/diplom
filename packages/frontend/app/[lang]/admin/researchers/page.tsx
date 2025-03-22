@@ -49,10 +49,7 @@ export default function ResearchersAdminPage() {
   const confirmDelete = async () => {
     try {
       const promises = itemsToDelete.map((researcher) =>
-        fetch(`http://localhost:8080/api/researchers/${researcher.id}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
+        api.researchers.delete(researcher.id.toString())
       );
 
       await Promise.all(promises);
@@ -75,31 +72,18 @@ export default function ResearchersAdminPage() {
     }
   };
 
-  const columns = [
+  const columns: Column<Researcher>[] = [
     {
       header: dictionary.admin.name,
-      accessorKey: "name",
+      accessorKey: (researcher) => `${researcher.name[lang]} ${researcher.lastName[lang]}`,
       sortable: true,
     },
     {
-      header: dictionary.admin.title,
-      accessorKey: (researcher: Researcher) => researcher.title[lang],
+      header: dictionary.admin.bio,
+      accessorKey: (researcher) => researcher.bio[lang],
       sortable: true,
     },
-    {
-      header: dictionary.admin.actions,
-      accessorKey: (researcher: Researcher) => (
-        <div className="flex justify-end space-x-2">
-          <Link href={`/${lang}/admin/researchers/${researcher.id}`} passHref>
-            <Button variant="outline" size="sm">
-              {dictionary.common.edit}
-            </Button>
-          </Link>
-        </div>
-      ),
-      className: "w-[100px]",
-    },
-  ] satisfies Column<Researcher>[];
+  ];
 
   return (
     <div>
@@ -122,6 +106,7 @@ export default function ResearchersAdminPage() {
         searchPlaceholder={dictionary.admin.searchResearchers}
         tableId="researchers"
         lang={lang}
+        editPath={(researcher) => `/${lang}/admin/researchers/${researcher.id}`}
       />
 
       <ConfirmDialog

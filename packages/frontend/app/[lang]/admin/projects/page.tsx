@@ -85,19 +85,6 @@ export default function ProjectsAdminPage({
       sortable: true,
       className: "max-w-md truncate",
     },
-    {
-      header: dictionary.admin.actions,
-      accessorKey: (project: Project) => (
-        <div className="flex justify-end space-x-2">
-          <Link href={`/${lang}/admin/projects/${project.id}`} passHref>
-            <Button variant="outline" size="sm">
-              {dictionary.common.edit}
-            </Button>
-          </Link>
-        </div>
-      ),
-      className: "w-[100px]",
-    },
   ];
 
   return (
@@ -118,9 +105,10 @@ export default function ProjectsAdminPage({
         isLoading={isLoading}
         identifier={(project) => project.id}
         onDelete={handleDelete}
-        searchPlaceholder={dictionary.common.searchProjects}
+        searchPlaceholder={dictionary.common.search}
         tableId="projects"
         lang={lang}
+        editPath={(project) => `/${lang}/admin/projects/${project.id}`}
       />
 
       <ConfirmDialog

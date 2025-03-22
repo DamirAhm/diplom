@@ -10,7 +10,7 @@ export default function Footer({ lang }: FooterProps) {
   const dictionary = getDictionary(lang)
 
   return (
-    <footer className="bg-gray-100 dark:bg-gray-800 py-4 mt-8">
+    <footer className="bg-gray-100 dark:bg-primary py-4 mt-8">
       <div className="container mx-auto px-4 text-center text-gray-600 dark:text-gray-300">
         <p>{dictionary.footer.copyright}</p>
         <nav className="mt-2">

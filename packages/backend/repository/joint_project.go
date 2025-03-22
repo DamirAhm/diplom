@@ -15,10 +15,10 @@ func NewSQLiteJointProjectRepo(db *sql.DB, lsRepo LocalizedStringRepo) *SQLiteJo
 	return &SQLiteJointProjectRepo{db: db, localizedStringRepo: lsRepo}
 }
 
-func (r *SQLiteJointProjectRepo) Create(project models.JointProject) error {
+func (r *SQLiteJointProjectRepo) Create(project models.JointProject) (int64, error) {
 	titleID, err := r.localizedStringRepo.Create(project.Title)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	result, err := r.db.Exec(
@@ -26,12 +26,12 @@ func (r *SQLiteJointProjectRepo) Create(project models.JointProject) error {
 		titleID, project.Year,
 	)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	projectID, err := result.LastInsertId()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	for _, partner := range project.Partners {
@@ -40,11 +40,11 @@ func (r *SQLiteJointProjectRepo) Create(project models.JointProject) error {
 			projectID, partner,
 		)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	return nil
+	return projectID, nil
 }
 
 func (r *SQLiteJointProjectRepo) GetByID(id int) (*models.JointProject, error) {

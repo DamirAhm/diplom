@@ -61,9 +61,8 @@ export const SandboxSidebar: React.FC<Props> = ({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 ${
-        open ? "translate-x-0" : "-translate-x-full"
-      } fixed z-30 h-full overflow-y-auto w-80`}
+      className={`bg-white dark:bg-primary flex-shrink-0 border-r border-gray-200 dark:border-gray-700 ${open ? "translate-x-0" : "-translate-x-full"
+        } fixed z-30 h-full overflow-y-auto w-80`}
     >
       <div className="p-4 space-y-6">
         <div className="mb-6 space-y-4">

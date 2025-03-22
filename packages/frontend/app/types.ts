@@ -7,7 +7,7 @@ export interface LocalizedString {
 
 export interface Partner {
   id: number;
-  name: LocalizedString;
+  name: string;
   type: "university" | "enterprise";
   logo: string;
   url: string;
@@ -39,11 +39,11 @@ export interface PartnersData {
 export interface Publication {
   id: number;
   title: LocalizedString;
-  authors: string;
-  year: number;
+  link: string;
   journal: string;
-  doi: string;
-  url: string;
+  publishedAt: string;
+  citationsCount: number;
+  authors: Researcher[];
 }
 
 export interface ResearcherProfiles {
@@ -56,12 +56,14 @@ export interface ResearcherProfiles {
 
 export interface Researcher {
   id: number;
-  name: string;
-  title: LocalizedString;
+  name: LocalizedString;
+  lastName: LocalizedString;
+  position: LocalizedString;
   bio: LocalizedString;
   photo: string;
   profiles: ResearcherProfiles;
   publications: Publication[];
+  totalCitations: number;
 }
 
 export interface ProjectPublication {
@@ -95,10 +97,8 @@ export interface TrainingMaterial {
   id: number;
   title: LocalizedString;
   description: LocalizedString;
-  type: "tutorial" | "documentation" | "video";
-  content: LocalizedString;
   url: string;
-  image?: string;
+  image: string;
 }
 
 export interface APIError {
@@ -182,6 +182,9 @@ export interface Dictionary {
       notFoundError: string;
       accessDeniedError: string;
     };
+    translationRequired: string;
+    enterEnglishText: string;
+    enterRussianText: string;
   };
   projects: {
     title: string;
@@ -198,6 +201,7 @@ export interface Dictionary {
     filterByYear: string;
     allYears: string;
     viewPublication: string;
+    citations: string;
   };
   researchers: {
     title: string;
@@ -226,6 +230,33 @@ export interface Dictionary {
     simulationParameters: string;
     simulationTime: string;
     simulationStep: string;
+    neuronDynamics: string;
+    modelConfiguration: string;
+    modelType: string;
+    testType: string;
+    parameters: string;
+    excitabilityClass: string;
+    rheobase: string;
+    threshold: string;
+    results: string;
+    graph: string;
+    analysis: string;
+    visualizationPlaceholder: string;
+    graphPlaceholder: string;
+    analysisPlaceholder: string;
+    runSimulation: string;
+    membraneVoltage: string;
+    noData: string;
+    analysisNotAvailable: string;
+    chart: {
+      time: string;
+      voltage: string;
+      models: {
+        hh: string;
+        fhn: string;
+        hr: string;
+      };
+    };
   };
   admin: {
     signIn: string;
@@ -249,12 +280,15 @@ export interface Dictionary {
     confirmDelete: string;
     name: string;
     title: string;
+    position: string;
     bio: string;
     photo: string;
     profiles: string;
     addProfile: string;
     enterProfileType: string;
     enterProfileUrl: string;
+    selectProfileType: string;
+    profileType: string;
     researchers: string;
     addResearcher: string;
     editResearcher: string;
@@ -306,5 +340,6 @@ export interface Dictionary {
     searchPartners: string;
     searchTraining: string;
     noMoreProfiles: string;
+    image: string;
   };
 }

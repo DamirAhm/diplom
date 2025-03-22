@@ -1,29 +1,39 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getDictionary } from "@/app/dictionaries";
-import type { Locale, TrainingMaterial } from "@/app/types";
+import type { Locale } from "@/app/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft } from "lucide-react";
-import { LocalizedFormField } from "@/components/ui/localized-form-field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { api } from "@/lib/api";
+import { ArrowLeft, Upload } from "lucide-react";
+import { api, uploadFile } from "../../../../../lib/api";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form } from "@/components/ui/form";
+import { TextField, LocalizedTextField } from "@/components/ui/form-fields";
+import * as z from "zod";
 
-const emptyMaterial: Omit<TrainingMaterial, "id"> = {
-  title: { en: "", ru: "" },
+// Define a schema for the training form
+const trainingSchema = z.object({
+  name: z.object({
+    en: z.string().min(1, { message: "English name is required" }),
+    ru: z.string().min(1, { message: "Russian name is required" }),
+  }),
+  description: z.object({
+    en: z.string().min(1, { message: "English description is required" }),
+    ru: z.string().min(1, { message: "Russian description is required" }),
+  }),
+  url: z.string().url({ message: "Must be a valid URL" }),
+});
+
+type TrainingFormData = z.infer<typeof trainingSchema>;
+
+const emptyMaterial = {
+  name: { en: "", ru: "" },
   description: { en: "", ru: "" },
-  type: "tutorial",
-  content: { en: "", ru: "" },
   url: "",
+  image: "",
 };
 
 export default function TrainingFormPage({
@@ -34,10 +44,14 @@ export default function TrainingFormPage({
   const dictionary = getDictionary(lang);
   const router = useRouter();
   const { toast } = useToast();
-  const [material, setMaterial] = useState<Omit<TrainingMaterial, "id">>(emptyMaterial);
   const [isLoading, setIsLoading] = useState(id !== "new");
-  const [isSaving, setIsSaving] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+
+  const form = useForm<TrainingFormData>({
+    resolver: zodResolver(trainingSchema),
+    defaultValues: emptyMaterial,
+  });
 
   useEffect(() => {
     if (id !== "new") {
@@ -48,7 +62,12 @@ export default function TrainingFormPage({
   const fetchMaterial = async () => {
     try {
       const data = await api.training.getOne(id);
-      setMaterial(data);
+      form.reset({
+        name: data.title,
+        description: data.description,
+        url: data.url,
+      });
+      setImagePreview(data.image);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -60,15 +79,36 @@ export default function TrainingFormPage({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-
+  const onSubmit = async (formData: TrainingFormData) => {
     try {
+      const materialData = {
+        title: formData.name,
+        description: formData.description,
+        url: formData.url,
+        image: imagePreview,
+      };
+
+      let materialId = id;
       if (id !== "new") {
-        await api.training.update(id, material);
+        await api.training.update(id, materialData);
       } else {
-        await api.training.create(material);
+        const newMaterial = await api.training.create(materialData);
+        materialId = newMaterial.id.toString();
+      }
+
+      if (imageFile) {
+        try {
+          const { url } = await uploadFile(imageFile);
+          // Update the material with the new image URL
+          await api.training.update(materialId, { image: url });
+        } catch (error) {
+          console.error("Failed to upload image:", error);
+          toast({
+            variant: "destructive",
+            title: dictionary.common.error,
+            description: dictionary.admin.uploadError,
+          });
+        }
       }
 
       toast({
@@ -82,12 +122,24 @@ export default function TrainingFormPage({
         title: dictionary.common.error,
         description: dictionary.admin.saveError,
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleDelete = async () => {
+    if (!confirm(dictionary.admin.confirmDelete)) return;
+
     try {
       await api.training.delete(id);
       toast({
@@ -121,10 +173,9 @@ export default function TrainingFormPage({
       <div className="mb-6">
         <Button
           variant="outline"
-          onClick={handleCancel}
-          className="group"
+          onClick={() => router.push(`/${lang}/admin/training`)}
         >
-          <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          <ArrowLeft className="mr-2 h-4 w-4" />
           {dictionary.common.back}
         </Button>
       </div>
@@ -135,86 +186,82 @@ export default function TrainingFormPage({
           : dictionary.admin.editTraining}
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <LocalizedFormField
-          label={dictionary.admin.title}
-          value={material.title}
-          onChange={(value) =>
-            setMaterial((prev) => ({ ...prev, title: value }))
-          }
-          required
-        />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="space-y-4">
+            <LocalizedTextField
+              name="name"
+              label={dictionary.admin.name}
+              required
+              lang={lang}
+            />
 
-        <LocalizedFormField
-          label={dictionary.admin.description}
-          value={material.description}
-          onChange={(value) =>
-            setMaterial((prev) => ({ ...prev, description: value }))
-          }
-          multiline
-          required
-        />
+            <LocalizedTextField
+              name="description"
+              label={dictionary.admin.description}
+              multiline
+              required
+              lang={lang}
+            />
 
-        <div className="relative">
-          <Label>{dictionary.admin.type}</Label>
-          <Select
-            value={material.type}
-            onValueChange={(value: "tutorial" | "documentation" | "video") =>
-              setMaterial((prev) => ({ ...prev, type: value }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="tutorial">Tutorial</SelectItem>
-              <SelectItem value="documentation">Documentation</SelectItem>
-              <SelectItem value="video">Video</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <TextField
+              name="url"
+              label={dictionary.admin.url}
+              type="url"
+              required
+            />
 
-        <LocalizedFormField
-          label={dictionary.admin.content}
-          value={material.content}
-          onChange={(value) =>
-            setMaterial((prev) => ({ ...prev, content: value }))
-          }
-          multiline
-          required
-        />
+            <div className="space-y-2">
+              <div className="flex items-center gap-4">
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("image-upload")?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {dictionary.admin.uploadPhoto}
+                  </Button>
+                  <input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+                {imagePreview && (
+                  <div className="relative h-24 w-24 overflow-hidden rounded border">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? dictionary.common.saving : dictionary.common.save}
+          <div className="flex gap-2">
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? dictionary.common.saving : dictionary.common.save}
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-            >
+            <Button type="button" variant="outline" onClick={handleCancel}>
               {dictionary.common.cancel}
             </Button>
+            {id !== "new" && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+              >
+                {dictionary.common.delete}
+              </Button>
+            )}
           </div>
-          {id !== "new" && (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              {dictionary.common.delete}
-            </Button>
-          )}
-        </div>
-      </form>
-
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={handleDelete}
-        lang={lang}
-      />
+        </form>
+      </Form>
     </div>
   );
 }

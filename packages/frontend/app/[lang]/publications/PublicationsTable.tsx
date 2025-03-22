@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { Locale, Publication } from "@/app/types"
 import { getDictionary } from "@/app/dictionaries"
 import PublicationItem from "@/app/components/PublicationItem"
@@ -12,23 +12,22 @@ export type Props = {
 
 export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
   const dictionary = getDictionary(lang)
-
   const [sortBy, setSortBy] = useState<"year" | "title">("year")
   const [filterYear, setFilterYear] = useState<number | null>(null)
 
   const sortedPublications = [...publications].sort((a, b) => {
     if (sortBy === "year") {
-      return b.year - a.year
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
     } else {
-      return a.title[lang].localeCompare(b.title[lang])
+      return b.citationsCount - a.citationsCount
     }
   })
 
   const filteredPublications = filterYear
-    ? sortedPublications.filter((pub) => pub.year === filterYear)
+    ? sortedPublications.filter((pub) => new Date(pub.publishedAt).getFullYear() === filterYear)
     : sortedPublications
 
-  const years = Array.from(new Set(publications.map((pub) => pub.year))).sort((a, b) => b - a)
+  const years = Array.from(new Set(publications.map((pub) => new Date(pub.publishedAt).getFullYear()))).sort((a, b) => b - a)
 
   return (
     <>
@@ -68,7 +67,11 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
       </div>
       <div className="space-y-8">
         {filteredPublications.map((publication) => (
-          <PublicationItem key={publication.id} lang={lang} publication={publication} />
+          <PublicationItem
+            key={publication.id}
+            lang={lang}
+            publication={publication}
+          />
         ))}
       </div>
     </>

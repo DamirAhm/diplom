@@ -1,14 +1,7 @@
 import ResearcherCard from "../../components/ResearcherCard";
 import { Locale, Researcher } from "../../types";
 import { getDictionary } from "../../dictionaries";
-
-const fetchResearchers = async (): Promise<Researcher[]> => {
-  const response = await fetch('http://localhost:8080/api/researchers');
-  if (!response.ok) {
-    throw new Error('Failed to fetch researchers');
-  }
-  return response.json();
-};
+import { api } from "@/lib/api";
 
 const ResearchersPage = async ({
   params,
@@ -16,7 +9,7 @@ const ResearchersPage = async ({
   params: { lang: Locale };
 }) => {
   const { lang } = await params || {};
-  const researchers = await fetchResearchers();
+  const researchers = await api.researchers.getAll();
   const dictionary = getDictionary(lang);
 
   return (

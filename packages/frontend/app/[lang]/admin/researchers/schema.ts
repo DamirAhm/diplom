@@ -5,19 +5,10 @@ export const localizedStringSchema = z.object({
   ru: z.string().min(1, { message: "Russian translation is required" }),
 });
 
-const publicationSchema = z.object({
-  id: z.number(),
-  title: localizedStringSchema,
-  authors: z.string(),
-  year: z.number(),
-  journal: z.string(),
-  doi: z.string(),
-  url: z.string().url({ message: "Must be a valid URL" }),
-});
-
 export const researcherSchema = z.object({
-  name: z.string().min(1, { message: "Name is required" }),
-  title: localizedStringSchema,
+  name: localizedStringSchema,
+  lastName: localizedStringSchema,
+  position: localizedStringSchema,
   bio: localizedStringSchema,
   photo: z.string(),
   profiles: z
@@ -35,7 +26,6 @@ export const researcherSchema = z.object({
       orcid: z.string().url({ message: "Must be a valid URL" }).optional(),
     })
     .default({}), // Set default empty object instead of making the whole field optional
-  publications: z.array(publicationSchema).default([]),
 });
 
 export type ResearcherFormData = z.infer<typeof researcherSchema>;

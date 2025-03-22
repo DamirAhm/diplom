@@ -47,19 +47,19 @@ export default async function HomePage(args: HomePageProps) {
           <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-gray-100">
             {dictionary.home.title}
           </h1>
-          <p className="text-xl mb-8 text-gray-700 dark:text-gray-300">
+          <p className="text-xl mb-8 text-accent dark:text-accent">
             {dictionary.home.description}
           </p>
           <div className="flex gap-4 justify-center">
             <Link
               href={`/${lang}/projects`}
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600"
+              className="bg-primary text-white px-6 py-2 rounded hover:bg-accent transition-color dark:hover:bg-primary"
             >
               {dictionary.navigation.projects}
             </Link>
             <Link
               href={`/${lang}/publications`}
-              className="bg-white text-blue-600 px-6 py-2 rounded border border-blue-600 hover:bg-blue-50 transition-colors dark:bg-gray-800 dark:text-blue-400 dark:border-blue-400 dark:hover:bg-gray-700"
+              className="bg-white text-primary px-6 py-2 rounded border border-primary hover:bg-blue-50 transition-colors dark:bg-primary dark:text-blue-400 dark:border-blue-400 dark:hover:bg-accent"
             >
               {dictionary.navigation.publications}
             </Link>
@@ -72,9 +72,9 @@ export default async function HomePage(args: HomePageProps) {
               href={`/${lang}/${item.key}`}
               className="block h-full"
             >
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow flex flex-col items-center text-center h-full">
+              <div className="bg-white dark:bg-primary p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow flex flex-col items-center text-center h-full">
                 <svg
-                  className="w-12 h-12 mb-4 text-blue-600 dark:text-blue-400"
+                  className="w-12 h-12 mb-4 text-primary dark:text-accent"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

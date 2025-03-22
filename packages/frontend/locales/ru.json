@@ -59,6 +59,7 @@
     "of": "из",
     "next": "Следующая",
     "previous": "Предыдущая",
+    "show": "Показать",
     "errorBoundary": {
       "title": "Что-то пошло не так",
       "description": "При отображении этой страницы произошла ошибка. Скорее всего, это временная проблема, которую можно решить, обновив страницу.",
@@ -76,7 +77,10 @@
     "search": "Поиск...",
     "searchProjects": "Поиск проектов...",
     "searchPublications": "Поиск публикаций...",
-    "searchTraining": "Поиск учебных материалов..."
+    "searchTraining": "Поиск учебных материалов...",
+    "translationRequired": "Требуется перевод на все языки",
+    "enterEnglishText": "Введите текст на английском...",
+    "enterRussianText": "Введите текст на русском..."
   },
   "projects": {
     "title": "Проектная деятельность",
@@ -94,7 +98,9 @@
     "allYears": "Все годы",
     "viewPublication": "Просмотреть публикацию",
     "authors": "Авторы",
-    "journal": "Журнал"
+    "journal": "Журнал",
+    "citations": "Цитирования",
+    "publishedAt": "Дата публикации"
   },
   "researchers": {
     "title": "Ведущие исследователи",
@@ -113,16 +119,43 @@
     "jointPublications": "Совместные публикации"
   },
   "sandbox": {
-    "errorOccurred": "Произошла ошибка",
+    "errorOccurred": "Произошла ошибка при выполнении симуляции",
     "lorenzSystemControls": "Управление системой Лоренца",
     "axesSize": "Размер осей",
     "systemSelection": "Выбор системы",
     "systemParameters": "Параметры системы",
     "initialPosition": "Начальное положение",
     "visualization": "Визуализация",
-    "simulationParameters": "Параметры моделирования",
-    "simulationTime": "Время моделирования",
-    "simulationStep": "Шаг моделирования"
+    "simulationParameters": "Параметры симуляции",
+    "simulationTime": "Время симуляции",
+    "simulationStep": "Шаг симуляции",
+    "neuronDynamics": "Динамика нейрона",
+    "modelConfiguration": "Конфигурация модели",
+    "modelType": "Тип модели",
+    "testType": "Тип теста",
+    "parameters": "Параметры",
+    "excitabilityClass": "Класс возбудимости",
+    "rheobase": "Реобаза",
+    "threshold": "Порог",
+    "results": "Результаты",
+    "graph": "График",
+    "analysis": "Анализ",
+    "visualizationPlaceholder": "Здесь появится визуализация",
+    "graphPlaceholder": "Здесь появится график",
+    "analysisPlaceholder": "Здесь появятся результаты анализа",
+    "runSimulation": "Запустить симуляцию",
+    "membraneVoltage": "Мембранный потенциал",
+    "noData": "Данные симуляции отсутствуют",
+    "analysisNotAvailable": "Анализ пока недоступен",
+    "chart": {
+      "time": "Время (мс)",
+      "voltage": "Мембранный потенциал (мВ)",
+      "models": {
+        "hh": "Модель Ходжкина-Хаксли",
+        "fhn": "Модель Фитцхью-Нагумо",
+        "hr": "Модель Хиндмарша-Роуза"
+      }
+    }
   },
   "admin": {
     "signIn": "Вход в панель администратора",
@@ -145,13 +178,18 @@
     "fetchError": "Не удалось загрузить данные",
     "confirmDelete": "Вы уверены, что хотите удалить этот элемент?",
     "name": "Имя",
-    "title": "Должность",
+    "lastName": "Фамилия",
+    "title": "Заголовок",
+    "position": "Должность",
     "bio": "Биография",
     "photo": "Фото",
+    "uploadPhoto": "Загрузить фото",
     "profiles": "Социальные профили",
     "addProfile": "Добавить профиль",
     "enterProfileType": "Введите тип профиля (например, Google Scholar, ORCID)",
     "enterProfileUrl": "Введите URL профиля",
+    "selectProfileType": "Выберите тип профиля",
+    "profileType": "Тип профиля",
     "researchers": "Исследователи",
     "addResearcher": "Добавить исследователя",
     "editResearcher": "Редактировать исследователя",
@@ -203,6 +241,11 @@
     "searchPartners": "Поиск партнеров...",
     "searchTraining": "Поиск учебных материалов...",
     "noMoreProfiles": "Все типы профилей уже добавлены",
-    "content": "Содержание"
+    "content": "Содержание",
+    "tutorial": "Учебное пособие",
+    "documentation": "Документация",
+    "video": "Видео",
+    "image": "Изображение",
+    "urlPlaceholder": "Введите URL (например, https://example.com)"
   }
 }

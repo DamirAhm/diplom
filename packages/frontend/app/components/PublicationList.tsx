@@ -1,12 +1,6 @@
 import type React from "react"
-import type { Locale } from "../types"
+import type { Locale, Publication } from "../types"
 import { ExternalLink } from "lucide-react"
-
-interface Publication {
-  id: number
-  title: { en: string; ru: string }
-  link: string
-}
 
 interface PublicationListProps {
   publications: Publication[]

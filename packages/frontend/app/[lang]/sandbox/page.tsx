@@ -59,7 +59,7 @@ export default function Sandbox({
   if (error) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+        <div className="bg-white dark:bg-primary p-6 rounded-lg shadow-lg">
           <h2 className="text-2xl font-bold mb-4 text-red-600 dark:text-red-400">
             {dictionary.sandbox.errorOccurred}
           </h2>

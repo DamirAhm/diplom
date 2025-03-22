@@ -14,12 +14,17 @@ func NewSQLitePartnerRepo(db *sql.DB) *SQLitePartnerRepo {
 	return &SQLitePartnerRepo{db: db}
 }
 
-func (r *SQLitePartnerRepo) Create(partner models.Partner, partnerType string) error {
-	_, err := r.db.Exec(
+func (r *SQLitePartnerRepo) Create(partner models.Partner, partnerType string) (int64, error) {
+	res, err := r.db.Exec(
 		"INSERT INTO partners (name, logo, url, type) VALUES (?, ?, ?, ?)",
 		partner.Name, partner.Logo, partner.URL, partnerType,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	return id, err
 }
 
 func (r *SQLitePartnerRepo) GetByID(id int) (*models.Partner, error) {
@@ -36,7 +41,7 @@ func (r *SQLitePartnerRepo) GetByID(id int) (*models.Partner, error) {
 
 func (r *SQLitePartnerRepo) GetAll(partnerType string) ([]models.Partner, error) {
 	partners := make([]models.Partner, 0)
-	
+
 	rows, err := r.db.Query(
 		"SELECT id, name, logo, url FROM partners WHERE type = ?",
 		partnerType,

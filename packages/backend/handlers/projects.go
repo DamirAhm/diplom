@@ -7,6 +7,7 @@ import (
 
 	"github.com/damirahm/diplom/backend/models"
 	"github.com/damirahm/diplom/backend/repository"
+	"github.com/damirahm/diplom/backend/utils"
 	"github.com/gorilla/mux"
 )
 
@@ -30,7 +31,7 @@ func NewProjectHandler(pr repository.ProjectRepo) *ProjectHandler {
 func (h *ProjectHandler) GetProjects(w http.ResponseWriter, r *http.Request) {
 	projects, err := h.projectRepo.GetAll()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch projects", err)
 		return
 	}
 	json.NewEncoder(w).Encode(projects)
@@ -52,17 +53,17 @@ func (h *ProjectHandler) GetProject(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid project ID", http.StatusBadRequest)
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID", err)
 		return
 	}
 
 	project, err := h.projectRepo.GetByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch project", err)
 		return
 	}
 	if project == nil {
-		http.Error(w, "Project not found", http.StatusNotFound)
+		utils.RespondWithError(w, http.StatusNotFound, "Project not found", nil)
 		return
 	}
 
@@ -83,15 +84,16 @@ func (h *ProjectHandler) GetProject(w http.ResponseWriter, r *http.Request) {
 func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	var project models.Project
 	if err := json.NewDecoder(r.Body).Decode(&project); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project data", err)
 		return
 	}
 
-	err := h.projectRepo.Create(project)
+	id, err := h.projectRepo.Create(project)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to create project", err)
 		return
 	}
+	project.ID = int(id)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(project)
@@ -114,13 +116,13 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid project ID", http.StatusBadRequest)
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID", err)
 		return
 	}
 
 	var project models.Project
 	if err := json.NewDecoder(r.Body).Decode(&project); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project data", err)
 		return
 	}
 	project.ID = id
@@ -128,10 +130,10 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 	err = h.projectRepo.Update(project)
 	if err != nil {
 		if err.Error() == "project not found" {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			utils.RespondWithError(w, http.StatusNotFound, "Project not found", err)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to update project", err)
 		return
 	}
 
@@ -153,17 +155,17 @@ func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid project ID", http.StatusBadRequest)
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID", err)
 		return
 	}
 
 	err = h.projectRepo.Delete(id)
 	if err != nil {
 		if err.Error() == "project not found" {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			utils.RespondWithError(w, http.StatusNotFound, "Project not found", err)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to delete project", err)
 		return
 	}
 

@@ -3,20 +3,27 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getDictionary } from "@/app/dictionaries";
-import type { Locale, Publication } from "@/app/types";
+import type { Locale, Researcher } from "@/app/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
+import { api } from "@/lib/api";
+import { PublicationFormData, publicationFormSchema } from "../schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Form } from "@/components/ui/form";
+import {
+  TextField,
+  LocalizedTextField,
+  MultiSelectField
+} from "@/components/ui/form-fields";
 
-const emptyPublication: Omit<Publication, "id"> = {
-  title: "",
-  authors: "",
-  year: new Date().getFullYear(),
+const emptyPublication: PublicationFormData = {
+  title: { en: "", ru: "" },
+  authors: [],
+  publishedAt: new Date().toISOString().split('T')[0], // Format: YYYY-MM-DD
   journal: "",
-  doi: "",
-  url: "",
+  link: "",
 };
 
 export default function PublicationFormPage({
@@ -27,25 +34,33 @@ export default function PublicationFormPage({
   const dictionary = getDictionary(lang);
   const router = useRouter();
   const { toast } = useToast();
-  const [publication, setPublication] = useState<Omit<Publication, "id">>(emptyPublication);
   const [isLoading, setIsLoading] = useState(id !== "new");
-  const [isSaving, setIsSaving] = useState(false);
+  const [researchers, setResearchers] = useState<Researcher[]>([]);
+  const [researchersLoading, setResearchersLoading] = useState(true);
+
+  const form = useForm<PublicationFormData>({
+    resolver: zodResolver(publicationFormSchema),
+    defaultValues: emptyPublication,
+  });
 
   useEffect(() => {
     if (id !== "new") {
       fetchPublication();
     }
+    fetchResearchers();
   }, [id]);
 
   const fetchPublication = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/publications/${id}`, {
-        credentials: "include",
+      const data = await api.publications.getOne(id);
+      // Convert the publication with Researcher[] authors to PublicationFormData with number[] authors
+      form.reset({
+        title: data.title,
+        authors: data.authors.map(author => author.id),
+        publishedAt: data.publishedAt,
+        journal: data.journal,
+        link: data.link
       });
-      if (response.ok) {
-        const data = await response.json();
-        setPublication(data);
-      }
     } catch (error) {
       toast({
         variant: "destructive",
@@ -57,50 +72,53 @@ export default function PublicationFormPage({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-
+  const fetchResearchers = async () => {
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/publications${id !== "new" ? `/${id}` : ""}`,
-        {
-          method: id !== "new" ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(publication),
-        }
-      );
+      const data = await api.researchers.getAll();
+      setResearchers(data);
+    } catch (error) {
+      console.error('Error fetching researchers:', error);
+    } finally {
+      setResearchersLoading(false);
+    }
+  };
 
-      if (response.ok) {
-        toast({
-          title: dictionary.admin.success,
-          description: dictionary.admin.saveSuccess,
-        });
-        router.push(`/${lang}/admin/publications`);
+  const onSubmit = async (formData: PublicationFormData) => {
+    try {
+      if (id !== "new") {
+        // Use type assertion to tell TypeScript this is the format the API expects
+        await api.publications.update(id, formData as any);
       } else {
-        throw new Error();
+        // Use type assertion to tell TypeScript this is the format the API expects
+        await api.publications.create(formData as any);
       }
+
+      toast({
+        title: dictionary.admin.success,
+        description: dictionary.admin.saveSuccess,
+      });
+      router.push(`/${lang}/admin/publications`);
     } catch (error) {
       toast({
         variant: "destructive",
         title: dictionary.common.error,
         description: dictionary.admin.saveError,
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
-  if (isLoading) {
+  if (isLoading || researchersLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
+
+  const researcherOptions = researchers.map(researcher => ({
+    value: researcher.id.toString(),
+    label: `${researcher.name[lang]} ${researcher.lastName[lang]}`
+  }));
 
   return (
     <div>
@@ -120,87 +138,48 @@ export default function PublicationFormPage({
           : dictionary.admin.editPublication}
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="title">{dictionary.admin.title}</Label>
-            <Input
-              id="title"
-              value={publication.title}
-              onChange={(e) =>
-                setPublication((prev) => ({ ...prev, title: e.target.value }))
-              }
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="space-y-4">
+            <LocalizedTextField
+              name="title"
+              label={dictionary.admin.title}
+              required
+              lang={lang}
+            />
+
+            <MultiSelectField
+              name="authors"
+              label={dictionary.publications.authors}
+              options={researcherOptions}
               required
             />
-          </div>
 
-          <div>
-            <Label htmlFor="authors">{dictionary.publications.authors}</Label>
-            <Input
-              id="authors"
-              value={publication.authors}
-              onChange={(e) =>
-                setPublication((prev) => ({ ...prev, authors: e.target.value }))
-              }
+            <TextField
+              name="publishedAt"
+              label={dictionary.publications.publishedAt}
+              type="date"
               required
             />
-          </div>
 
-          <div>
-            <Label htmlFor="year">{dictionary.publications.year}</Label>
-            <Input
-              id="year"
-              type="number"
-              min={1900}
-              max={new Date().getFullYear()}
-              value={publication.year}
-              onChange={(e) =>
-                setPublication((prev) => ({ ...prev, year: parseInt(e.target.value, 10) }))
-              }
+            <TextField
+              name="journal"
+              label={dictionary.publications.journal}
               required
             />
-          </div>
 
-          <div>
-            <Label htmlFor="journal">{dictionary.publications.journal}</Label>
-            <Input
-              id="journal"
-              value={publication.journal}
-              onChange={(e) =>
-                setPublication((prev) => ({ ...prev, journal: e.target.value }))
-              }
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="doi">DOI</Label>
-            <Input
-              id="doi"
-              value={publication.doi}
-              onChange={(e) =>
-                setPublication((prev) => ({ ...prev, doi: e.target.value }))
-              }
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="url">URL</Label>
-            <Input
-              id="url"
+            <TextField
+              name="link"
+              label="URL"
               type="url"
-              value={publication.url}
-              onChange={(e) =>
-                setPublication((prev) => ({ ...prev, url: e.target.value }))
-              }
             />
           </div>
-        </div>
 
-        <Button type="submit" disabled={isSaving}>
-          {isSaving ? dictionary.common.saving : dictionary.common.save}
-        </Button>
-      </form>
+          <Button type="submit" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? dictionary.common.saving : dictionary.common.save}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }

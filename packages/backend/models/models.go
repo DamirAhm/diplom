@@ -36,22 +36,25 @@ type PartnersData struct {
 }
 
 type Publication struct {
-	ID      int             `json:"id"`
-	Title   LocalizedString `json:"title"`
-	Authors string          `json:"authors"`
-	Journal string          `json:"journal"`
-	Year    int             `json:"year"`
-	Link    string          `json:"link"`
+	ID             int             `json:"id"`
+	Title          LocalizedString `json:"title"`
+	Authors        []int           `json:"authors"`
+	Journal        string          `json:"journal"`
+	PublishedAt    string          `json:"publishedAt"`
+	CitationsCount int             `json:"citationsCount"`
+	Link           string          `json:"link"`
 }
 
 type Researcher struct {
-	ID           int                `json:"id"`
-	Name         string             `json:"name"`
-	Title        LocalizedString    `json:"title"`
-	Photo        string             `json:"photo"`
-	Bio          LocalizedString    `json:"bio"`
-	Profiles     ResearcherProfiles `json:"profiles"`
-	Publications []Publication      `json:"publications"`
+	ID             int                `json:"id"`
+	Name           LocalizedString    `json:"name"`
+	LastName       LocalizedString    `json:"lastName"`
+	Position       LocalizedString    `json:"position"`
+	Photo          string             `json:"photo"`
+	Bio            LocalizedString    `json:"bio"`
+	Profiles       ResearcherProfiles `json:"profiles"`
+	Publications   []Publication      `json:"publications"`
+	TotalCitations int                `json:"totalCitations"`
 }
 
 type ResearcherProfiles struct {
@@ -119,7 +122,10 @@ func NewPartnersData() PartnersData {
 }
 
 func NewPublication() Publication {
-	return Publication{}
+	return Publication{
+		Authors:        []int{},
+		CitationsCount: 0,
+	}
 }
 
 func NewResearcherProfiles() ResearcherProfiles {

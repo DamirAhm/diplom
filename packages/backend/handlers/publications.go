@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -18,6 +19,12 @@ func NewPublicationHandler(pr repository.PublicationRepo) *PublicationHandler {
 	return &PublicationHandler{publicationRepo: pr}
 }
 
+// PublicationWithAuthors represents a publication with its authors
+type PublicationWithAuthors struct {
+	models.Publication
+	Authors []models.Researcher `json:"authors"`
+}
+
 // GetPublications godoc
 // @Summary Get all publications
 // @Description Get a list of all publications
@@ -29,11 +36,29 @@ func NewPublicationHandler(pr repository.PublicationRepo) *PublicationHandler {
 // @Router /publications [get]
 func (h *PublicationHandler) GetPublications(w http.ResponseWriter, r *http.Request) {
 	publications, err := h.publicationRepo.GetAll()
-	if (err != nil) {
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(publications)
+
+	publicationsWithAuthors := make([]PublicationWithAuthors, 0, len(publications))
+
+	for _, pub := range publications {
+		authors, err := h.publicationRepo.GetAuthors(pub.ID)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		pubWithAuthors := PublicationWithAuthors{
+			Publication: pub,
+			Authors:     authors,
+		}
+		publicationsWithAuthors = append(publicationsWithAuthors, pubWithAuthors)
+	}
+
+	json.NewEncoder(w).Encode(publicationsWithAuthors)
 }
 
 // GetPublication godoc
@@ -66,7 +91,18 @@ func (h *PublicationHandler) GetPublication(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	json.NewEncoder(w).Encode(publication)
+	authors, err := h.publicationRepo.GetAuthors(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := PublicationWithAuthors{
+		Publication: *publication,
+		Authors:     authors,
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 // CreatePublication godoc
@@ -87,11 +123,12 @@ func (h *PublicationHandler) CreatePublication(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err := h.publicationRepo.Create(publication)
+	id, err := h.publicationRepo.Create(publication)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	publication.ID = int(id)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(publication)
@@ -168,4 +205,37 @@ func (h *PublicationHandler) DeletePublication(w http.ResponseWriter, r *http.Re
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// GetPublicationAuthors godoc
+// @Summary Get authors of a publication
+// @Description Get all researchers who are authors of a specific publication
+// @Tags publications
+// @Accept json
+// @Produce json
+// @Param id path int true "Publication ID"
+// @Success 200 {array} models.Researcher
+// @Failure 400 {object} string "Invalid publication ID"
+// @Failure 404 {object} string "Publication not found"
+// @Failure 500 {object} string "Internal Server Error"
+// @Router /publications/{id}/authors [get]
+func (h *PublicationHandler) GetPublicationAuthors(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid publication ID", http.StatusBadRequest)
+		return
+	}
+
+	authors, err := h.publicationRepo.GetAuthors(id)
+	if err != nil {
+		if err.Error() == fmt.Sprintf("publication with ID %d not found", id) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(authors)
 }

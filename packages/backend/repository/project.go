@@ -15,22 +15,27 @@ func NewSQLiteProjectRepo(db *sql.DB, lsRepo LocalizedStringRepo) *SQLiteProject
 	return &SQLiteProjectRepo{db: db, localizedStringRepo: lsRepo}
 }
 
-func (r *SQLiteProjectRepo) Create(project models.Project) error {
+func (r *SQLiteProjectRepo) Create(project models.Project) (int64, error) {
 	titleID, err := r.localizedStringRepo.Create(project.Title)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	descriptionID, err := r.localizedStringRepo.Create(project.Description)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	_, err = r.db.Exec(
+	res, err := r.db.Exec(
 		"INSERT INTO projects (title_id, description_id, github_link) VALUES (?, ?, ?)",
 		titleID, descriptionID, project.GithubLink,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	return id, err
 }
 
 func (r *SQLiteProjectRepo) GetByID(id int) (*models.Project, error) {
