@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/damirahm/diplom/backend/models"
@@ -48,8 +47,6 @@ func (pc *PublicationCrawler) AddSource(source PublicationSource) {
 }
 
 func (pc *PublicationCrawler) Start() {
-	log.Println("Starting publication crawler...")
-
 	go pc.crawlAllResearchers()
 
 	ticker := time.NewTicker(pc.crawlInterval)
@@ -60,64 +57,77 @@ func (pc *PublicationCrawler) Start() {
 		case <-ticker.C:
 			go pc.crawlAllResearchers()
 		case <-pc.ctx.Done():
-			log.Println("Stopping publication crawler...")
 			return
 		}
 	}
 }
 
 func (pc *PublicationCrawler) crawlAllResearchers() {
-	log.Println("Crawling for new publications...")
-
 	researchers, err := pc.researcherRepo.GetAll()
 	if err != nil {
-		log.Printf("Error fetching researchers: %v", err)
 		return
 	}
 
+	successCount := 0
+	errorCount := 0
 	for _, researcher := range researchers {
-		pc.crawlResearcher(researcher)
+		if err := pc.crawlResearcher(researcher); err != nil {
+			errorCount++
+		} else {
+			successCount++
+		}
 	}
 
 	pc.lastCrawlTime = time.Now()
-	log.Println("Crawling completed")
 }
 
-func (pc *PublicationCrawler) crawlResearcher(researcher models.Researcher) {
-	log.Printf("Checking for new publications for researcher: %s", researcher.Name)
-
-	existingPubs := make(map[string]bool)
-	for _, pub := range researcher.Publications {
-		key := fmt.Sprintf("%s-%s-%s", pub.Title.En, pub.Authors, pub.PublishedAt)
-		existingPubs[key] = true
+func (pc *PublicationCrawler) crawlResearcher(researcher models.Researcher) error {
+	// Проверяем наличие профилей
+	if researcher.Profiles.GoogleScholar == nil || *researcher.Profiles.GoogleScholar == "" {
+		return nil
 	}
+
+	existingPubs, err := pc.researcherRepo.GetResearcherPublications(researcher.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get existing publications: %w", err)
+	}
+
+	existingPubMap := make(map[string]bool)
+	for _, pub := range existingPubs {
+		key := fmt.Sprintf("%s-%s", pub.Title.En, pub.PublishedAt)
+		existingPubMap[key] = true
+	}
+
+	totalNewPubs := 0
 
 	for _, source := range pc.sources {
 		publications, err := source.FetchPublications(researcher)
 		if err != nil {
-			log.Printf("Error fetching publications from %s for %s: %v",
-				source.Name(), researcher.Name, err)
 			continue
 		}
 
+		newPubCount := 0
 		for _, pub := range publications {
-			key := fmt.Sprintf("%s-%s-%s", pub.Title.En, pub.Authors, pub.PublishedAt)
-			if !existingPubs[key] {
-				log.Printf("Found new publication: %s", pub.Title.En)
-
+			key := fmt.Sprintf("%s-%s", pub.Title.En, pub.PublishedAt)
+			if !existingPubMap[key] {
 				pubID, err := pc.publicationRepo.Create(pub)
 				if err != nil {
-					log.Printf("Error saving publication: %v", err)
 					continue
 				}
 
 				if pubID > 0 {
 					err = pc.researcherRepo.AddPublication(researcher.ID, int(pubID))
 					if err != nil {
-						log.Printf("Error associating publication with researcher: %v", err)
+						// Failed to associate publication
+					} else {
+						newPubCount++
 					}
 				}
 			}
 		}
+
+		totalNewPubs += newPubCount
 	}
+
+	return nil
 }

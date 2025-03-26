@@ -39,6 +39,11 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
+	// Run publication external authors migration
+	if err = migratePublicationExternalAuthors(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -120,6 +125,13 @@ func createTables() error {
 			FOREIGN KEY (publication_id) REFERENCES publications(id),
 			FOREIGN KEY (researcher_id) REFERENCES researchers(id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS publication_external_authors (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			publication_id INTEGER NOT NULL,
+			name_id INTEGER NOT NULL,
+			FOREIGN KEY (publication_id) REFERENCES publications(id),
+			FOREIGN KEY (name_id) REFERENCES localized_strings(id)
+		)`,
 		`CREATE TABLE IF NOT EXISTS training_materials (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title_id INTEGER NOT NULL,
@@ -128,26 +140,6 @@ func createTables() error {
 			image TEXT NOT NULL,
 			FOREIGN KEY (title_id) REFERENCES localized_strings(id),
 			FOREIGN KEY (description_id) REFERENCES localized_strings(id)
-		)`,
-		`CREATE TABLE IF NOT EXISTS joint_projects (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title_id INTEGER NOT NULL,
-			year INTEGER NOT NULL,
-			FOREIGN KEY (title_id) REFERENCES localized_strings(id)
-		)`,
-		`CREATE TABLE IF NOT EXISTS joint_project_partners (
-			project_id INTEGER NOT NULL,
-			partner_name TEXT NOT NULL,
-			PRIMARY KEY (project_id, partner_name),
-			FOREIGN KEY (project_id) REFERENCES joint_projects(id)
-		)`,
-		`CREATE TABLE IF NOT EXISTS joint_publications (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title_id INTEGER NOT NULL,
-			authors TEXT NOT NULL,
-			journal TEXT NOT NULL,
-			year INTEGER NOT NULL,
-			link TEXT NOT NULL
 		)`,
 	}
 
@@ -563,6 +555,107 @@ func migrateAddPositionToResearchers() error {
 		}
 
 		// Commit the transaction
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type NewAuthor struct {
+	id            int
+	publicationID int
+	nameID        int
+}
+
+// migratePublicationExternalAuthors updates the publication_external_authors table to use localized strings
+func migratePublicationExternalAuthors() error {
+	// Check if the name_id column exists
+	var count int
+	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('publication_external_authors') WHERE name='name_id'`).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	// If the name_id column doesn't exist, migrate the data
+	if count == 0 {
+		// Create a transaction
+		tx, err := DB.Begin()
+		if err != nil {
+			return err
+		}
+
+		rows, err := tx.Query(`SELECT id, publication_id, name FROM publication_external_authors`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		defer rows.Close()
+
+		newAuthors := []NewAuthor{}
+
+		for rows.Next() {
+			var id, publicationID int
+			var name string
+			if err := rows.Scan(&id, &publicationID, &name); err != nil {
+				tx.Rollback()
+				return err
+			}
+
+			nameRes, err := tx.Exec(`INSERT INTO localized_strings (en, ru) VALUES (?, ?)`, name, name)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+
+			nameID, err := nameRes.LastInsertId()
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+
+			newAuthors = append(newAuthors, NewAuthor{
+				id:            id,
+				publicationID: publicationID,
+				nameID:        int(nameID),
+			})
+		}
+
+		_, err = tx.Exec(`
+			CREATE TABLE publication_external_authors_new (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				publication_id INTEGER NOT NULL,
+				name_id INTEGER NOT NULL,
+				FOREIGN KEY (publication_id) REFERENCES publications(id),
+				FOREIGN KEY (name_id) REFERENCES localized_strings(id)
+			)
+		`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		for _, author := range newAuthors {
+			_, err = tx.Exec(`INSERT INTO publication_external_authors_new (id, publication_id, name_id) VALUES (?, ?, ?)`, author.id, author.publicationID, author.nameID)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+
+		_, err = tx.Exec(`DROP TABLE publication_external_authors`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		_, err = tx.Exec(`ALTER TABLE publication_external_authors_new RENAME TO publication_external_authors`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
 		if err := tx.Commit(); err != nil {
 			return err
 		}

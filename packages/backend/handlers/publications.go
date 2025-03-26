@@ -41,24 +41,7 @@ func (h *PublicationHandler) GetPublications(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	publicationsWithAuthors := make([]PublicationWithAuthors, 0, len(publications))
-
-	for _, pub := range publications {
-		authors, err := h.publicationRepo.GetAuthors(pub.ID)
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		pubWithAuthors := PublicationWithAuthors{
-			Publication: pub,
-			Authors:     authors,
-		}
-		publicationsWithAuthors = append(publicationsWithAuthors, pubWithAuthors)
-	}
-
-	json.NewEncoder(w).Encode(publicationsWithAuthors)
+	json.NewEncoder(w).Encode(publications)
 }
 
 // GetPublication godoc

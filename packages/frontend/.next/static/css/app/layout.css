@@ -2144,6 +2144,11 @@ a {
   left: 50%;
 }
 
+.after\:ml-1::after {
+  content: var(--tw-content);
+  margin-left: 0.25rem;
+}
+
 .after\:w-1::after {
   content: var(--tw-content);
   width: 0.25rem;
@@ -2153,6 +2158,17 @@ a {
   content: var(--tw-content);
   --tw-translate-x: -50%;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
+
+.after\:text-red-500::after {
+  content: var(--tw-content);
+  --tw-text-opacity: 1;
+  color: rgb(239 68 68 / var(--tw-text-opacity, 1));
+}
+
+.after\:content-\[\'\*\'\]::after {
+  --tw-content: '*';
+  content: var(--tw-content);
 }
 
 .first\:rounded-l-md:first-child {
@@ -2649,10 +2665,6 @@ a {
 
 .data-\[state\=unchecked\]\:bg-input[data-state="unchecked"] {
   background-color: hsl(var(--input));
-}
-
-.data-\[placeholder\]\:text-muted-foreground[data-placeholder] {
-  color: hsl(var(--muted-foreground));
 }
 
 .data-\[state\=active\]\:text-primary-foreground[data-state="active"] {

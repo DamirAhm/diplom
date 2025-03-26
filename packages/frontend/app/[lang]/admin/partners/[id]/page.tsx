@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/select";
 import { api } from "../../../../../lib/api";
 import { ImageWithFallback } from "@/app/components/ImageWithFallback";
+import { FormError } from "@/components/ui/form-error";
+import { useFormValidation, ValidationSchema } from "@/lib/form-validation";
 
 const emptyPartner: Omit<Partner, "id"> = {
   name: "",
@@ -37,6 +39,9 @@ export default function PartnerFormPage({
   const [partner, setPartner] = useState<Omit<Partner, "id">>(emptyPartner);
   const [isLoading, setIsLoading] = useState(id !== "new");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Initialize form validation
+  const validation = useFormValidation();
 
   useEffect(() => {
     if (id !== "new") {
@@ -64,8 +69,34 @@ export default function PartnerFormPage({
     }
   };
 
+  const getValidationSchema = (): ValidationSchema => {
+    return {
+      name: {
+        value: partner.name,
+        rules: { required: true },
+        errorMessage: dictionary.validation?.required || "Name is required",
+      },
+      url: {
+        value: partner.url,
+        rules: { required: true, url: true },
+        errorMessage: dictionary.validation?.invalidUrl || "Valid URL is required",
+      },
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form before submission
+    if (!validation.validate(getValidationSchema())) {
+      toast({
+        variant: "destructive",
+        title: dictionary.common.error,
+        description: dictionary.validation?.formErrors || "Please correct the errors in the form",
+      });
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -131,6 +162,8 @@ export default function PartnerFormPage({
     );
   }
 
+  const { errors } = validation;
+
   return (
     <div>
       <div className="mb-6">
@@ -152,15 +185,19 @@ export default function PartnerFormPage({
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="space-y-4">
           <div>
-            <Label htmlFor="name">{dictionary.admin.name}</Label>
+            <Label htmlFor="name">
+              {dictionary.admin.name}
+              <span className="text-destructive ml-1">*</span>
+            </Label>
             <Input
               id="name"
               value={partner.name}
               onChange={(e) =>
                 setPartner((prev) => ({ ...prev, name: e.target.value }))
               }
-              required
+              className={errors.name ? "border-destructive" : ""}
             />
+            <FormError message={errors.name} />
           </div>
 
           <div>
@@ -207,7 +244,10 @@ export default function PartnerFormPage({
           </div>
 
           <div>
-            <Label htmlFor="url">URL</Label>
+            <Label htmlFor="url">
+              URL
+              <span className="text-destructive ml-1">*</span>
+            </Label>
             <Input
               id="url"
               type="url"
@@ -215,8 +255,9 @@ export default function PartnerFormPage({
               onChange={(e) =>
                 setPartner((prev) => ({ ...prev, url: e.target.value }))
               }
-              required
+              className={errors.url ? "border-destructive" : ""}
             />
+            <FormError message={errors.url} />
           </div>
         </div>
 

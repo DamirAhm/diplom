@@ -15,12 +15,14 @@ import { Form } from "@/components/ui/form";
 import {
   TextField,
   LocalizedTextField,
-  MultiSelectField
+  MultiSelectField,
+  ExternalAuthorsField
 } from "@/components/ui/form-fields";
 
 const emptyPublication: PublicationFormData = {
   title: { en: "", ru: "" },
   authors: [],
+  externalAuthors: [],
   publishedAt: new Date().toISOString().split('T')[0], // Format: YYYY-MM-DD
   journal: "",
   link: "",
@@ -53,10 +55,20 @@ export default function PublicationFormPage({
   const fetchPublication = async () => {
     try {
       const data = await api.publications.getOne(id);
-      // Convert the publication with Researcher[] authors to PublicationFormData with number[] authors
+
+      // Разделяем авторов на внутренних (с ID) и внешних (без ID)
+      const internalAuthors = data.authors
+        .filter(author => author.id !== undefined)
+        .map(author => author.id!);
+
+      const externalAuthors = data.authors
+        .filter(author => author.id === undefined)
+        .map(author => author.name);
+
       form.reset({
         title: data.title,
-        authors: data.authors.map(author => author.id),
+        authors: internalAuthors,
+        externalAuthors: externalAuthors,
         publishedAt: data.publishedAt,
         journal: data.journal,
         link: data.link
@@ -85,12 +97,25 @@ export default function PublicationFormPage({
 
   const onSubmit = async (formData: PublicationFormData) => {
     try {
+      // Преобразуем данные формы в формат, ожидаемый API
+      const apiData = {
+        ...formData,
+        authors: [
+          // Внутренние авторы с ID
+          ...formData.authors.map(id => ({ id, name: getResearcherName(id) })),
+          // Внешние авторы без ID
+          ...formData.externalAuthors.map(name => ({ name }))
+        ],
+        citationsCount: 0 // По умолчанию для новых публикаций
+      };
+
+      // Удаляем поле externalAuthors, которое не нужно бэкенду
+      delete (apiData as any).externalAuthors;
+
       if (id !== "new") {
-        // Use type assertion to tell TypeScript this is the format the API expects
-        await api.publications.update(id, formData as any);
+        await api.publications.update(id, apiData as any);
       } else {
-        // Use type assertion to tell TypeScript this is the format the API expects
-        await api.publications.create(formData as any);
+        await api.publications.create(apiData as any);
       }
 
       toast({
@@ -105,6 +130,13 @@ export default function PublicationFormPage({
         description: dictionary.admin.saveError,
       });
     }
+  };
+
+  // Вспомогательная функция для получения имени исследователя по ID
+  const getResearcherName = (id: number): string => {
+    const researcher = researchers.find(r => r.id === id);
+    if (!researcher) return "";
+    return `${researcher.name[lang]} ${researcher.lastName[lang]}`;
   };
 
   if (isLoading || researchersLoading) {
@@ -152,7 +184,11 @@ export default function PublicationFormPage({
               name="authors"
               label={dictionary.publications.authors}
               options={researcherOptions}
-              required
+            />
+
+            <ExternalAuthorsField
+              name="externalAuthors"
+              label={dictionary.publications.externalAuthors}
             />
 
             <TextField

@@ -62,13 +62,10 @@ func main() {
 
 	localizedStringRepo := repository.NewSQLiteLocalizedStringRepo(db.DB)
 	partnerRepo := repository.NewSQLitePartnerRepo(db.DB)
-	jointPublicationRepo := repository.NewSQLiteJointPublicationRepo(db.DB, localizedStringRepo)
-	jointProjectRepo := repository.NewSQLiteJointProjectRepo(db.DB, localizedStringRepo)
 	// First create an empty publicationRepo to resolve circular dependency
-	publicationRepo := &repository.SQLitePublicationRepo{}
-	researcherRepo := repository.NewSQLiteResearcherRepo(db.DB, localizedStringRepo, publicationRepo)
+	researcherRepo := repository.NewSQLiteResearcherRepo(db.DB, localizedStringRepo)
 	// Now initialize the publicationRepo with researcherRepo
-	*publicationRepo = *repository.NewSQLitePublicationRepo(db.DB, localizedStringRepo, researcherRepo)
+	publicationRepo := repository.NewSQLitePublicationRepo(db.DB, localizedStringRepo, researcherRepo)
 	projectRepo := repository.NewSQLiteProjectRepo(db.DB, localizedStringRepo)
 	trainingMaterialRepo := repository.NewSQLiteTrainingMaterialRepo(db.DB, localizedStringRepo)
 
@@ -81,14 +78,13 @@ func main() {
 	docs.SwaggerInfo.Host = cfg.Server.Host + ":" + cfg.Server.Port
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
-	partnersHandler := handlers.NewPartnerHandler(partnerRepo, jointPublicationRepo, jointProjectRepo)
+	partnersHandler := handlers.NewPartnerHandler(partnerRepo)
 	projectsHandler := handlers.NewProjectHandler(projectRepo)
 	researchersHandler := handlers.NewResearcherHandler(researcherRepo)
 	publicationsHandler := handlers.NewPublicationHandler(publicationRepo)
 	trainingHandler := handlers.NewTrainingHandler(trainingMaterialRepo)
 	authHandler := handlers.NewAuthHandler(cfg)
 	fileHandler := handlers.NewFileHandler()
-	scholarScraperHandler := handlers.NewScholarScraperHandler()
 
 	api := router.PathPrefix("/api").Subrouter()
 
@@ -102,6 +98,7 @@ func main() {
 
 	// Partners routes
 	api.HandleFunc("/partners", partnersHandler.GetAllPartners).Methods("GET")
+	api.HandleFunc("/partners/{id}", partnersHandler.GetPartnerByID).Methods("GET")
 	protected.HandleFunc("/partners", partnersHandler.CreatePartner).Methods("POST")
 	protected.HandleFunc("/partners/{id}", partnersHandler.UpdatePartner).Methods("PUT")
 	protected.HandleFunc("/partners/{id}", partnersHandler.DeletePartner).Methods("DELETE")
@@ -134,9 +131,6 @@ func main() {
 	protected.HandleFunc("/training/{id}", trainingHandler.UpdateTrainingMaterial).Methods("PUT")
 	protected.HandleFunc("/training/{id}", trainingHandler.DeleteTrainingMaterial).Methods("DELETE")
 
-	// Google Scholar scraper route
-	api.HandleFunc("/scholar/scrape", scholarScraperHandler.ScrapePublications).Methods("POST", "OPTIONS")
-
 	// File upload route
 	protected.HandleFunc("/upload", fileHandler.UploadFile).Methods("POST")
 
@@ -162,7 +156,18 @@ func main() {
 			ctx,
 		)
 
-		publicationCrawler.AddSource(cron.NewGoogleScholarSource())
+		// Создаем репозиторий GoogleScholar для скачивания публикаций
+		googleScholarRepo := repository.NewGoogleScholar(researcherRepo, publicationRepo)
+		log.Println("Initializing Google Scholar repository")
+
+		// При необходимости настраиваем кеширование
+		googleScholarRepo.EnableCache()
+		googleScholarRepo.SetCacheDuration(24 * time.Hour)
+		googleScholarRepo.SetCacheDir("./cache/google_scholar")
+
+		// Создаем источник с репозиторием
+		publicationCrawler.AddSource(cron.NewGoogleScholarSourceWithRepo(googleScholarRepo))
+		log.Println("Added Google Scholar source with repository to the crawler")
 	}
 
 	app := &application{

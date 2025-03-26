@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./form";
-import { Input } from "./input";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "./textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 import { Checkbox } from "./checkbox";
 import { Switch } from "./switch";
 import { LocalizedFormField } from "./localized-form-field";
-import type { Locale } from "@/app/types";
+import type { Locale, LocalizedString } from "@/app/types";
+import { getDictionary } from "@/app/dictionaries";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Trash2 } from "lucide-react";
 
 // Text Input Field
 interface TextFieldProps {
@@ -395,5 +399,99 @@ export function FileUploadField({
                 </FormItem>
             )}
         />
+    );
+}
+
+// External Authors Field
+interface ExternalAuthorsFieldProps {
+    name: string;
+    label: string;
+    required?: boolean;
+    disabled?: boolean;
+}
+
+export function ExternalAuthorsField({
+    name,
+    label,
+    required,
+    disabled,
+}: ExternalAuthorsFieldProps) {
+    const { control, watch } = useFormContext();
+    const dictionary = getDictionary("en");
+    const lang = "en";
+
+    const externalAuthors = watch(name) || [];
+
+    const addAuthor = () => {
+        const newAuthors = [...externalAuthors, { en: "", ru: "" }];
+        control._formValues[name] = newAuthors;
+    };
+
+    const removeAuthor = (index: number) => {
+        const newAuthors = externalAuthors.filter((_: LocalizedString, i: number) => i !== index);
+        control._formValues[name] = newAuthors;
+    };
+
+    const updateAuthor = (index: number, field: "en" | "ru", value: string) => {
+        const newAuthors = [...externalAuthors];
+        newAuthors[index] = { ...newAuthors[index], [field]: value };
+        control._formValues[name] = newAuthors;
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <Label htmlFor={name} className={required ? "after:content-['*'] after:ml-1 after:text-red-500" : ""}>
+                    {label}
+                </Label>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addAuthor}
+                    disabled={disabled}
+                >
+                    {dictionary.common.add}
+                </Button>
+            </div>
+
+            <div className="space-y-4">
+                {externalAuthors.map((author: LocalizedString, index: number) => (
+                    <div key={index} className="flex items-center gap-4">
+                        <div className="flex-1 space-y-2">
+                            <Label htmlFor={`${name}.${index}.en`}>
+                                {dictionary.common.enterEnglishText}
+                            </Label>
+                            <Input
+                                id={`${name}.${index}.en`}
+                                value={author.en}
+                                onChange={(e) => updateAuthor(index, "en", e.target.value)}
+                                disabled={disabled}
+                            />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                            <Label htmlFor={`${name}.${index}.ru`}>
+                                {dictionary.common.enterRussianText}
+                            </Label>
+                            <Input
+                                id={`${name}.${index}.ru`}
+                                value={author.ru}
+                                onChange={(e) => updateAuthor(index, "ru", e.target.value)}
+                                disabled={disabled}
+                            />
+                        </div>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeAuthor(index)}
+                            disabled={disabled}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
 } 

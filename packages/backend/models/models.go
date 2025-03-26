@@ -10,35 +10,23 @@ type Partner struct {
 	Name string `json:"name"`
 	Logo string `json:"logo"`
 	URL  string `json:"url"`
-}
-
-type JointProject struct {
-	ID       int             `json:"id"`
-	Title    LocalizedString `json:"title"`
-	Partners []string        `json:"partners"`
-	Year     int             `json:"year"`
-}
-
-type JointPublication struct {
-	ID      int             `json:"id"`
-	Title   LocalizedString `json:"title"`
-	Authors string          `json:"authors"`
-	Journal string          `json:"journal"`
-	Year    int             `json:"year"`
-	Link    string          `json:"link"`
+	Type string `json:"type"`
 }
 
 type PartnersData struct {
-	Universities      []Partner          `json:"universities"`
-	Enterprises       []Partner          `json:"enterprises"`
-	JointProjects     []JointProject     `json:"jointProjects"`
-	JointPublications []JointPublication `json:"jointPublications"`
+	Universities []Partner `json:"universities"`
+	Enterprises  []Partner `json:"enterprises"`
+}
+
+type Author struct {
+	Name LocalizedString `json:"name"`
+	ID   *int            `json:"id,omitempty"`
 }
 
 type Publication struct {
 	ID             int             `json:"id"`
 	Title          LocalizedString `json:"title"`
-	Authors        []int           `json:"authors"`
+	Authors        []Author        `json:"authors"`
 	Journal        string          `json:"journal"`
 	PublishedAt    string          `json:"publishedAt"`
 	CitationsCount int             `json:"citationsCount"`
@@ -102,28 +90,16 @@ func NewPartner() Partner {
 	return Partner{}
 }
 
-func NewJointProject() JointProject {
-	return JointProject{
-		Partners: []string{},
-	}
-}
-
-func NewJointPublication() JointPublication {
-	return JointPublication{}
-}
-
 func NewPartnersData() PartnersData {
 	return PartnersData{
-		Universities:      []Partner{},
-		Enterprises:       []Partner{},
-		JointProjects:     []JointProject{},
-		JointPublications: []JointPublication{},
+		Universities: []Partner{},
+		Enterprises:  []Partner{},
 	}
 }
 
 func NewPublication() Publication {
 	return Publication{
-		Authors:        []int{},
+		Authors:        []Author{},
 		CitationsCount: 0,
 	}
 }

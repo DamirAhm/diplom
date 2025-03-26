@@ -19,7 +19,7 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, lang })
             rel="noopener noreferrer"
             className="text-blue-600 dark:text-blue-400 hover:underline flex items-center"
           >
-            {publication.title[lang]}
+            {typeof publication.title === 'object' ? publication.title[lang] : publication.title}
             <ExternalLink size={14} className="ml-1 inline" />
           </a>
         </li>

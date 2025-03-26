@@ -54,13 +54,38 @@ func (r *SQLitePublicationRepo) Create(pub models.Publication) (int64, error) {
 		return 0, err
 	}
 
-	for _, authorID := range pub.Authors {
-		_, err = tx.Exec(
-			"INSERT INTO publication_authors (publication_id, researcher_id) VALUES (?, ?)",
-			id, authorID,
-		)
-		if err != nil {
-			return 0, err
+	// Add authors that have IDs to publication_authors
+	for _, author := range pub.Authors {
+		if author.ID != nil {
+			_, err = tx.Exec(
+				"INSERT INTO publication_authors (publication_id, researcher_id) VALUES (?, ?)",
+				id, *author.ID,
+			)
+			if err != nil {
+				return 0, err
+			}
+		} else {
+			// Add external authors to publication_external_authors
+			result, err := tx.Exec(
+				"INSERT INTO localized_strings (en, ru) VALUES (?, ?)",
+				author.Name.En, author.Name.Ru,
+			)
+			if err != nil {
+				return 0, err
+			}
+
+			nameID, err := result.LastInsertId()
+			if err != nil {
+				return 0, err
+			}
+
+			_, err = tx.Exec(
+				"INSERT INTO publication_external_authors (publication_id, name_id) VALUES (?, ?)",
+				id, nameID,
+			)
+			if err != nil {
+				return 0, err
+			}
 		}
 	}
 
@@ -100,14 +125,58 @@ func (r *SQLitePublicationRepo) GetByID(id int) (*models.Publication, error) {
 	}
 	defer rows.Close()
 
-	authors := []int{}
+	authorIDs := []int{}
 	for rows.Next() {
 		var authorID int
 		if err := rows.Scan(&authorID); err != nil {
 			return nil, err
 		}
-		authors = append(authors, authorID)
+		authorIDs = append(authorIDs, authorID)
 	}
+
+	// Convert author IDs to Author objects
+	authors := []models.Author{}
+	for _, authorID := range authorIDs {
+		researcher, err := r.researcherRepo.GetByID(authorID)
+		if err != nil {
+			return nil, err
+		}
+		id := researcher.ID
+		authors = append(authors, models.Author{
+			Name: models.LocalizedString{
+				En: researcher.Name.En + " " + researcher.LastName.En,
+				Ru: researcher.Name.Ru + " " + researcher.LastName.Ru,
+			},
+			ID: &id,
+		})
+	}
+
+	// Get external authors
+	externalRows, err := r.db.Query(
+		`SELECT ls.en, ls.ru 
+		FROM publication_external_authors pea
+		JOIN localized_strings ls ON pea.name_id = ls.id
+		WHERE pea.publication_id = ?`,
+		pub.ID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer externalRows.Close()
+
+	for externalRows.Next() {
+		var nameEn, nameRu string
+		if err := externalRows.Scan(&nameEn, &nameRu); err != nil {
+			return nil, err
+		}
+		authors = append(authors, models.Author{
+			Name: models.LocalizedString{
+				En: nameEn,
+				Ru: nameRu,
+			},
+		})
+	}
+
 	pub.Authors = authors
 
 	return &pub, nil
@@ -142,16 +211,86 @@ func (r *SQLitePublicationRepo) GetAll() ([]models.Publication, error) {
 			return nil, err
 		}
 
-		var authors []int
+		var authorIDs []int
 		for authorRows.Next() {
 			var authorID int
 			if err := authorRows.Scan(&authorID); err != nil {
 				authorRows.Close()
 				return nil, err
 			}
-			authors = append(authors, authorID)
+			authorIDs = append(authorIDs, authorID)
 		}
 		authorRows.Close()
+
+		// Convert author IDs to Author objects without fetching their publications
+		authors := []models.Author{}
+		if len(authorIDs) > 0 {
+			// Query only the necessary fields from researchers table
+			researcherQuery := `
+				SELECT r.id, fn.en, ln.en, fn.ru, ln.ru
+				FROM researchers r
+				JOIN localized_strings fn ON r.name_id = fn.id
+				JOIN localized_strings ln ON r.last_name_id = ln.id
+				WHERE r.id IN (`
+
+			placeholders := make([]string, len(authorIDs))
+			args := make([]interface{}, len(authorIDs))
+			for i, id := range authorIDs {
+				placeholders[i] = "?"
+				args[i] = id
+			}
+			researcherQuery += Join(placeholders, ",") + ")"
+
+			researcherRows, err := r.db.Query(researcherQuery, args...)
+			if err != nil {
+				return nil, err
+			}
+
+			for researcherRows.Next() {
+				var id int
+				var nameEn, lastNameEn, nameRu, lastNameRu string
+				if err := researcherRows.Scan(&id, &nameEn, &lastNameEn, &nameRu, &lastNameRu); err != nil {
+					researcherRows.Close()
+					return nil, err
+				}
+				authors = append(authors, models.Author{
+					Name: models.LocalizedString{
+						En: nameEn + " " + lastNameEn,
+						Ru: nameRu + " " + lastNameRu,
+					},
+					ID: &id,
+				})
+			}
+			researcherRows.Close()
+		}
+
+		// Get external authors
+		externalRows, err := r.db.Query(
+			`SELECT ls.en, ls.ru 
+			FROM publication_external_authors pea
+			JOIN localized_strings ls ON pea.name_id = ls.id
+			WHERE pea.publication_id = ?`,
+			pub.ID,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		for externalRows.Next() {
+			var nameEn, nameRu string
+			if err := externalRows.Scan(&nameEn, &nameRu); err != nil {
+				externalRows.Close()
+				return nil, err
+			}
+			authors = append(authors, models.Author{
+				Name: models.LocalizedString{
+					En: nameEn,
+					Ru: nameRu,
+				},
+			})
+		}
+		externalRows.Close()
+
 		pub.Authors = authors
 
 		publications = append(publications, pub)
@@ -205,13 +344,74 @@ func (r *SQLitePublicationRepo) Update(pub models.Publication) error {
 		return err
 	}
 
-	for _, authorID := range pub.Authors {
-		_, err = tx.Exec(
-			"INSERT INTO publication_authors (publication_id, researcher_id) VALUES (?, ?)",
-			pub.ID, authorID,
-		)
+	// Get existing external author name IDs
+	rows, err := tx.Query(
+		"SELECT name_id FROM publication_external_authors WHERE publication_id = ?",
+		pub.ID,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var nameIDs []int64
+	for rows.Next() {
+		var nameID int64
+		if err := rows.Scan(&nameID); err != nil {
+			return err
+		}
+		nameIDs = append(nameIDs, nameID)
+	}
+
+	// Delete external authors
+	_, err = tx.Exec(
+		"DELETE FROM publication_external_authors WHERE publication_id = ?",
+		pub.ID,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Delete the localized strings for external authors
+	for _, nameID := range nameIDs {
+		_, err = tx.Exec("DELETE FROM localized_strings WHERE id = ?", nameID)
 		if err != nil {
 			return err
+		}
+	}
+
+	// Add authors that have IDs to publication_authors
+	for _, author := range pub.Authors {
+		if author.ID != nil {
+			_, err = tx.Exec(
+				"INSERT INTO publication_authors (publication_id, researcher_id) VALUES (?, ?)",
+				pub.ID, *author.ID,
+			)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Add external authors to publication_external_authors
+			result, err := tx.Exec(
+				"INSERT INTO localized_strings (en, ru) VALUES (?, ?)",
+				author.Name.En, author.Name.Ru,
+			)
+			if err != nil {
+				return err
+			}
+
+			nameID, err := result.LastInsertId()
+			if err != nil {
+				return err
+			}
+
+			_, err = tx.Exec(
+				"INSERT INTO publication_external_authors (publication_id, name_id) VALUES (?, ?)",
+				pub.ID, nameID,
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -238,14 +438,49 @@ func (r *SQLitePublicationRepo) Delete(id int) error {
 		return err
 	}
 
+	// Get external author name IDs
+	rows, err := tx.Query(
+		"SELECT name_id FROM publication_external_authors WHERE publication_id = ?",
+		id,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var nameIDs []int64
+	for rows.Next() {
+		var nameID int64
+		if err := rows.Scan(&nameID); err != nil {
+			return err
+		}
+		nameIDs = append(nameIDs, nameID)
+	}
+
 	// Delete the localized string directly in this transaction
 	_, err = tx.Exec("DELETE FROM localized_strings WHERE id = ?", titleID)
 	if err != nil {
 		return err
 	}
 
+	// Delete external author localized strings
+	for _, nameID := range nameIDs {
+		_, err = tx.Exec("DELETE FROM localized_strings WHERE id = ?", nameID)
+		if err != nil {
+			return err
+		}
+	}
+
 	_, err = tx.Exec(
 		"DELETE FROM publication_authors WHERE publication_id = ?",
+		id,
+	)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(
+		"DELETE FROM publication_external_authors WHERE publication_id = ?",
 		id,
 	)
 	if err != nil {
@@ -278,6 +513,10 @@ func (r *SQLitePublicationRepo) GetAuthors(id int) ([]models.Researcher, error) 
 			return nil, err
 		}
 		authorIDs = append(authorIDs, authorID)
+	}
+
+	if len(authorIDs) == 0 {
+		return []models.Researcher{}, nil
 	}
 
 	authors, err := r.researcherRepo.GetByIDs(authorIDs)
@@ -360,11 +599,77 @@ func (r *SQLitePublicationRepo) GetByIDs(ids []int) ([]models.Publication, error
 		pubToAuthors[pubID] = append(pubToAuthors[pubID], authorID)
 	}
 
+	// Fetch researcher data for all author IDs
+	allAuthorIDs := []int{}
+	for _, authorIDs := range pubToAuthors {
+		allAuthorIDs = append(allAuthorIDs, authorIDs...)
+	}
+
+	// Create a map of researcher ID to Researcher for quick lookup
+	researcherMap := make(map[int]*models.Researcher)
+	if len(allAuthorIDs) > 0 {
+		researchers, err := r.researcherRepo.GetByIDs(allAuthorIDs)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, researcher := range researchers {
+			researcherMap[researcher.ID] = &researchers[i]
+		}
+	}
+
 	// Update each publication with its authors
 	for pubID, authorIDs := range pubToAuthors {
 		pub := publicationsMap[pubID]
-		pub.Authors = authorIDs
+		authors := []models.Author{}
+
+		for _, authorID := range authorIDs {
+			if researcher, ok := researcherMap[authorID]; ok {
+				id := researcher.ID
+				authors = append(authors, models.Author{
+					Name: models.LocalizedString{
+						En: researcher.Name.En + " " + researcher.LastName.En,
+						Ru: researcher.Name.Ru + " " + researcher.LastName.Ru,
+					},
+					ID: &id,
+				})
+			}
+		}
+
+		pub.Authors = authors
 		publicationsMap[pubID] = pub
+	}
+
+	// Fetch external authors for all publications
+	externalAuthorQuery := `SELECT publication_id, name_id 
+	                       FROM publication_external_authors 
+	                       WHERE publication_id IN (`
+
+	externalAuthorQuery += Join(authorPlaceholders, ",") + ")"
+
+	externalAuthorRows, err := r.db.Query(externalAuthorQuery, authorArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer externalAuthorRows.Close()
+
+	// Add external authors to publications
+	for externalAuthorRows.Next() {
+		var pubID int
+		var nameID int64
+		if err := externalAuthorRows.Scan(&pubID, &nameID); err != nil {
+			return nil, err
+		}
+
+		if pub, ok := publicationsMap[pubID]; ok {
+			pub.Authors = append(pub.Authors, models.Author{
+				Name: models.LocalizedString{
+					En: "",
+					Ru: "",
+				},
+			})
+			publicationsMap[pubID] = pub
+		}
 	}
 
 	// Convert map to slice in the original order
@@ -376,4 +681,25 @@ func (r *SQLitePublicationRepo) GetByIDs(ids []int) ([]models.Publication, error
 	}
 
 	return publications, nil
+}
+
+func (r *SQLitePublicationRepo) GetByTitle(title string) (int, error) {
+	// Query to find publications with matching title
+	query := `
+		SELECT p.id
+		FROM publications p
+		JOIN localized_strings ls ON p.title_id = ls.id
+		WHERE ls.en = ? OR ls.ru = ?
+	`
+
+	var pubID int
+	err := r.db.QueryRow(query, title, title).Scan(&pubID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return -1, nil // No publication found with this title
+		}
+		return -1, err
+	}
+
+	return pubID, nil
 }

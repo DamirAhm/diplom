@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getDictionary } from "@/app/dictionaries";
-import type { Locale, Publication, Researcher } from "@/app/types";
+import type { Locale, Publication, Researcher, Author } from "@/app/types";
 import { Button } from "@/components/ui/button";
 import { Pencil, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -72,10 +72,10 @@ export default function PublicationsAdminPage({
   };
 
   // Helper function to get author names from author objects
-  const getAuthorNames = (authors: Researcher[]) => {
+  const getAuthorNames = (authors: Author[]) => {
     return authors
       ? authors
-        .map(author => `${author.name[lang]} ${author.lastName[lang]}`)
+        .map(author => author.name)
         .join(', ')
       : '';
   };
@@ -83,7 +83,9 @@ export default function PublicationsAdminPage({
   const columns: Column<Publication>[] = [
     {
       header: dictionary.admin.title,
-      accessorKey: (publication: Publication) => publication.title[lang],
+      accessorKey: (publication: Publication) => {
+        return typeof publication.title === 'object' ? publication.title[lang] : publication.title;
+      },
       sortable: true,
       className: "w-1/3",
     },

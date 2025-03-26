@@ -31,6 +31,7 @@ export default function PartnersAdminPage({
   const fetchPartners = async () => {
     try {
       const data = await api.partners.getAll();
+
       setPartners(data.universities.concat(data.enterprises));
     } catch (error) {
       toast({
@@ -51,10 +52,7 @@ export default function PartnersAdminPage({
   const confirmDelete = async () => {
     try {
       const promises = itemsToDelete.map((partner) =>
-        fetch(`http://localhost:8080/api/partners/${partner.id}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
+        api.partners.delete(partner.id.toString())
       );
 
       await Promise.all(promises);

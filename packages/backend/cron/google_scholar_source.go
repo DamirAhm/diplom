@@ -3,14 +3,16 @@ package cron
 import (
 	"fmt"
 	"net/http"
-	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/damirahm/diplom/backend/models"
+	"github.com/damirahm/diplom/backend/repository"
 )
 
 type GoogleScholarSource struct {
-	client *http.Client
+	client        *http.Client
+	googleScholar *repository.GoogleScholar
 }
 
 func NewGoogleScholarSource() *GoogleScholarSource {
@@ -18,6 +20,16 @@ func NewGoogleScholarSource() *GoogleScholarSource {
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+	}
+}
+
+// Обновленная версия с использованием репозитория GoogleScholar
+func NewGoogleScholarSourceWithRepo(googleScholar *repository.GoogleScholar) *GoogleScholarSource {
+	return &GoogleScholarSource{
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+		googleScholar: googleScholar,
 	}
 }
 
@@ -35,48 +47,35 @@ func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) (
 		return nil, fmt.Errorf("invalid Google Scholar URL")
 	}
 
-	// This is a simplified example. In a real implementation, you would need to:
-	// 1. Make an HTTP request to Google Scholar
-	// 2. Parse the HTML response (likely using a library like goquery)
-	// 3. Extract publication information
+	// Используем старую реализацию, если репозиторий не был инициализирован
+	if gs.googleScholar == nil {
+		// Здесь будет старая реализация
+		return nil, fmt.Errorf("legacy implementation removed, please initialize with repository")
+	}
 
-	// For demonstration purposes, we'll use a mock implementation
-	return gs.mockFetchPublications(scholarID, researcher.Name.En)
+	url := constructURL(scholarID)
+
+	publications, err := gs.googleScholar.Scrape(url)
+	if err != nil {
+		return nil, fmt.Errorf("error scraping Google Scholar: %w", err)
+	}
+
+	return publications, nil
 }
 
-func extractScholarID(scholarURL string) string {
-	parsedURL, err := url.Parse(scholarURL)
-	if err != nil {
+func extractScholarID(url string) string {
+	// Extract the user ID from the URL using a regular expression
+	re := regexp.MustCompile(`user=([^&]+)`)
+	match := re.FindStringSubmatch(url)
+	if len(match) < 2 {
 		return ""
 	}
 
-	values, err := url.ParseQuery(parsedURL.RawQuery)
-	if err != nil {
-		return ""
-	}
-
-	return values.Get("user")
+	scholarID := match[1]
+	return scholarID
 }
 
-func (gs *GoogleScholarSource) mockFetchPublications(scholarID, researcherName string) ([]models.Publication, error) {
-	// In a real implementation, this would make an actual API call
-	// For now, we'll return a mock publication
-
-	// Only return a new publication occasionally to simulate finding new publications
-	if time.Now().Unix()%10 == 0 {
-		return []models.Publication{
-			{
-				Title: models.LocalizedString{
-					En: fmt.Sprintf("New Research Paper by %s", researcherName),
-					Ru: fmt.Sprintf("Новая научная статья от %s", researcherName),
-				},
-				Authors:     []int{1},
-				Journal:     "Journal of Advanced Research",
-				PublishedAt: time.Now().Format("2006-01-02"),
-				Link:        fmt.Sprintf("https://scholar.google.com/citations?user=%s", scholarID),
-			},
-		}, nil
-	}
-
-	return []models.Publication{}, nil
+func constructURL(scholarID string) string {
+	url := fmt.Sprintf("https://scholar.google.com/citations?user=%s&hl=en&view_op=list_works&sortby=pubdate", scholarID)
+	return url
 }

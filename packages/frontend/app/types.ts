@@ -8,32 +8,19 @@ export interface LocalizedString {
 export interface Partner {
   id: number;
   name: string;
-  type: "university" | "enterprise";
   logo: string;
   url: string;
-}
-
-export interface JointProject {
-  id: number;
-  title: LocalizedString;
-  partners: string[];
-  year: number;
-}
-
-export interface JointPublication {
-  id: number;
-  title: LocalizedString;
-  authors: string;
-  journal: string;
-  year: number;
-  link: string;
+  type?: 'university' | 'enterprise';
 }
 
 export interface PartnersData {
   universities: Partner[];
   enterprises: Partner[];
-  jointProjects: JointProject[];
-  jointPublications: JointPublication[];
+}
+
+export interface Author {
+  name: LocalizedString;
+  id?: number;
 }
 
 export interface Publication {
@@ -43,7 +30,7 @@ export interface Publication {
   journal: string;
   publishedAt: string;
   citationsCount: number;
-  authors: Researcher[];
+  authors: Author[];
 }
 
 export interface ResearcherProfiles {
@@ -340,6 +327,17 @@ export interface Dictionary {
     searchPartners: string;
     searchTraining: string;
     noMoreProfiles: string;
+    content: string;
+    category: string;
     image: string;
+    urlPlaceholder: string;
+  };
+  validation: {
+    required: string;
+    invalidUrl: string;
+    invalidEmail: string;
+    minLength: string;
+    maxLength: string;
+    formErrors: string;
   };
 }

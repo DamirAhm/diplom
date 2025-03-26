@@ -89,10 +89,7 @@ export function DataTable<T>({
     return [...items].sort((a, b) => {
       const column = columns.find(
         (col) =>
-          (typeof col.accessorKey === "string" &&
-            col.accessorKey === state.sortColumn) ||
-          (typeof col.accessorKey === "function" &&
-            col.accessorKey.name === state.sortColumn)
+          col.header === state.sortColumn
       );
 
       if (!column) return 0;
@@ -128,18 +125,13 @@ export function DataTable<T>({
     (column: Column<T>) => {
       if (!column.sortable) return;
 
-      const columnKey =
-        typeof column.accessorKey === "function"
-          ? column.accessorKey.name
-          : String(column.accessorKey);
-
-      if (state.sortColumn === columnKey) {
+      if (state.sortColumn === column.header) {
         updateState({
           sortDirection: state.sortDirection === "asc" ? "desc" : "asc",
         });
       } else {
         updateState({
-          sortColumn: columnKey,
+          sortColumn: column.header,
           sortDirection: "asc",
         });
       }
@@ -148,12 +140,7 @@ export function DataTable<T>({
   );
 
   const isSorted = (column: Column<T>) => {
-    const columnKey =
-      typeof column.accessorKey === "function"
-        ? column.accessorKey.name
-        : String(column.accessorKey);
-
-    return state.sortColumn === columnKey;
+    return state.sortColumn === column.header;
   }
 
   return (

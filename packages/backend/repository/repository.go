@@ -10,26 +10,10 @@ type LocalizedStringRepo interface {
 }
 
 type PartnerRepo interface {
-	Create(partner models.Partner, partnerType string) (int64, error)
+	Create(partner models.Partner) (int64, error)
 	GetByID(id int) (*models.Partner, error)
 	GetAll(partnerType string) ([]models.Partner, error)
 	Update(partner models.Partner) error
-	Delete(id int) error
-}
-
-type JointProjectRepo interface {
-	Create(pub models.JointProject) (int64, error)
-	GetByID(id int) (*models.JointProject, error)
-	GetAll() ([]models.JointProject, error)
-	Update(pub models.JointProject) error
-	Delete(id int) error
-}
-
-type JointPublicationRepo interface {
-	Create(pub models.JointPublication) (int64, error)
-	GetByID(id int) (*models.JointPublication, error)
-	GetAll() ([]models.JointPublication, error)
-	Update(pub models.JointPublication) error
 	Delete(id int) error
 }
 
@@ -38,6 +22,7 @@ type PublicationRepo interface {
 	GetByID(id int) (*models.Publication, error)
 	GetByIDs(ids []int) ([]models.Publication, error)
 	GetAll() ([]models.Publication, error)
+	GetByTitle(title string) (int, error)
 	Update(pub models.Publication) error
 	Delete(id int) error
 	GetAuthors(id int) ([]models.Researcher, error)
@@ -48,6 +33,7 @@ type ResearcherRepo interface {
 	GetByID(id int) (*models.Researcher, error)
 	GetByIDs(ids []int) ([]models.Researcher, error)
 	GetAll() ([]models.Researcher, error)
+	FindByFullName(fullName string) (*models.Researcher, error)
 	Update(researcher models.Researcher) error
 	Delete(id int) error
 	AddPublication(researcherID int, publicationID int) error

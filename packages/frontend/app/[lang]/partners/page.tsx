@@ -1,6 +1,4 @@
 import PartnerLogo from "../../components/PartnerLogo/PartnerLogo";
-import JointProject from "../../components/JointProject/JointProject";
-import JointPublication from "../../components/JointPublication/JointPublication";
 import styles from "./Partners.module.css";
 import { Locale, PartnersData } from "../../types";
 import { getDictionary } from "../../dictionaries";
@@ -44,32 +42,6 @@ const PartnersPage = async ({
         <div className={styles.logoGrid}>
           {partners.enterprises.map((enterprise) => (
             <PartnerLogo key={enterprise.id} {...enterprise} />
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-12">
-        <h2 className="text-2xl text-bold mb-4">
-          {dictionary.partners.jointProjects}
-        </h2>
-        <div className={styles.projectList}>
-          {partners.jointProjects.map((project) => (
-            <JointProject lang={lang} key={project.id} {...project} />
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-12">
-        <h2 className="text-2xl text-bold mb-4">
-          {dictionary.partners.jointPublications}
-        </h2>
-        <div className={styles.publicationList}>
-          {partners.jointPublications.map((publication) => (
-            <JointPublication
-              lang={lang}
-              key={publication.id}
-              {...publication}
-            />
           ))}
         </div>
       </section>

@@ -57,8 +57,11 @@ async function request<T>(
       throw error;
     }
 
-    const result = await response.json();
-    return result as T;
+    try {
+      return await response.clone().json() as T;
+    } catch (error) {
+      return await response.clone().text() as T;
+    }
   } catch (error) {
     if (error instanceof Error) {
       throw error;
@@ -142,20 +145,6 @@ export const api = {
       request<{
         universities: Partner[];
         enterprises: Partner[];
-        jointProjects: {
-          id: number;
-          title: LocalizedString;
-          partners: string[];
-          year: number;
-        }[];
-        jointPublications: {
-          id: number;
-          title: LocalizedString;
-          authors: string;
-          journal: string;
-          year: number;
-          link: string;
-        }[];
       }>("/partners"),
     getOne: (id: string) => request<Partner>(`/partners/${id}`),
     create: (data: Omit<Partner, "id">) =>

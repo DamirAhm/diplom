@@ -35,7 +35,7 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-primary dark:bg-primary">
+      <AlertDialogContent className="bg-white text-primary dark:bg-primary">
         <AlertDialogHeader>
           <AlertDialogTitle>
             {title || dictionary.admin.confirmDelete}

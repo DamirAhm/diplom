@@ -13,6 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { TextField, LocalizedTextField } from "@/components/ui/form-fields";
 import * as z from "zod";
+import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 
 // Define a schema for the training form
 const trainingSchema = z.object({
@@ -232,7 +233,7 @@ export default function TrainingFormPage({
                 </div>
                 {imagePreview && (
                   <div className="relative h-24 w-24 overflow-hidden rounded border">
-                    <img
+                    <ImageWithFallback
                       src={imagePreview}
                       alt="Preview"
                       className="h-full w-full object-cover"

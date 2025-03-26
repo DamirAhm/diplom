@@ -95,6 +95,7 @@
     "allYears": "All years",
     "viewPublication": "View Publication",
     "authors": "Authors",
+    "externalAuthors": "External Authors",
     "journal": "Journal",
     "citations": "Citations",
     "publishedAt": "Publication Date"
@@ -111,9 +112,7 @@
   "partners": {
     "title": "Our Partners",
     "universities": "Partner Universities",
-    "enterprises": "Partner Enterprises",
-    "jointProjects": "Joint Projects",
-    "jointPublications": "Joint Publications"
+    "enterprises": "Partner Enterprises"
   },
   "sandbox": {
     "errorOccurred": "An error occurred while running the simulation",
@@ -243,6 +242,30 @@
     "documentation": "Documentation",
     "video": "Video",
     "image": "Image",
-    "urlPlaceholder": "Enter URL (e.g., https://example.com)"
+    "urlPlaceholder": "Enter URL (e.g., https://example.com)",
+    "manageContent": "Manage Content",
+    "deletePartner": "Delete Partner",
+    "deleteProject": "Delete Project",
+    "deleteResearcher": "Delete Researcher",
+    "deletePublication": "Delete Publication",
+    "deleteTraining": "Delete Training Material",
+    "firstName": "First Name",
+    "link": "Link",
+    "github": "GitHub",
+    "materials": "Materials",
+    "category": "Category",
+    "file": "File",
+    "selectAuthors": "Select Authors",
+    "totalRecords": "Total Records",
+    "newPublications": "New Publications",
+    "profilesSection": "Social & Academic Profiles"
+  },
+  "validation": {
+    "required": "This field is required",
+    "invalidUrl": "Please enter a valid URL",
+    "invalidEmail": "Please enter a valid email address",
+    "minLength": "This field must be at least {min} characters",
+    "maxLength": "This field must be less than {max} characters",
+    "formErrors": "Please correct the errors in the form"
   }
 }

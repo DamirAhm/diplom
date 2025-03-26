@@ -2,6 +2,8 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
 
 	"github.com/damirahm/diplom/backend/models"
 )
@@ -9,14 +11,12 @@ import (
 type SQLiteResearcherRepo struct {
 	db                  *sql.DB
 	localizedStringRepo LocalizedStringRepo
-	publicationRepo     PublicationRepo
 }
 
-func NewSQLiteResearcherRepo(db *sql.DB, lsRepo LocalizedStringRepo, pubRepo PublicationRepo) *SQLiteResearcherRepo {
+func NewSQLiteResearcherRepo(db *sql.DB, lsRepo LocalizedStringRepo) *SQLiteResearcherRepo {
 	return &SQLiteResearcherRepo{
 		db:                  db,
 		localizedStringRepo: lsRepo,
-		publicationRepo:     pubRepo,
 	}
 }
 
@@ -111,7 +111,7 @@ func (r *SQLiteResearcherRepo) GetByID(id int) (*models.Researcher, error) {
 	}
 	researcher.Position = *position
 
-	publications, err := r.getResearcherPublications(id)
+	publications, err := r.GetResearcherPublications(id)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (r *SQLiteResearcherRepo) GetByIDs(ids []int) ([]models.Researcher, error) 
 		researcher.Position = *position
 
 		// Get publications
-		publications, err := r.getResearcherPublications(researcher.ID)
+		publications, err := r.GetResearcherPublications(researcher.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +252,7 @@ func (r *SQLiteResearcherRepo) GetAll() ([]models.Researcher, error) {
 		}
 		researcher.Position = *position
 
-		publications, err := r.getResearcherPublications(researcher.ID)
+		publications, err := r.GetResearcherPublications(researcher.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -353,34 +353,127 @@ func (r *SQLiteResearcherRepo) RemovePublication(researcherID int, publicationID
 	return err
 }
 
-func (r *SQLiteResearcherRepo) getResearcherPublications(researcherID int) ([]models.Publication, error) {
-	rows, err := r.db.Query(
-		"SELECT publication_id FROM researcher_publications WHERE researcher_id = ?",
-		researcherID,
-	)
+// GetResearcherPublications returns all publications associated with a researcher
+func (r *SQLiteResearcherRepo) GetResearcherPublications(researcherID int) ([]models.Publication, error) {
+	rows, err := r.db.Query(`
+		SELECT p.id, p.title_id, p.link, p.journal, p.published_at, p.citations_count
+		FROM publications p
+		JOIN publication_authors pa ON p.id = pa.publication_id
+		WHERE pa.researcher_id = ?
+		ORDER BY p.published_at DESC
+	`, researcherID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var publicationIDs []int
+	var publications []models.Publication
 	for rows.Next() {
-		var publicationID int
-		if err := rows.Scan(&publicationID); err != nil {
+		var pub models.Publication
+		var titleID int64
+		err := rows.Scan(&pub.ID, &titleID, &pub.Link, &pub.Journal, &pub.PublishedAt, &pub.CitationsCount)
+		if err != nil {
 			return nil, err
 		}
-		publicationIDs = append(publicationIDs, publicationID)
-	}
 
-	if len(publicationIDs) == 0 {
-		return []models.Publication{}, nil
-	}
+		title, err := r.localizedStringRepo.Get(titleID)
+		if err != nil {
+			return nil, err
+		}
+		pub.Title = *title
 
-	// Use the new GetByIDs method to fetch all publications in a single batch
-	publications, err := r.publicationRepo.GetByIDs(publicationIDs)
-	if err != nil {
-		return nil, err
+		// Get authors for this publication
+		authorRows, err := r.db.Query(`
+			SELECT r.id, fn.en, ln.en, fn.ru, ln.ru
+			FROM researchers r
+			JOIN publication_authors pa ON r.id = pa.researcher_id
+			JOIN localized_strings fn ON r.name_id = fn.id
+			JOIN localized_strings ln ON r.last_name_id = ln.id
+			WHERE pa.publication_id = ?
+		`, pub.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		var authors []models.Author
+		for authorRows.Next() {
+			var id int
+			var nameEn, lastNameEn, nameRu, lastNameRu string
+			err := authorRows.Scan(&id, &nameEn, &lastNameEn, &nameRu, &lastNameRu)
+			if err != nil {
+				authorRows.Close()
+				return nil, err
+			}
+			authors = append(authors, models.Author{
+				ID: &id,
+				Name: models.LocalizedString{
+					En: nameEn + " " + lastNameEn,
+					Ru: nameRu + " " + lastNameRu,
+				},
+			})
+		}
+		authorRows.Close()
+
+		// Get external authors
+		externalRows, err := r.db.Query(`
+			SELECT ls.en, ls.ru 
+			FROM publication_external_authors pea
+			JOIN localized_strings ls ON pea.name_id = ls.id
+			WHERE pea.publication_id = ?
+		`, pub.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		for externalRows.Next() {
+			var nameEn, nameRu string
+			if err := externalRows.Scan(&nameEn, &nameRu); err != nil {
+				externalRows.Close()
+				return nil, err
+			}
+			authors = append(authors, models.Author{
+				Name: models.LocalizedString{
+					En: nameEn,
+					Ru: nameRu,
+				},
+			})
+		}
+		externalRows.Close()
+
+		pub.Authors = authors
+		publications = append(publications, pub)
 	}
 
 	return publications, nil
+}
+
+func (r *SQLiteResearcherRepo) FindByFullName(fullName string) (*models.Researcher, error) {
+	// Split the full name into parts
+	nameParts := strings.Split(fullName, " ")
+	if len(nameParts) != 2 {
+		return nil, fmt.Errorf("invalid full name format: %s", fullName)
+	}
+
+	firstName, lastName := nameParts[0], nameParts[1]
+
+	// Try each variant
+	// Query researchers by first name and last name
+	query := `
+		SELECT r.id
+		FROM researchers r
+		JOIN localized_strings fn ON r.name_id = fn.id
+		JOIN localized_strings ln ON r.last_name_id = ln.id
+		WHERE (fn.en = ? and ln.en = ?) OR (fn.ru = ? and ln.ru = ?)
+	`
+
+	var researcherID int
+	err := r.db.QueryRow(query, firstName, lastName, firstName, lastName).Scan(&researcherID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("researcher not found: %s", fullName)
+		}
+		return nil, err
+	}
+
+	return r.GetByID(researcherID)
 }
