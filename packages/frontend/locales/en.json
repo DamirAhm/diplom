@@ -77,7 +77,11 @@
     "logout": "Log out",
     "translationRequired": "Translation is required for all languages",
     "enterEnglishText": "Enter English text...",
-    "enterRussianText": "Enter Russian text..."
+    "enterRussianText": "Enter Russian text...",
+    "urlPlaceholder": "Enter URL",
+    "visibility": "Visibility",
+    "visibilityToggleSuccess": "Publication visibility updated successfully",
+    "visibilityToggleError": "Failed to update publication visibility"
   },
   "projects": {
     "title": "Project Activity",

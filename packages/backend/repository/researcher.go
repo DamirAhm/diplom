@@ -64,6 +64,7 @@ func (r *SQLiteResearcherRepo) CalculateTotalCitations(researcherID int) (int, e
 		JOIN publication_authors pa ON p.id = pa.publication_id
 		WHERE pa.researcher_id = ?
 	`, researcherID).Scan(&totalCitations)
+
 	if err != nil {
 		return 0, err
 	}

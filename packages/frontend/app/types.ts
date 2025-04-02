@@ -31,6 +31,7 @@ export interface Publication {
   publishedAt: string;
   citationsCount: number;
   authors: Author[];
+  visible: boolean;
 }
 
 export interface ResearcherProfiles {
@@ -331,6 +332,9 @@ export interface Dictionary {
     category: string;
     image: string;
     urlPlaceholder: string;
+    visibility: string;
+    visibilityToggleSuccess: string;
+    visibilityToggleError: string;
   };
   validation: {
     required: string;

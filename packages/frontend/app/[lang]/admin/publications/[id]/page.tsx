@@ -56,7 +56,6 @@ export default function PublicationFormPage({
     try {
       const data = await api.publications.getOne(id);
 
-      // Разделяем авторов на внутренних (с ID) и внешних (без ID)
       const internalAuthors = data.authors
         .filter(author => author.id !== undefined)
         .map(author => author.id!);
@@ -102,7 +101,7 @@ export default function PublicationFormPage({
         ...formData,
         authors: [
           // Внутренние авторы с ID
-          ...formData.authors.map(id => ({ id, name: getResearcherName(id) })),
+          ...formData.authors.map(id => ({ id, name: researchers.find(r => r.id === id)?.name })),
           // Внешние авторы без ID
           ...formData.externalAuthors.map(name => ({ name }))
         ],

@@ -80,7 +80,11 @@
     "searchTraining": "Поиск учебных материалов...",
     "translationRequired": "Требуется перевод на все языки",
     "enterEnglishText": "Введите текст на английском...",
-    "enterRussianText": "Введите текст на русском..."
+    "enterRussianText": "Введите текст на русском...",
+    "urlPlaceholder": "Введите URL",
+    "visibility": "Видимость",
+    "visibilityToggleSuccess": "Видимость публикации успешно обновлена",
+    "visibilityToggleError": "Не удалось обновить видимость публикации"
   },
   "projects": {
     "title": "Проектная деятельность",

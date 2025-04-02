@@ -103,6 +103,8 @@ func (pc *PublicationCrawler) crawlResearcher(researcher models.Researcher) erro
 	for _, source := range pc.sources {
 		publications, err := source.FetchPublications(researcher)
 		if err != nil {
+			fmt.Println(err)
+
 			continue
 		}
 

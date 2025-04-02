@@ -31,6 +31,7 @@ type Publication struct {
 	PublishedAt    string          `json:"publishedAt"`
 	CitationsCount int             `json:"citationsCount"`
 	Link           string          `json:"link"`
+	Visible        bool            `json:"visible"`
 }
 
 type Researcher struct {

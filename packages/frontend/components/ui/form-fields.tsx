@@ -416,26 +416,25 @@ export function ExternalAuthorsField({
     required,
     disabled,
 }: ExternalAuthorsFieldProps) {
-    const { control, watch } = useFormContext();
+    const { watch, setValue } = useFormContext();
     const dictionary = getDictionary("en");
-    const lang = "en";
 
     const externalAuthors = watch(name) || [];
 
     const addAuthor = () => {
         const newAuthors = [...externalAuthors, { en: "", ru: "" }];
-        control._formValues[name] = newAuthors;
+        setValue(name, newAuthors);
     };
 
     const removeAuthor = (index: number) => {
         const newAuthors = externalAuthors.filter((_: LocalizedString, i: number) => i !== index);
-        control._formValues[name] = newAuthors;
+        setValue(name, newAuthors);
     };
 
     const updateAuthor = (index: number, field: "en" | "ru", value: string) => {
         const newAuthors = [...externalAuthors];
         newAuthors[index] = { ...newAuthors[index], [field]: value };
-        control._formValues[name] = newAuthors;
+        setValue(name, newAuthors);
     };
 
     return (
@@ -482,10 +481,11 @@ export function ExternalAuthorsField({
                         </div>
                         <Button
                             type="button"
-                            variant="ghost"
+                            variant="destructive"
                             size="icon"
                             onClick={() => removeAuthor(index)}
                             disabled={disabled}
+                            className="flex items-center rounded mt-auto"
                         >
                             <Trash2 className="h-4 w-4" />
                         </Button>

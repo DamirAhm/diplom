@@ -91,6 +91,7 @@ func main() {
 	// Auth routes
 	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST", "OPTIONS")
+	api.HandleFunc("/publications/public", publicationsHandler.GetPublicPublications).Methods("GET")
 
 	// Protected routes subrouter
 	protected := api.PathPrefix("").Subrouter()
@@ -118,11 +119,13 @@ func main() {
 	protected.HandleFunc("/researchers/{id}", researchersHandler.DeleteResearcher).Methods("DELETE")
 
 	// Publications routes
-	api.HandleFunc("/publications", publicationsHandler.GetPublications).Methods("GET")
-	api.HandleFunc("/publications/{id}", publicationsHandler.GetPublication).Methods("GET")
+	protected.HandleFunc("/publications", publicationsHandler.GetPublications).Methods("GET")
 	protected.HandleFunc("/publications", publicationsHandler.CreatePublication).Methods("POST")
+	protected.HandleFunc("/publications/{id}", publicationsHandler.GetPublication).Methods("GET")
 	protected.HandleFunc("/publications/{id}", publicationsHandler.UpdatePublication).Methods("PUT")
 	protected.HandleFunc("/publications/{id}", publicationsHandler.DeletePublication).Methods("DELETE")
+	protected.HandleFunc("/publications/{id}/toggle-visibility", publicationsHandler.TogglePublicationVisibility).Methods("PUT")
+	protected.HandleFunc("/publications/{id}/authors", publicationsHandler.GetPublicationAuthors).Methods("GET")
 
 	// Training routes
 	api.HandleFunc("/training", trainingHandler.GetTrainingMaterials).Methods("GET")

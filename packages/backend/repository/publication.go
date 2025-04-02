@@ -102,9 +102,9 @@ func (r *SQLitePublicationRepo) GetByID(id int) (*models.Publication, error) {
 	var titleID int64
 
 	err := r.db.QueryRow(
-		"SELECT id, title_id, link, journal, published_at, citations_count FROM publications WHERE id = ?",
+		"SELECT id, title_id, link, journal, published_at, citations_count, visible FROM publications WHERE id = ?",
 		id,
-	).Scan(&pub.ID, &titleID, &pub.Link, &pub.Journal, &pub.PublishedAt, &pub.CitationsCount)
+	).Scan(&pub.ID, &titleID, &pub.Link, &pub.Journal, &pub.PublishedAt, &pub.CitationsCount, &pub.Visible)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,9 @@ func (r *SQLitePublicationRepo) GetByID(id int) (*models.Publication, error) {
 
 	// Get the authors
 	rows, err := r.db.Query(
-		"SELECT researcher_id FROM publication_authors WHERE publication_id = ?",
+		`SELECT r.id, r.name_id, r.last_name_id FROM publication_authors as pa 
+		JOIN researchers as r ON pa.researcher_id = r.id
+		WHERE pa.publication_id = ?`,
 		id,
 	)
 	if err != nil {
@@ -125,33 +127,32 @@ func (r *SQLitePublicationRepo) GetByID(id int) (*models.Publication, error) {
 	}
 	defer rows.Close()
 
-	authorIDs := []int{}
+	authors := []models.Author{}
+
 	for rows.Next() {
 		var authorID int
-		if err := rows.Scan(&authorID); err != nil {
+		var nameID int64
+		var lastNameID int64
+		if err := rows.Scan(&authorID, &nameID, &lastNameID); err != nil {
 			return nil, err
 		}
-		authorIDs = append(authorIDs, authorID)
-	}
-
-	// Convert author IDs to Author objects
-	authors := []models.Author{}
-	for _, authorID := range authorIDs {
-		researcher, err := r.researcherRepo.GetByID(authorID)
+		name, err := r.localizedStringRepo.Get(nameID)
 		if err != nil {
 			return nil, err
 		}
-		id := researcher.ID
+		lastName, err := r.localizedStringRepo.Get(lastNameID)
+		if err != nil {
+			return nil, err
+		}
 		authors = append(authors, models.Author{
 			Name: models.LocalizedString{
-				En: researcher.Name.En + " " + researcher.LastName.En,
-				Ru: researcher.Name.Ru + " " + researcher.LastName.Ru,
+				En: name.En + " " + lastName.En,
+				Ru: name.Ru + " " + lastName.Ru,
 			},
-			ID: &id,
+			ID: &authorID,
 		})
 	}
 
-	// Get external authors
 	externalRows, err := r.db.Query(
 		`SELECT ls.en, ls.ru 
 		FROM publication_external_authors pea
@@ -183,7 +184,7 @@ func (r *SQLitePublicationRepo) GetByID(id int) (*models.Publication, error) {
 }
 
 func (r *SQLitePublicationRepo) GetAll() ([]models.Publication, error) {
-	rows, err := r.db.Query("SELECT id, title_id, link, journal, published_at, citations_count FROM publications")
+	rows, err := r.db.Query("SELECT id, title_id, link, journal, published_at, citations_count, visible FROM publications")
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +194,7 @@ func (r *SQLitePublicationRepo) GetAll() ([]models.Publication, error) {
 	for rows.Next() {
 		var pub models.Publication
 		var titleID int64
-		if err := rows.Scan(&pub.ID, &titleID, &pub.Link, &pub.Journal, &pub.PublishedAt, &pub.CitationsCount); err != nil {
+		if err := rows.Scan(&pub.ID, &titleID, &pub.Link, &pub.Journal, &pub.PublishedAt, &pub.CitationsCount, &pub.Visible); err != nil {
 			return nil, err
 		}
 
@@ -329,8 +330,8 @@ func (r *SQLitePublicationRepo) Update(pub models.Publication) error {
 	}
 
 	_, err = tx.Exec(
-		"UPDATE publications SET link = ?, journal = ?, published_at = ?, citations_count = ? WHERE id = ?",
-		pub.Link, pub.Journal, pub.PublishedAt, pub.CitationsCount, pub.ID,
+		"UPDATE publications SET title_id = ?, link = ?, journal = ?, published_at = ?, citations_count = ?, visible = ? WHERE id = ?",
+		titleID, pub.Link, pub.Journal, pub.PublishedAt, pub.CitationsCount, pub.Visible, pub.ID,
 	)
 	if err != nil {
 		return err
@@ -532,7 +533,7 @@ func (r *SQLitePublicationRepo) GetByIDs(ids []int) ([]models.Publication, error
 		return []models.Publication{}, nil
 	}
 
-	query := `SELECT id, title_id, link, journal, published_at, citations_count 
+	query := `SELECT id, title_id, link, journal, published_at, citations_count, visible 
 	          FROM publications WHERE id IN (`
 
 	placeholders := make([]string, len(ids))
@@ -555,7 +556,7 @@ func (r *SQLitePublicationRepo) GetByIDs(ids []int) ([]models.Publication, error
 	for rows.Next() {
 		var pub models.Publication
 		var titleID int64
-		if err := rows.Scan(&pub.ID, &titleID, &pub.Link, &pub.Journal, &pub.PublishedAt, &pub.CitationsCount); err != nil {
+		if err := rows.Scan(&pub.ID, &titleID, &pub.Link, &pub.Journal, &pub.PublishedAt, &pub.CitationsCount, &pub.Visible); err != nil {
 			return nil, err
 		}
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"net/http"
@@ -8,6 +9,10 @@ import (
 
 	"github.com/damirahm/diplom/backend/config"
 )
+
+type contextKey string
+
+const IsAdminKey contextKey = "isAdmin"
 
 type LoginRequest struct {
 	Username string `json:"username"`
@@ -81,7 +86,10 @@ func AuthMiddleware(config *config.Config) func(http.Handler) http.Handler {
 				http.Error(w, "Authentication required", http.StatusUnauthorized)
 				return
 			}
-			next.ServeHTTP(w, r)
+
+			ctx := context.WithValue(r.Context(), IsAdminKey, true)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

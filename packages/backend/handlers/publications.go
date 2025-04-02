@@ -40,7 +40,6 @@ func (h *PublicationHandler) GetPublications(w http.ResponseWriter, r *http.Requ
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	json.NewEncoder(w).Encode(publications)
 }
 
@@ -74,18 +73,7 @@ func (h *PublicationHandler) GetPublication(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	authors, err := h.publicationRepo.GetAuthors(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	response := PublicationWithAuthors{
-		Publication: *publication,
-		Authors:     authors,
-	}
-
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(publication)
 }
 
 // CreatePublication godoc
@@ -221,4 +209,72 @@ func (h *PublicationHandler) GetPublicationAuthors(w http.ResponseWriter, r *htt
 	}
 
 	json.NewEncoder(w).Encode(authors)
+}
+
+// TogglePublicationVisibility godoc
+// @Summary Toggle publication visibility
+// @Description Toggle the visibility of a publication
+// @Tags publications
+// @Accept json
+// @Produce json
+// @Param id path int true "Publication ID"
+// @Success 200 {object} models.Publication
+// @Failure 400 {string} string "Bad Request"
+// @Failure 404 {string} string "Not Found"
+// @Failure 500 {string} string "Internal Server Error"
+// @Router /publications/{id}/toggle-visibility [put]
+func (h *PublicationHandler) TogglePublicationVisibility(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		http.Error(w, "Invalid publication ID", http.StatusBadRequest)
+		return
+	}
+
+	publication, err := h.publicationRepo.GetByID(id)
+	if err != nil {
+		if err.Error() == "publication not found" {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	publication.Visible = !publication.Visible
+
+	err = h.publicationRepo.Update(*publication)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(publication)
+}
+
+// GetPublicPublications godoc
+// @Summary Get all visible publications
+// @Description Get a list of all visible publications
+// @Tags publications
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.Publication
+// @Failure 500 {object} string "Internal Server Error"
+// @Router /publications/public [get]
+func (h *PublicationHandler) GetPublicPublications(w http.ResponseWriter, r *http.Request) {
+	publications, err := h.publicationRepo.GetAll()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Filter out invisible publications
+	visiblePublications := make([]models.Publication, 0)
+	for _, pub := range publications {
+		if pub.Visible {
+			visiblePublications = append(visiblePublications, pub)
+		}
+	}
+
+	json.NewEncoder(w).Encode(visiblePublications)
 }

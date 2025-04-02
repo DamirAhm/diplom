@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 	"unicode"
@@ -154,14 +156,22 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 
 	cachedResp, err := g.getFromCache(url)
 	if err != nil {
-		// Логируем ошибку, но продолжаем выполнение с запросом к серверу
+		log.Println(err)
 	}
 
-	if cachedResp != nil {
-		// Используем кешированный ответ
+	if strings.Contains(url, "user=x0YUMPkAAAAJ") {
+		_, filename, _, _ := runtime.Caller(0)
+		fileDir := filepath.Dir(filename)
+		htmlPath := filepath.Join(fileDir, "..", "html", "butusov.html")
+
+		contentBytes, err := os.ReadFile(htmlPath)
+		if err != nil {
+			return nil, fmt.Errorf("error reading local HTML file: %w", err)
+		}
+		content = string(contentBytes)
+	} else if cachedResp != nil {
 		content = cachedResp.Content
 	} else {
-		// Кеш не найден, выполняем HTTP-запрос
 		client := &http.Client{
 			Timeout: 30 * time.Second,
 		}
@@ -171,7 +181,7 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 			return nil, fmt.Errorf("error creating request: %w", err)
 		}
 
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/536.21 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
 		req.Header.Set("Accept-Language", "en-US,en;q=0.5")
 
@@ -224,10 +234,6 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 			processingErrors = append(processingErrors, fmt.Errorf("error checking existing publication '%s': %w", title, err))
 			return
 		}
-
-		// if existingPub >= 0 {
-		// 	return
-		// }
 
 		// Fetch the detailed publication page
 		detailURL := constructFullURL(pubURL)
@@ -306,7 +312,6 @@ func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publ
 		}
 	}
 
-	// Парсим HTML-содержимое
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(strings.TrimFunc(content, unicode.IsControl)))
 	if err != nil {
 		return nil, fmt.Errorf("error parsing HTML: %w", err)
@@ -316,7 +321,6 @@ func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publ
 		title = doc.Find("#gsc_oci_title a").Text()
 	}
 
-	// Parse authors from the first gsc_oci_value
 	var authorText string
 	var publishedAt string
 	var journal string
@@ -326,9 +330,6 @@ func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publ
 	var publisher string
 	var citationCount int
 
-	// Парсим все поля из таблицы деталей публикации
-
-	// Loop through all the fields in the publication details table
 	doc.Find("#gsc_oci_table .gs_scl").Each(func(i int, s *goquery.Selection) {
 		fieldName := s.Find(".gsc_oci_field").Text()
 		fieldValue := s.Find(".gsc_oci_value").Text()
@@ -352,6 +353,11 @@ func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publ
 			realValue, err := s.Find(".gsc_oci_value a").Html()
 			if err == nil {
 				fmt.Sscanf(realValue, "Cited by %d", &citationCount)
+			}
+		case "Всего ссылок":
+			realValue, err := s.Find(".gsc_oci_value a").Html()
+			if err == nil {
+				fmt.Sscanf(realValue, "Цитируется: %d", &citationCount)
 			}
 		}
 	})

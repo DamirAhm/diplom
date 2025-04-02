@@ -31,6 +31,7 @@ export interface Column<T> {
   accessorKey: keyof T | ((item: T) => ReactNode);
   sortable?: boolean;
   className?: string;
+  cell?: (item: T) => ReactNode;
 }
 
 interface DataTableProps<T> {
@@ -94,14 +95,21 @@ export function DataTable<T>({
 
       if (!column) return 0;
 
-      const valueA =
+      let valueA =
         typeof column.accessorKey === "function"
           ? column.accessorKey(a)
-          : String(a[column.accessorKey]);
-      const valueB =
+          : a[column.accessorKey];
+      let valueB =
         typeof column.accessorKey === "function"
           ? column.accessorKey(b)
-          : String(b[column.accessorKey]);
+          : b[column.accessorKey];
+
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return state.sortDirection === "asc" ? valueA - valueB : valueB - valueA;
+      }
+
+      valueA = String(valueA);
+      valueB = String(valueB);
 
       if (typeof valueA !== "string" || typeof valueB !== "string") return 0;
 
@@ -233,9 +241,11 @@ export function DataTable<T>({
                     )}
                     {columns.map((column, cellIndex) => (
                       <TableCell key={cellIndex} className={column.className}>
-                        {typeof column.accessorKey === "function"
-                          ? column.accessorKey(item)
-                          : String(item[column.accessorKey])}
+                        {column.cell
+                          ? column.cell(item)
+                          : typeof column.accessorKey === "function"
+                            ? column.accessorKey(item)
+                            : String(item[column.accessorKey])}
                       </TableCell>
                     ))}
                     {editPath && (

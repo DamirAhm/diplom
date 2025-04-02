@@ -44,6 +44,11 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
+	// Run migration to add visible column to publications
+	if err = migrateAddVisibleToPublications(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -657,6 +662,26 @@ func migratePublicationExternalAuthors() error {
 		}
 
 		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// migrateAddVisibleToPublications adds the visible column to the publications table if it doesn't exist
+func migrateAddVisibleToPublications() error {
+	// Check if the visible column exists
+	var count int
+	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('publications') WHERE name='visible'`).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	// If the column doesn't exist, add it
+	if count == 0 {
+		_, err = DB.Exec(`ALTER TABLE publications ADD COLUMN visible BOOLEAN DEFAULT 0`)
+		if err != nil {
 			return err
 		}
 	}

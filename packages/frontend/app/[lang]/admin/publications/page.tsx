@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { getDictionary } from "@/app/dictionaries";
 import type { Locale, Publication, Researcher, Author } from "@/app/types";
 import { Button } from "@/components/ui/button";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Column, DataTable } from "@/components/ui/data-table";
@@ -50,7 +50,7 @@ export default function PublicationsAdminPage({
   const confirmDelete = async () => {
     try {
       await Promise.all(
-        itemsToDelete.map((item) => api.publications.delete(item.id.toString()))
+        itemsToDelete.map((item) => api.publications.delete(item.id))
       );
 
       toast({
@@ -75,7 +75,7 @@ export default function PublicationsAdminPage({
   const getAuthorNames = (authors: Author[]) => {
     return authors
       ? authors
-        .map(author => author.name)
+        .map(author => author.name[lang])
         .join(', ')
       : '';
   };
@@ -92,11 +92,10 @@ export default function PublicationsAdminPage({
     {
       header: dictionary.publications.authors,
       accessorKey: (publication: Publication) => getAuthorNames(publication.authors),
-      sortable: true,
     },
     {
-      header: dictionary.publications.journal,
-      accessorKey: "journal",
+      header: dictionary.publications.citations,
+      accessorKey: "citationsCount",
       sortable: true,
       className: "w-1/4",
     },
@@ -105,6 +104,40 @@ export default function PublicationsAdminPage({
       accessorKey: "publishedAt",
       sortable: true,
       className: "w-20",
+    },
+    {
+      header: dictionary.common.visibility,
+      accessorKey: (publication: Publication) => publication.visible,
+      sortable: true,
+      className: "w-20",
+      cell: (publication: Publication) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={async () => {
+            try {
+              await api.publications.toggleVisibility(publication.id);
+              fetchPublications();
+              toast({
+                title: dictionary.admin.success,
+                description: dictionary.common.visibilityToggleSuccess,
+              });
+            } catch (error) {
+              toast({
+                variant: "destructive",
+                title: dictionary.common.error,
+                description: dictionary.common.visibilityToggleError,
+              });
+            }
+          }}
+        >
+          {publication.visible ? (
+            <Eye className="h-4 w-4" />
+          ) : (
+            <EyeOff className="h-4 w-4" />
+          )}
+        </Button>
+      ),
     },
   ];
 

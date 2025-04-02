@@ -10,7 +10,7 @@ const PublicationsPage = async ({
 }) => {
   const { lang } = await params || {};
   const dictionary = getDictionary(lang);
-  const publications = await api.publications.getAll();
+  const publications = await api.publications.getPublic();
 
   return (
     <div className="container mx-auto px-4 py-8">

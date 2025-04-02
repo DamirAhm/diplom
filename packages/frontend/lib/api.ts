@@ -131,14 +131,14 @@ export const api = {
       request<void>(`/projects/${id}`, { method: "DELETE" }),
   },
   publications: {
-    getAll: () => request<Publication[]>("/publications"),
-    getOne: (id: string) => request<Publication>(`/publications/${id}`),
-    create: (data: Omit<Publication, "id">) =>
-      request<Publication>("/publications", { method: "POST", data }),
-    update: (id: string, data: Partial<Publication>) =>
-      request<Publication>(`/publications/${id}`, { method: "PUT", data }),
-    delete: (id: string) =>
-      request<void>(`/publications/${id}`, { method: "DELETE" }),
+    getAll: () => api.get<Publication[]>("/publications"),
+    getPublic: () => api.get<Publication[]>("/publications/public"),
+    getById: (id: number) => api.get<Publication>(`/publications/${id}`),
+    create: (data: Publication) => api.post<Publication>("/publications", data),
+    update: (id: number, data: Publication) => api.put<Publication>(`/publications/${id}`, data),
+    delete: (id: number) => api.delete(`/publications/${id}`),
+    toggleVisibility: (id: number) => api.put<Publication>(`/publications/${id}/toggle-visibility`, {}),
+    getAuthors: (id: number) => api.get<Researcher[]>(`/publications/${id}/authors`),
   },
   partners: {
     getAll: () =>

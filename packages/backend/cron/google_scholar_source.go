@@ -47,12 +47,6 @@ func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) (
 		return nil, fmt.Errorf("invalid Google Scholar URL")
 	}
 
-	// Используем старую реализацию, если репозиторий не был инициализирован
-	if gs.googleScholar == nil {
-		// Здесь будет старая реализация
-		return nil, fmt.Errorf("legacy implementation removed, please initialize with repository")
-	}
-
 	url := constructURL(scholarID)
 
 	publications, err := gs.googleScholar.Scrape(url)
