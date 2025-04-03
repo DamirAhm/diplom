@@ -19,7 +19,6 @@ func NewPublicationHandler(pr repository.PublicationRepo) *PublicationHandler {
 	return &PublicationHandler{publicationRepo: pr}
 }
 
-// PublicationWithAuthors represents a publication with its authors
 type PublicationWithAuthors struct {
 	models.Publication
 	Authors []models.Researcher `json:"authors"`
@@ -268,7 +267,6 @@ func (h *PublicationHandler) GetPublicPublications(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Filter out invisible publications
 	visiblePublications := make([]models.Publication, 0)
 	for _, pub := range publications {
 		if pub.Visible {

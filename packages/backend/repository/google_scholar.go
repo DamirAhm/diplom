@@ -29,7 +29,6 @@ type GoogleScholar struct {
 	cacheDir        string
 }
 
-// CachedResponse представляет структуру кешированного HTTP-ответа
 type CachedResponse struct {
 	URL        string      `json:"url"`
 	Content    string      `json:"content"`
@@ -43,7 +42,7 @@ func NewGoogleScholar(researcherRepo ResearcherRepo, publicationRepo Publication
 		researcherRepo:  researcherRepo,
 		publicationRepo: publicationRepo,
 		cacheEnabled:    true,
-		cacheDuration:   24 * time.Hour, // По умолчанию кеш действителен 24 часа
+		cacheDuration:   24 * time.Hour,
 		cacheDir:        "./cache/google_scholar",
 	}
 }
@@ -65,16 +64,13 @@ func (g *GoogleScholar) SetCacheDir(dir string) {
 }
 
 func (g *GoogleScholar) getCacheFilePath(url string) string {
-	// Создаем хеш URL для избежания проблем с длинными путями и специальными символами
 	h := sha256.New()
 	h.Write([]byte(url))
 	hash := hex.EncodeToString(h.Sum(nil))
 
-	// Используем первые 2 символа хеша как подкаталог для лучшей организации
 	subDir := hash[:2]
 	cacheDir := filepath.Join(g.cacheDir, subDir)
 
-	// Создаем подкаталог, если он не существует
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 	}
 
@@ -87,12 +83,10 @@ func (g *GoogleScholar) saveToCache(urlStr string, resp *http.Response, content 
 		return nil
 	}
 
-	// Создаем каталог кеша, если он не существует
 	if err := os.MkdirAll(g.cacheDir, 0755); err != nil {
 		return fmt.Errorf("не удалось создать каталог кеша: %w", err)
 	}
 
-	// Создаем объект кеша
 	cachedResp := &CachedResponse{
 		URL:        urlStr,
 		Content:    content,
@@ -101,13 +95,11 @@ func (g *GoogleScholar) saveToCache(urlStr string, resp *http.Response, content 
 		CachedAt:   time.Now(),
 	}
 
-	// Сериализуем в JSON
 	data, err := json.Marshal(cachedResp)
 	if err != nil {
 		return fmt.Errorf("не удалось сериализовать кеш: %w", err)
 	}
 
-	// Сохраняем в файл
 	cacheFile := g.getCacheFilePath(urlStr)
 	if err := os.WriteFile(cacheFile, data, 0644); err != nil {
 		return fmt.Errorf("не удалось записать кеш в файл: %w", err)
@@ -126,7 +118,7 @@ func (g *GoogleScholar) getFromCache(urlStr string) (*CachedResponse, error) {
 	data, err := os.ReadFile(cacheFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil // Кеш не найден
+			return nil, nil
 		}
 		return nil, fmt.Errorf("не удалось прочитать файл кеша: %w", err)
 	}
@@ -136,9 +128,8 @@ func (g *GoogleScholar) getFromCache(urlStr string) (*CachedResponse, error) {
 		return nil, fmt.Errorf("не удалось десериализовать кеш: %w", err)
 	}
 
-	// Проверяем, не устарел ли кеш
 	if time.Since(cachedResp.CachedAt) > g.cacheDuration {
-		return nil, nil // Кеш устарел
+		return nil, nil
 	}
 
 	return &cachedResp, nil
@@ -149,7 +140,6 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 		return nil, errors.New("invalid Google Scholar URL format")
 	}
 
-	// Проверяем кеш перед отправкой запроса
 	var content string
 	var resp *http.Response
 
@@ -184,20 +174,16 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 			return nil, fmt.Errorf("received non-200 response: %d", resp.StatusCode)
 		}
 
-		// Читаем содержимое ответа
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, fmt.Errorf("error reading response body: %w", err)
 		}
 		content = string(bodyBytes)
 
-		// Сохраняем ответ в кеш
 		if err := g.saveToCache(url, resp, content); err != nil {
-			// Логируем ошибку, но продолжаем выполнение
 		}
 	}
 
-	// Парсим HTML-содержимое
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
 	if err != nil {
 		return nil, fmt.Errorf("error parsing HTML: %w", err)
@@ -206,25 +192,21 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 	var publications []models.Publication
 	var processingErrors []error
 
-	// Определяем количество публикаций для обработки
 	doc.Find("#gsc_a_b .gsc_a_tr").Each(func(i int, s *goquery.Selection) {
 		titleElement := s.Find(".gsc_a_t a")
 		title := titleElement.Text()
 		pubURL, _ := titleElement.Attr("href")
 
-		// Skip empty entries
 		if title == "" || pubURL == "" {
 			return
 		}
 
-		// First, check if this publication already exists in our database
 		_, err := g.publicationRepo.GetByTitle(title)
 		if err != nil {
 			processingErrors = append(processingErrors, fmt.Errorf("error checking existing publication '%s': %w", title, err))
 			return
 		}
 
-		// Fetch the detailed publication page
 		detailURL := constructFullURL(pubURL)
 
 		detailedPub, err := g.fetchPublicationDetails(detailURL, title)
@@ -236,35 +218,28 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 		publications = append(publications, *detailedPub)
 	})
 
-	// If we processed at least one publication successfully, consider the operation a success
 	if len(publications) > 0 {
 		return publications, nil
 	}
 
-	// If we didn't process any publications and had errors, return the first error
 	if len(processingErrors) > 0 {
 		return nil, fmt.Errorf("failed to fetch any publications: %w", processingErrors[0])
 	}
 
-	// No publications found but no errors either
 	return []models.Publication{}, nil
 }
 
 func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publication, error) {
-	// Проверяем кеш перед отправкой запроса
 	var content string
 	var resp *http.Response
 
 	cachedResp, err := g.getFromCache(url)
 	if err != nil {
-		// Логируем ошибку, но продолжаем выполнение с запросом к серверу
 	}
 
 	if cachedResp != nil {
-		// Используем кешированный ответ
 		content = cachedResp.Content
 	} else {
-		// Кеш не найден, выполняем HTTP-запрос
 		client := &http.Client{
 			Timeout: 30 * time.Second,
 		}
@@ -288,16 +263,13 @@ func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publ
 			return nil, fmt.Errorf("received non-200 response: %d", resp.StatusCode)
 		}
 
-		// Читаем содержимое ответа
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, fmt.Errorf("error reading response body: %w", err)
 		}
 		content = string(bodyBytes)
 
-		// Сохраняем ответ в кеш
 		if err := g.saveToCache(url, resp, content); err != nil {
-			// Логируем ошибку, но продолжаем выполнение
 		}
 	}
 
@@ -367,13 +339,11 @@ func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publ
 		fullJournal += ", " + publisher
 	}
 
-	// Process publishedAt to proper format
 	formattedDate, err := parseDate(publishedAt)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing date: %w", err)
 	}
 
-	// Создаем объект публикации
 	publication := &models.Publication{
 		Title: models.LocalizedString{
 			En: title,
@@ -390,10 +360,8 @@ func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publ
 }
 
 func parseDate(dateText string) (string, error) {
-	// Clean control characters from input
 	dateText = strings.ReplaceAll(dateText, "\u202C", "")
 
-	// Pattern 1: Full date (YYYY/MM/DD)
 	datePattern1 := regexp.MustCompile(`(\d{4})/(\d{1,2})/(\d{1,2})`)
 	if match := datePattern1.FindStringSubmatch(dateText); len(match) == 4 {
 		year := match[1]
@@ -408,7 +376,6 @@ func parseDate(dateText string) (string, error) {
 		return fmt.Sprintf("%s-%s-%s", year, month, day), nil
 	}
 
-	// Pattern 2: Year and month (YYYY/MM)
 	datePattern2 := regexp.MustCompile(`(\d{4})/(\d{1,2})$`)
 	if match := datePattern2.FindStringSubmatch(dateText); len(match) == 3 {
 		year := match[1]
@@ -419,7 +386,6 @@ func parseDate(dateText string) (string, error) {
 		return fmt.Sprintf("%s-%s-01", year, month), nil
 	}
 
-	// Pattern 3: Just year (YYYY)
 	datePattern3 := regexp.MustCompile(`^(\d{4})$`)
 	if match := datePattern3.FindStringSubmatch(dateText); len(match) == 2 {
 		return fmt.Sprintf("%s-01-01", match[1]), nil
@@ -429,10 +395,8 @@ func parseDate(dateText string) (string, error) {
 }
 
 func (g *GoogleScholar) parseAuthors(authorText string) []models.Author {
-	// Split by commas to get individual authors
 	authors := strings.Split(authorText, ",")
 
-	// Clean up author names
 	var cleanedAuthors []string
 	for _, author := range authors {
 		cleaned := strings.TrimSpace(author)
@@ -443,7 +407,6 @@ func (g *GoogleScholar) parseAuthors(authorText string) []models.Author {
 
 	authorObjects := make([]models.Author, 0, len(cleanedAuthors))
 	for _, authorName := range cleanedAuthors {
-		// Try with original name first
 		researcher, err := g.researcherRepo.FindByFullName(authorName)
 		if err == nil && researcher != nil {
 			id := researcher.ID
@@ -457,7 +420,6 @@ func (g *GoogleScholar) parseAuthors(authorText string) []models.Author {
 			continue
 		}
 
-		// Try without middle initial if present
 		nameParts := strings.Fields(authorName)
 		if len(nameParts) == 3 {
 			nameWithoutMiddle := nameParts[0] + " " + nameParts[2]
@@ -516,7 +478,6 @@ func constructFullURL(relativeURL string) string {
 	return fullURL
 }
 
-// EnableCaching включает кеширование HTTP-ответов для избежания частых запросов к Google Scholar
 func (g *GoogleScholar) EnableCaching(cacheDir string, cacheDuration time.Duration) {
 	if cacheDir == "" {
 		cacheDir = filepath.Join(os.TempDir(), "google_scholar_cache")
@@ -526,8 +487,6 @@ func (g *GoogleScholar) EnableCaching(cacheDir string, cacheDuration time.Durati
 	g.cacheDuration = cacheDuration
 	g.cacheEnabled = true
 
-	// Создаем корневой каталог кеша, если он не существует
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
-		// Removed error logging
 	}
 }

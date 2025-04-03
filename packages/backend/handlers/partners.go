@@ -20,7 +20,6 @@ func NewPartnerHandler(pr repository.PartnerRepo) *PartnerHandler {
 	}
 }
 
-// AllPartnersResponse represents the response structure for the GetAllPartners endpoint
 type AllPartnersResponse struct {
 	Universities []models.Partner `json:"universities"`
 	Enterprises  []models.Partner `json:"enterprises"`
@@ -116,7 +115,6 @@ func (h *PartnerHandler) CreatePartner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Pass partner type based on request URL or body
 	id, err := h.partnerRepo.Create(partner)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -151,7 +149,6 @@ func (h *PartnerHandler) UpdatePartner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert id string to int for ID field
 	idInt := 0
 	_, err := fmt.Sscanf(id, "%d", &idInt)
 	if err != nil {

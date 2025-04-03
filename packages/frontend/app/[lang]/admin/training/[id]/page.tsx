@@ -15,7 +15,6 @@ import { TextField, LocalizedTextField } from "@/components/ui/form-fields";
 import * as z from "zod";
 import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 
-// Define a schema for the training form
 const trainingSchema = z.object({
   name: z.object({
     en: z.string().min(1, { message: "English name is required" }),
@@ -100,7 +99,6 @@ export default function TrainingFormPage({
       if (imageFile) {
         try {
           const { url } = await uploadFile(imageFile);
-          // Update the material with the new image URL
           await api.training.update(materialId, { image: url });
         } catch (error) {
           console.error("Failed to upload image:", error);

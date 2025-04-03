@@ -1,6 +1,5 @@
 package repository
 
-// Join joins strings with a separator
 func Join(strs []string, sep string) string {
 	if len(strs) == 0 {
 		return ""

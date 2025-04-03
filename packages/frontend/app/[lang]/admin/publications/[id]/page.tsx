@@ -96,19 +96,15 @@ export default function PublicationFormPage({
 
   const onSubmit = async (formData: PublicationFormData) => {
     try {
-      // Преобразуем данные формы в формат, ожидаемый API
       const apiData = {
         ...formData,
         authors: [
-          // Внутренние авторы с ID
           ...formData.authors.map(id => ({ id, name: researchers.find(r => r.id === id)?.name })),
-          // Внешние авторы без ID
           ...formData.externalAuthors.map(name => ({ name }))
         ],
-        citationsCount: 0 // По умолчанию для новых публикаций
+        citationsCount: 0
       };
 
-      // Удаляем поле externalAuthors, которое не нужно бэкенду
       delete (apiData as any).externalAuthors;
 
       if (id !== "new") {
@@ -131,7 +127,6 @@ export default function PublicationFormPage({
     }
   };
 
-  // Вспомогательная функция для получения имени исследователя по ID
   const getResearcherName = (id: number): string => {
     const researcher = researchers.find(r => r.id === id);
     if (!researcher) return "";

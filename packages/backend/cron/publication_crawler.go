@@ -82,7 +82,6 @@ func (pc *PublicationCrawler) crawlAllResearchers() {
 }
 
 func (pc *PublicationCrawler) crawlResearcher(researcher models.Researcher) error {
-	// Проверяем наличие профилей
 	if researcher.Profiles.GoogleScholar == nil || *researcher.Profiles.GoogleScholar == "" {
 		return nil
 	}
@@ -120,7 +119,6 @@ func (pc *PublicationCrawler) crawlResearcher(researcher models.Researcher) erro
 				if pubID > 0 {
 					err = pc.researcherRepo.AddPublication(researcher.ID, int(pubID))
 					if err != nil {
-						// Failed to associate publication
 					} else {
 						newPubCount++
 					}

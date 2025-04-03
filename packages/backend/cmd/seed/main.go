@@ -22,7 +22,6 @@ func main() {
 	projectRepo := repository.NewSQLiteProjectRepo(db.DB, localizedStringRepo)
 	trainingMaterialRepo := repository.NewSQLiteTrainingMaterialRepo(db.DB, localizedStringRepo)
 
-	// Seed initial data
 	seedPartners(partnerRepo)
 	seedJointProjects(jointProjectRepo)
 	seedJointPublications(jointPublicationRepo)
@@ -327,7 +326,6 @@ func seedProjects(repo repository.ProjectRepo) {
 			continue
 		}
 
-		// Add publications for each project
 		if p.Title.En == "Advanced CAD Algorithms" {
 			repo.AddPublication(p.ID, models.ProjectPublication{
 				Title: models.LocalizedString{
@@ -345,7 +343,6 @@ func seedProjects(repo repository.ProjectRepo) {
 			})
 		}
 
-		// Add project videos
 		videos := map[string][]models.ProjectVideo{
 			"Advanced CAD Algorithms": {
 				{

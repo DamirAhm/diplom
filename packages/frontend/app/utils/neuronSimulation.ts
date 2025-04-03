@@ -1,21 +1,20 @@
 interface HHParameters {
-    gNa: number  // Sodium conductance (mS/cm²)
-    gK: number   // Potassium conductance (mS/cm²)
-    gL: number   // Leak conductance (mS/cm²)
-    ENa: number  // Sodium reversal potential (mV)
-    EK: number   // Potassium reversal potential (mV)
-    EL: number   // Leak reversal potential (mV)
-    Cm: number   // Membrane capacitance (µF/cm²)
+    gNa: number
+    gK: number
+    gL: number
+    ENa: number
+    EK: number
+    EL: number
+    Cm: number
 }
 
 interface HHState {
-    V: number    // Membrane potential (mV)
-    m: number    // Na+ activation gating variable
-    h: number    // Na+ inactivation gating variable
-    n: number    // K+ activation gating variable
+    V: number
+    m: number
+    h: number
+    n: number
 }
 
-// Alpha and beta rate functions for gating variables
 function alphaM(V: number): number {
     const x = V + 40
     return x !== 0 ? (0.1 * x) / (1 - Math.exp(-x / 10)) : 1
@@ -42,7 +41,6 @@ function betaH(V: number): number {
     return 1 / (1 + Math.exp(-(V + 35) / 10))
 }
 
-// Calculate ionic currents
 function ionicCurrents(V: number, m: number, h: number, n: number, params: HHParameters) {
     const INa = params.gNa * Math.pow(m, 3) * h * (V - params.ENa)
     const IK = params.gK * Math.pow(n, 4) * (V - params.EK)
@@ -50,7 +48,6 @@ function ionicCurrents(V: number, m: number, h: number, n: number, params: HHPar
     return { INa, IK, IL }
 }
 
-// Fourth-order Runge-Kutta integration for HH model
 function rungeKutta4(state: HHState, dt: number, Iext: number, params: HHParameters): HHState {
     function deriv(s: HHState, I: number) {
         const { INa, IK, IL } = ionicCurrents(s.V, s.m, s.h, s.n, params)
@@ -90,21 +87,18 @@ function rungeKutta4(state: HHState, dt: number, Iext: number, params: HHParamet
     }
 }
 
-// Simulate HH model
 export function simulateHH(params: HHParameters, duration: number = 100, dt: number = 0.01, Iext: number = 10) {
     const steps = Math.floor(duration / dt)
     const time: number[] = new Array(steps)
     const voltage: number[] = new Array(steps)
 
-    // Initial conditions
     let state: HHState = {
-        V: -65,  // Resting potential
-        m: 0.05, // Initial gate values
+        V: -65,
+        m: 0.05,
         h: 0.6,
         n: 0.32
     }
 
-    // Integration loop
     for (let i = 0; i < steps; i++) {
         time[i] = i * dt
         voltage[i] = state.V
@@ -114,23 +108,21 @@ export function simulateHH(params: HHParameters, duration: number = 100, dt: num
     return { time, voltage }
 }
 
-// FitzHugh-Nagumo model simulation
 function simulateFHN(duration: number = 100, dt: number = 0.01, I: number = 0.5) {
     const steps = Math.floor(duration / dt)
     const time: number[] = new Array(steps)
     const voltage: number[] = new Array(steps)
 
-    let v = -1.5 // Membrane potential
-    let w = 0    // Recovery variable
+    let v = -1.5
+    let w = 0
     const a = 0.7
     const b = 0.8
     const tau = 12.5
 
     for (let i = 0; i < steps; i++) {
         time[i] = i * dt
-        voltage[i] = v * 100 // Scale to mV range
+        voltage[i] = v * 100
 
-        // Update using forward Euler method
         const dv = v - v * v * v / 3 - w + I
         const dw = (v + a - b * w) / tau
 
@@ -141,15 +133,14 @@ function simulateFHN(duration: number = 100, dt: number = 0.01, I: number = 0.5)
     return { time, voltage }
 }
 
-// Hindmarsh-Rose model simulation
 function simulateHR(duration: number = 100, dt: number = 0.01, I: number = 3) {
     const steps = Math.floor(duration / dt)
     const time: number[] = new Array(steps)
     const voltage: number[] = new Array(steps)
 
-    let x = -1.6  // Membrane potential
-    let y = -10   // Recovery variable
-    let z = 2     // Adaptation variable
+    let x = -1.6
+    let y = -10
+    let z = 2
 
     const a = 1
     const b = 3
@@ -161,9 +152,8 @@ function simulateHR(duration: number = 100, dt: number = 0.01, I: number = 3) {
 
     for (let i = 0; i < steps; i++) {
         time[i] = i * dt
-        voltage[i] = x * 20 // Scale to mV range
+        voltage[i] = x * 20
 
-        // Update using forward Euler method
         const dx = y - a * x * x * x + b * x * x - z + I
         const dy = c - d * x * x - y
         const dz = r * (s * (x - xR) - z)

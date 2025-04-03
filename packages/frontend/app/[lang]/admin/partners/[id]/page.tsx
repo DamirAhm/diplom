@@ -40,7 +40,6 @@ export default function PartnerFormPage({
   const [isLoading, setIsLoading] = useState(id !== "new");
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize form validation
   const validation = useFormValidation();
 
   useEffect(() => {
@@ -87,7 +86,6 @@ export default function PartnerFormPage({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form before submission
     if (!validation.validate(getValidationSchema())) {
       toast({
         variant: "destructive",

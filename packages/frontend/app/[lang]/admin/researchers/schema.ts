@@ -25,7 +25,7 @@ export const researcherSchema = z.object({
       publons: z.string().url({ message: "Must be a valid URL" }).optional(),
       orcid: z.string().url({ message: "Must be a valid URL" }).optional(),
     })
-    .default({}), // Set default empty object instead of making the whole field optional
+    .default({}),
 });
 
 export type ResearcherFormData = z.infer<typeof researcherSchema>;

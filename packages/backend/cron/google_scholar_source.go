@@ -23,7 +23,6 @@ func NewGoogleScholarSource() *GoogleScholarSource {
 	}
 }
 
-// Обновленная версия с использованием репозитория GoogleScholar
 func NewGoogleScholarSourceWithRepo(googleScholar *repository.GoogleScholar) *GoogleScholarSource {
 	return &GoogleScholarSource{
 		client: &http.Client{
@@ -58,7 +57,6 @@ func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) (
 }
 
 func extractScholarID(url string) string {
-	// Extract the user ID from the URL using a regular expression
 	re := regexp.MustCompile(`user=([^&]+)`)
 	match := re.FindStringSubmatch(url)
 	if len(match) < 2 {

@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// ResearcherHandler handles HTTP requests for researcher resources
 type ResearcherHandler struct {
 	researcherRepo repository.ResearcherRepo
 }

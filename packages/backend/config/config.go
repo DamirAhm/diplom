@@ -40,7 +40,6 @@ func LoadConfig() *Config {
 		log.Printf("Warning: .env file not found, using default values")
 	}
 
-	// Parse cron enabled flag
 	cronEnabled := true
 	if val := os.Getenv("CRON_ENABLED"); val != "" {
 		var err error
@@ -51,8 +50,7 @@ func LoadConfig() *Config {
 		}
 	}
 
-	// Parse crawl interval
-	crawlInterval := 24 * time.Hour // Default: once per day
+	crawlInterval := 24 * time.Hour
 	if val := os.Getenv("CRON_INTERVAL_HOURS"); val != "" {
 		hours, err := strconv.Atoi(val)
 		if err != nil {

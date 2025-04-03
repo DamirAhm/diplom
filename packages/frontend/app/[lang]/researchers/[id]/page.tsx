@@ -11,7 +11,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-// Define a schema for the researcher data
 const researcherSchema = z.object({
   id: z.number(),
   name: z.object({
@@ -77,7 +76,6 @@ export default function ResearcherPage({
       setIsLoading(true);
       const data = await api.researchers.getOne(id);
 
-      // Update form values
       Object.entries(data).forEach(([key, value]) => {
         setValue(key as keyof ResearcherData, value);
       });

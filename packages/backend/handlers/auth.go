@@ -36,8 +36,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The password should already be hashed from frontend
-	// Use constant-time comparison to prevent timing attacks
 	usernameMatch := subtle.ConstantTimeCompare([]byte(req.Username), []byte(h.config.Auth.AdminUsername)) == 1
 	passwordMatch := subtle.ConstantTimeCompare([]byte(req.Password), []byte(h.config.Auth.AdminPassword)) == 1
 
@@ -46,7 +44,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     h.config.Auth.CookieName,
 		Value:    "true",

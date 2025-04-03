@@ -77,7 +77,7 @@ export async function uploadFile(file: File): Promise<{ url: string }> {
   return request<{ url: string }>("/upload", {
     method: "POST",
     body: formData,
-    headers: {}, // Override default JSON content-type since we're sending FormData
+    headers: {},
   });
 }
 

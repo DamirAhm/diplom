@@ -6,6 +6,8 @@ node_modules
 .pnp
 .pnp.js
 
+packages/frontend/.next
+
 # next.js
 /.next/
 /out/
@@ -43,4 +45,3 @@ coverage
 .DS_Store
 
 *.db
-.next

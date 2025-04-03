@@ -25,18 +25,9 @@ import (
 
 // @title           Diplom Backend API
 // @version         1.0
-// @description     This is the API server for the Diplom project
-// @termsOfService  http://swagger.io/terms/
 
-// @contact.name   API Support
-// @contact.url    http://www.swagger.io/support
-// @contact.email  support@swagger.io
 
-// @license.name  Apache 2.0
-// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host      localhost:8082
-// @BasePath  /api
 
 type application struct {
 	server             *http.Server
@@ -62,16 +53,13 @@ func main() {
 
 	localizedStringRepo := repository.NewSQLiteLocalizedStringRepo(db.DB)
 	partnerRepo := repository.NewSQLitePartnerRepo(db.DB)
-	// First create an empty publicationRepo to resolve circular dependency
 	researcherRepo := repository.NewSQLiteResearcherRepo(db.DB, localizedStringRepo)
-	// Now initialize the publicationRepo with researcherRepo
 	publicationRepo := repository.NewSQLitePublicationRepo(db.DB, localizedStringRepo, researcherRepo)
 	projectRepo := repository.NewSQLiteProjectRepo(db.DB, localizedStringRepo)
 	trainingMaterialRepo := repository.NewSQLiteTrainingMaterialRepo(db.DB, localizedStringRepo)
 
 	router := mux.NewRouter()
 
-	// Apply logging middleware to capture all request/response details including errors
 	router.Use(middleware.Logger)
 
 	docs.SwaggerInfo.BasePath = "/api"
@@ -88,37 +76,31 @@ func main() {
 
 	api := router.PathPrefix("/api").Subrouter()
 
-	// Auth routes
 	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST", "OPTIONS")
 	api.HandleFunc("/publications/public", publicationsHandler.GetPublicPublications).Methods("GET")
 
-	// Protected routes subrouter
 	protected := api.PathPrefix("").Subrouter()
 	protected.Use(handlers.AuthMiddleware(cfg))
 
-	// Partners routes
 	api.HandleFunc("/partners", partnersHandler.GetAllPartners).Methods("GET")
 	api.HandleFunc("/partners/{id}", partnersHandler.GetPartnerByID).Methods("GET")
 	protected.HandleFunc("/partners", partnersHandler.CreatePartner).Methods("POST")
 	protected.HandleFunc("/partners/{id}", partnersHandler.UpdatePartner).Methods("PUT")
 	protected.HandleFunc("/partners/{id}", partnersHandler.DeletePartner).Methods("DELETE")
 
-	// Projects routes
 	api.HandleFunc("/projects", projectsHandler.GetProjects).Methods("GET")
 	api.HandleFunc("/projects/{id}", projectsHandler.GetProject).Methods("GET")
 	protected.HandleFunc("/projects", projectsHandler.CreateProject).Methods("POST")
 	protected.HandleFunc("/projects/{id}", projectsHandler.UpdateProject).Methods("PUT")
 	protected.HandleFunc("/projects/{id}", projectsHandler.DeleteProject).Methods("DELETE")
 
-	// Researchers routes
 	api.HandleFunc("/researchers", researchersHandler.GetResearchers).Methods("GET")
 	api.HandleFunc("/researchers/{id}", researchersHandler.GetResearcher).Methods("GET")
 	protected.HandleFunc("/researchers", researchersHandler.CreateResearcher).Methods("POST")
 	protected.HandleFunc("/researchers/{id}", researchersHandler.UpdateResearcher).Methods("PUT")
 	protected.HandleFunc("/researchers/{id}", researchersHandler.DeleteResearcher).Methods("DELETE")
 
-	// Publications routes
 	protected.HandleFunc("/publications", publicationsHandler.GetPublications).Methods("GET")
 	protected.HandleFunc("/publications", publicationsHandler.CreatePublication).Methods("POST")
 	protected.HandleFunc("/publications/{id}", publicationsHandler.GetPublication).Methods("GET")
@@ -127,17 +109,14 @@ func main() {
 	protected.HandleFunc("/publications/{id}/toggle-visibility", publicationsHandler.TogglePublicationVisibility).Methods("PUT")
 	protected.HandleFunc("/publications/{id}/authors", publicationsHandler.GetPublicationAuthors).Methods("GET")
 
-	// Training routes
 	api.HandleFunc("/training", trainingHandler.GetTrainingMaterials).Methods("GET")
 	api.HandleFunc("/training/{id}", trainingHandler.GetTrainingMaterial).Methods("GET")
 	protected.HandleFunc("/training", trainingHandler.CreateTrainingMaterial).Methods("POST")
 	protected.HandleFunc("/training/{id}", trainingHandler.UpdateTrainingMaterial).Methods("PUT")
 	protected.HandleFunc("/training/{id}", trainingHandler.DeleteTrainingMaterial).Methods("DELETE")
 
-	// File upload route
 	protected.HandleFunc("/upload", fileHandler.UploadFile).Methods("POST")
 
-	// Serve uploaded files
 	router.HandleFunc("/uploads/{filename}", fileHandler.ServeFile).Methods("GET")
 
 	c := cors.New(cors.Options{
@@ -159,16 +138,13 @@ func main() {
 			ctx,
 		)
 
-		// Создаем репозиторий GoogleScholar для скачивания публикаций
 		googleScholarRepo := repository.NewGoogleScholar(researcherRepo, publicationRepo)
 		log.Println("Initializing Google Scholar repository")
 
-		// При необходимости настраиваем кеширование
 		googleScholarRepo.EnableCache()
 		googleScholarRepo.SetCacheDuration(24 * time.Hour)
 		googleScholarRepo.SetCacheDir("./cache/google_scholar")
 
-		// Создаем источник с репозиторием
 		publicationCrawler.AddSource(cron.NewGoogleScholarSourceWithRepo(googleScholarRepo))
 		log.Println("Added Google Scholar source with repository to the crawler")
 	}

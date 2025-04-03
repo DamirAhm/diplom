@@ -120,7 +120,6 @@ func (r *SQLiteResearcherRepo) GetByID(id int) (*models.Researcher, error) {
 		researcher.Publications = publications
 	}
 
-	// Calculate total citations
 	totalCitations, err := r.CalculateTotalCitations(id)
 	if err != nil {
 		return nil, err
@@ -186,14 +185,12 @@ func (r *SQLiteResearcherRepo) GetByIDs(ids []int) ([]models.Researcher, error) 
 		}
 		researcher.Position = *position
 
-		// Get publications
 		publications, err := r.GetResearcherPublications(researcher.ID)
 		if err != nil {
 			return nil, err
 		}
 		researcher.Publications = publications
 
-		// Calculate total citations
 		totalCitations, err := r.CalculateTotalCitations(researcher.ID)
 		if err != nil {
 			return nil, err
@@ -259,7 +256,6 @@ func (r *SQLiteResearcherRepo) GetAll() ([]models.Researcher, error) {
 		}
 		researcher.Publications = publications
 
-		// Calculate total citations
 		totalCitations, err := r.CalculateTotalCitations(researcher.ID)
 		if err != nil {
 			return nil, err
@@ -354,7 +350,6 @@ func (r *SQLiteResearcherRepo) RemovePublication(researcherID int, publicationID
 	return err
 }
 
-// GetResearcherPublications returns all publications associated with a researcher
 func (r *SQLiteResearcherRepo) GetResearcherPublications(researcherID int) ([]models.Publication, error) {
 	rows, err := r.db.Query(`
 		SELECT p.id, p.title_id, p.link, p.journal, p.published_at, p.citations_count
@@ -383,7 +378,6 @@ func (r *SQLiteResearcherRepo) GetResearcherPublications(researcherID int) ([]mo
 		}
 		pub.Title = *title
 
-		// Get authors for this publication
 		authorRows, err := r.db.Query(`
 			SELECT r.id, fn.en, ln.en, fn.ru, ln.ru
 			FROM researchers r
@@ -415,7 +409,6 @@ func (r *SQLiteResearcherRepo) GetResearcherPublications(researcherID int) ([]mo
 		}
 		authorRows.Close()
 
-		// Get external authors
 		externalRows, err := r.db.Query(`
 			SELECT ls.en, ls.ru 
 			FROM publication_external_authors pea
@@ -449,7 +442,6 @@ func (r *SQLiteResearcherRepo) GetResearcherPublications(researcherID int) ([]mo
 }
 
 func (r *SQLiteResearcherRepo) FindByFullName(fullName string) (*models.Researcher, error) {
-	// Split the full name into parts
 	nameParts := strings.Split(fullName, " ")
 	if len(nameParts) != 2 {
 		return nil, fmt.Errorf("invalid full name format: %s", fullName)
@@ -457,8 +449,6 @@ func (r *SQLiteResearcherRepo) FindByFullName(fullName string) (*models.Research
 
 	firstName, lastName := nameParts[0], nameParts[1]
 
-	// Try each variant
-	// Query researchers by first name and last name
 	query := `
 		SELECT r.id
 		FROM researchers r

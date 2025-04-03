@@ -26,38 +26,31 @@ export function validateForm(schema: ValidationSchema): ValidationErrors {
     Object.entries(schema).forEach(([fieldName, field]) => {
         const { value, rules, errorMessage } = field;
 
-        // Required validation
         if (rules.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
             errors[fieldName] = errorMessage || 'This field is required';
             return;
         }
 
-        // Skip other validations if value is empty and not required
         if (!value && !rules.required) {
             return;
         }
 
-        // String validations (only apply to string values)
         if (typeof value === 'string') {
-            // Min length validation
             if (rules.minLength && value.length < rules.minLength) {
                 errors[fieldName] = errorMessage || `Minimum length is ${rules.minLength} characters`;
                 return;
             }
 
-            // Max length validation
             if (rules.maxLength && value.length > rules.maxLength) {
                 errors[fieldName] = errorMessage || `Maximum length is ${rules.maxLength} characters`;
                 return;
             }
 
-            // Pattern validation
             if (rules.pattern && !rules.pattern.test(value)) {
                 errors[fieldName] = errorMessage || 'Invalid format';
                 return;
             }
 
-            // URL validation
             if (rules.url) {
                 try {
                     new URL(value);
@@ -67,14 +60,12 @@ export function validateForm(schema: ValidationSchema): ValidationErrors {
                 }
             }
 
-            // Email validation
             if (rules.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
                 errors[fieldName] = errorMessage || 'Invalid email format';
                 return;
             }
         }
 
-        // Custom validation
         if (rules.custom && !rules.custom(value)) {
             errors[fieldName] = errorMessage || 'Invalid value';
         }

@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
 
-// Text Input Field
 interface TextFieldProps {
     name: string;
     label: string;
@@ -68,7 +67,6 @@ export function TextField({
     );
 }
 
-// Textarea Field
 interface TextareaFieldProps {
     name: string;
     label: string;
@@ -114,7 +112,6 @@ export function TextareaField({
     );
 }
 
-// Select Field
 interface SelectOption {
     value: string;
     label: string;
@@ -175,7 +172,6 @@ export function SelectField({
     );
 }
 
-// Checkbox Field
 interface CheckboxFieldProps {
     name: string;
     label: string;
@@ -212,7 +208,6 @@ export function CheckboxField({
     );
 }
 
-// Switch Field
 interface SwitchFieldProps {
     name: string;
     label: string;
@@ -249,7 +244,6 @@ export function SwitchField({
     );
 }
 
-// Multi-select Field (for select with multiple attribute)
 interface MultiSelectFieldProps {
     name: string;
     label: string;
@@ -304,7 +298,6 @@ export function MultiSelectField({
     );
 }
 
-// Localized Text Field (for multilingual content)
 interface LocalizedTextFieldProps {
     name: string;
     label: string;
@@ -343,7 +336,6 @@ export function LocalizedTextField({
     );
 }
 
-// File Upload Field
 interface FileUploadFieldProps {
     name: string;
     label: string;
@@ -402,7 +394,6 @@ export function FileUploadField({
     );
 }
 
-// External Authors Field
 interface ExternalAuthorsFieldProps {
     name: string;
     label: string;

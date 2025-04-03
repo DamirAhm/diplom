@@ -71,7 +71,6 @@ export default function PublicationsAdminPage({
     }
   };
 
-  // Helper function to get author names from author objects
   const getAuthorNames = (authors: Author[]) => {
     return authors
       ? authors

@@ -24,27 +24,22 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
-	// Run migrations
 	if err = migrateAddLastNameToResearchers(); err != nil {
 		return err
 	}
 
-	// Run publication fields migration
 	if err = migratePublicationFields(); err != nil {
 		return err
 	}
 
-	// Run migration to add position_id column if missing
 	if err = migrateAddPositionToResearchers(); err != nil {
 		return err
 	}
 
-	// Run publication external authors migration
 	if err = migratePublicationExternalAuthors(); err != nil {
 		return err
 	}
 
-	// Run migration to add visible column to publications
 	if err = migrateAddVisibleToPublications(); err != nil {
 		return err
 	}
@@ -159,27 +154,20 @@ func createTables() error {
 	return nil
 }
 
-// migrateAddLastNameToResearchers adds the last_name column to the researchers table if it doesn't exist
 func migrateAddLastNameToResearchers() error {
-	// This migration is no longer needed as we're using localized_strings for last_name
-	// We'll replace it with a migration to convert existing researchers to use localized strings
 
-	// Check if the name_id column exists
 	var count int
 	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('researchers') WHERE name='name_id'`).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	// If the column doesn't exist, migrate the data
 	if count == 0 {
-		// Create a transaction
 		tx, err := DB.Begin()
 		if err != nil {
 			return err
 		}
 
-		// Get all researchers
 		rows, err := tx.Query(`SELECT id, name, last_name FROM researchers`)
 		if err != nil {
 			tx.Rollback()
@@ -187,7 +175,6 @@ func migrateAddLastNameToResearchers() error {
 		}
 		defer rows.Close()
 
-		// For each researcher, create localized strings for name and last_name
 		for rows.Next() {
 			var id int
 			var name, lastName string
@@ -196,7 +183,6 @@ func migrateAddLastNameToResearchers() error {
 				return err
 			}
 
-			// Create localized string for name
 			nameRes, err := tx.Exec(`INSERT INTO localized_strings (en, ru) VALUES (?, ?)`, name, name)
 			if err != nil {
 				tx.Rollback()
@@ -208,7 +194,6 @@ func migrateAddLastNameToResearchers() error {
 				return err
 			}
 
-			// Create localized string for last_name
 			lastNameRes, err := tx.Exec(`INSERT INTO localized_strings (en, ru) VALUES (?, ?)`, lastName, lastName)
 			if err != nil {
 				tx.Rollback()
@@ -220,7 +205,6 @@ func migrateAddLastNameToResearchers() error {
 				return err
 			}
 
-			// Update the researcher
 			_, err = tx.Exec(`UPDATE researchers SET name_id = ?, last_name_id = ? WHERE id = ?`, nameID, lastNameID, id)
 			if err != nil {
 				tx.Rollback()
@@ -228,7 +212,6 @@ func migrateAddLastNameToResearchers() error {
 			}
 		}
 
-		// Add the new columns
 		_, err = tx.Exec(`ALTER TABLE researchers ADD COLUMN name_id INTEGER REFERENCES localized_strings(id)`)
 		if err != nil {
 			tx.Rollback()
@@ -241,18 +224,15 @@ func migrateAddLastNameToResearchers() error {
 			return err
 		}
 
-		// Commit the transaction
 		if err := tx.Commit(); err != nil {
 			return err
 		}
 
-		// Create a new transaction for schema changes
 		tx, err = DB.Begin()
 		if err != nil {
 			return err
 		}
 
-		// Create a temporary table with the new schema
 		_, err = tx.Exec(`
 			CREATE TABLE researchers_new (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -277,7 +257,6 @@ func migrateAddLastNameToResearchers() error {
 			return err
 		}
 
-		// Copy data to the new table
 		_, err = tx.Exec(`
 			INSERT INTO researchers_new (id, name_id, last_name_id, position_id, photo, bio_id, research_gate, google_scholar, scopus, publons, orcid)
 			SELECT id, name_id, last_name_id, position_id, photo, bio_id, research_gate, google_scholar, scopus, publons, orcid FROM researchers
@@ -287,41 +266,34 @@ func migrateAddLastNameToResearchers() error {
 			return err
 		}
 
-		// Drop the old table
 		_, err = tx.Exec(`DROP TABLE researchers`)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 
-		// Rename the new table
 		_, err = tx.Exec(`ALTER TABLE researchers_new RENAME TO researchers`)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 
-		// Commit the transaction
 		if err := tx.Commit(); err != nil {
 			return err
 		}
 	}
 
-	// Check if the publication_authors table exists
 	err = DB.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='publication_authors'`).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	// If the table doesn't exist, migrate the data
 	if count == 0 {
-		// Create a transaction
 		tx, err := DB.Begin()
 		if err != nil {
 			return err
 		}
 
-		// Create the publication_authors table
 		_, err = tx.Exec(`
 			CREATE TABLE publication_authors (
 				publication_id INTEGER NOT NULL,
@@ -336,7 +308,6 @@ func migrateAddLastNameToResearchers() error {
 			return err
 		}
 
-		// Commit the transaction
 		if err := tx.Commit(); err != nil {
 			return err
 		}
@@ -345,24 +316,19 @@ func migrateAddLastNameToResearchers() error {
 	return nil
 }
 
-// migratePublicationFields converts year field to published_at and adds citations_count field
 func migratePublicationFields() error {
-	// Check if the published_at column exists
 	var count int
 	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('publications') WHERE name='published_at'`).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	// If published_at column doesn't exist, migrate the data
 	if count == 0 {
-		// Create a transaction
 		tx, err := DB.Begin()
 		if err != nil {
 			return err
 		}
 
-		// Check if the year column exists
 		var yearCount int
 		err = tx.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('publications') WHERE name='year'`).Scan(&yearCount)
 		if err != nil {
@@ -371,7 +337,6 @@ func migratePublicationFields() error {
 		}
 
 		if yearCount > 0 {
-			// Create a new publications table with the updated schema
 			_, err = tx.Exec(`
 				CREATE TABLE publications_new (
 					id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -388,7 +353,6 @@ func migratePublicationFields() error {
 				return err
 			}
 
-			// Copy data from old table to new table, converting year to published_at
 			_, err = tx.Exec(`
 				INSERT INTO publications_new (id, title_id, journal, published_at, citations_count, link)
 				SELECT id, title_id, journal, year || '-01-01', 0, link FROM publications
@@ -398,21 +362,18 @@ func migratePublicationFields() error {
 				return err
 			}
 
-			// Drop the old table
 			_, err = tx.Exec(`DROP TABLE publications`)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
 
-			// Rename the new table to the original table name
 			_, err = tx.Exec(`ALTER TABLE publications_new RENAME TO publications`)
 			if err != nil {
 				tx.Rollback()
 				return err
 			}
 		} else {
-			// If we don't have the year column, just add the new columns
 			_, err = tx.Exec(`ALTER TABLE publications ADD COLUMN published_at TEXT NOT NULL DEFAULT '2023-01-01'`)
 			if err != nil {
 				tx.Rollback()
@@ -426,7 +387,6 @@ func migratePublicationFields() error {
 			}
 		}
 
-		// Commit the transaction
 		if err := tx.Commit(); err != nil {
 			return err
 		}
@@ -435,24 +395,19 @@ func migratePublicationFields() error {
 	return nil
 }
 
-// migrateAddPositionToResearchers adds position_id column if it doesn't exist
 func migrateAddPositionToResearchers() error {
-	// Check if the position_id column exists
 	var count int
 	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('researchers') WHERE name='position_id'`).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	// If the position_id column doesn't exist, add it
 	if count == 0 {
-		// Create a transaction
 		tx, err := DB.Begin()
 		if err != nil {
 			return err
 		}
 
-		// Create a localized string for a default position
 		res, err := tx.Exec(`INSERT INTO localized_strings (en, ru) VALUES ('Researcher', 'Исследователь')`)
 		if err != nil {
 			tx.Rollback()
@@ -465,9 +420,6 @@ func migrateAddPositionToResearchers() error {
 			return err
 		}
 
-		// Add the position_id column with the default value
-		// SQLite doesn't support parameters in ALTER TABLE statements
-		// so we need to construct the query with the actual value
 		query := "ALTER TABLE researchers ADD COLUMN position_id INTEGER NOT NULL DEFAULT " +
 			strconv.FormatInt(defaultPositionID, 10) +
 			" REFERENCES localized_strings(id)"
@@ -477,37 +429,29 @@ func migrateAddPositionToResearchers() error {
 			return err
 		}
 
-		// Update all existing researchers to use the default position
 		_, err = tx.Exec("UPDATE researchers SET position_id = ?", defaultPositionID)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 
-		// Commit the transaction
 		if err := tx.Commit(); err != nil {
 			return err
 		}
 	}
 
-	// Check if title_id column exists before trying to remove it
 	var titleIdExists int
 	err = DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('researchers') WHERE name='title_id'`).Scan(&titleIdExists)
 	if err != nil {
 		return err
 	}
 
-	// If title_id exists, we need to remove it
-	// SQLite doesn't support DROP COLUMN directly before version 3.35.0 (2021)
-	// We need to create a new table without the column and copy the data
 	if titleIdExists > 0 {
-		// Start a transaction
 		tx, err := DB.Begin()
 		if err != nil {
 			return err
 		}
 
-		// Create a new table without the title_id column
 		_, err = tx.Exec(`
 			CREATE TABLE researchers_new (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -532,7 +476,6 @@ func migrateAddPositionToResearchers() error {
 			return err
 		}
 
-		// Copy data from the old table to the new one, excluding title_id
 		_, err = tx.Exec(`
 			INSERT INTO researchers_new (id, name_id, last_name_id, position_id, photo, bio_id, 
 				research_gate, google_scholar, scopus, publons, orcid)
@@ -545,21 +488,18 @@ func migrateAddPositionToResearchers() error {
 			return err
 		}
 
-		// Drop the old table
 		_, err = tx.Exec(`DROP TABLE researchers`)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 
-		// Rename the new table to the original name
 		_, err = tx.Exec(`ALTER TABLE researchers_new RENAME TO researchers`)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 
-		// Commit the transaction
 		if err := tx.Commit(); err != nil {
 			return err
 		}
@@ -574,18 +514,14 @@ type NewAuthor struct {
 	nameID        int
 }
 
-// migratePublicationExternalAuthors updates the publication_external_authors table to use localized strings
 func migratePublicationExternalAuthors() error {
-	// Check if the name_id column exists
 	var count int
 	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('publication_external_authors') WHERE name='name_id'`).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	// If the name_id column doesn't exist, migrate the data
 	if count == 0 {
-		// Create a transaction
 		tx, err := DB.Begin()
 		if err != nil {
 			return err
@@ -669,16 +605,13 @@ func migratePublicationExternalAuthors() error {
 	return nil
 }
 
-// migrateAddVisibleToPublications adds the visible column to the publications table if it doesn't exist
 func migrateAddVisibleToPublications() error {
-	// Check if the visible column exists
 	var count int
 	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('publications') WHERE name='visible'`).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	// If the column doesn't exist, add it
 	if count == 0 {
 		_, err = DB.Exec(`ALTER TABLE publications ADD COLUMN visible BOOLEAN DEFAULT 0`)
 		if err != nil {

@@ -29,7 +29,6 @@ interface NeuronDynamicsState {
 }
 
 export const useNeuronDynamicsStore = create<NeuronDynamicsState>((set, get) => {
-    // Helper function to run simulation
     const runSimulation = () => {
         const state = get()
         const result = simulateNeuron(
