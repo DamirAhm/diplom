@@ -36,6 +36,26 @@
       "static/chunks/main-app.js",
       "static/chunks/app/[lang]/publications/loading.js"
     ],
+    "/[lang]/projects/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/projects/page.js"
+    ],
+    "/[lang]/projects/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/projects/loading.js"
+    ],
+    "/[lang]/projects/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/projects/[id]/page.js"
+    ],
+    "/[lang]/projects/[id]/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/projects/[id]/loading.js"
+    ],
     "/[lang]/researchers/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -46,15 +66,32 @@
       "static/chunks/main-app.js",
       "static/chunks/app/[lang]/researchers/loading.js"
     ],
-    "/[lang]/researchers/[id]/page": [
+    "/[lang]/sandbox/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/[lang]/researchers/[id]/page.js"
+      "static/chunks/app/[lang]/sandbox/page.js"
     ],
-    "/[lang]/researchers/[id]/loading": [
+    "/[lang]/sandbox/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/[lang]/researchers/[id]/loading.js"
+      "static/chunks/app/[lang]/sandbox/layout.js"
+    ],
+    "/[lang]/partners/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/[lang]/partners/page.css",
+      "static/chunks/app/[lang]/partners/page.js"
+    ],
+    "/[lang]/partners/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/partners/loading.js"
+    ],
+    "/[lang]/training/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/[lang]/training/page.css",
+      "static/chunks/app/[lang]/training/page.js"
     ],
     "/[lang]/admin/page": [
       "static/chunks/webpack.js",
@@ -91,6 +128,21 @@
       "static/chunks/main-app.js",
       "static/chunks/app/[lang]/admin/researchers/[id]/page.js"
     ],
+    "/[lang]/admin/projects/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/projects/page.js"
+    ],
+    "/[lang]/admin/partners/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/partners/page.js"
+    ],
+    "/[lang]/admin/projects/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/projects/[id]/page.js"
+    ],
     "/[lang]/admin/publications/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -100,6 +152,16 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/[lang]/admin/publications/[id]/page.js"
+    ],
+    "/[lang]/admin/training/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/training/page.js"
+    ],
+    "/[lang]/admin/training/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/training/[id]/page.js"
     ]
   }
 }

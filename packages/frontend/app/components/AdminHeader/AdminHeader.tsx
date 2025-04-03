@@ -89,7 +89,7 @@ export const AdminHeader = ({
               );
             })}
           </nav>
-          {isAuthorized && (
+          {isAuthorized ? (
             <Button
               variant="ghost"
               size="sm"
@@ -99,7 +99,7 @@ export const AdminHeader = ({
               <LogOut className="mr-2 h-4 w-4" />
               {dictionary.admin.logout}
             </Button>
-          )}
+          ) : <div />}
         </div>
       </div>
     </header>

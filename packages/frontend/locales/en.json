@@ -1,11 +1,17 @@
 {
   "home": {
-    "title": "Welcome to ETU CAD Laboratory",
-    "description": "Explore our research, publications, and resources in Computer-Aided Design.",
+    "title": "Youth Research Institute & CAD Department",
+    "description": "The Youth Research Institute is a scientific Department at Saint Petersburg State Electrotechnical University \"LETI\". The Institute consists of five laboratories and two workshops:\n\nLaboratories:\n- Laboratory of Advanced Robotics and Computer Creativity\n- Laboratory of Nonlinear Science and Applied Mathematics\n- Laboratory of Next-Step Electronics and Sensors\n- Laboratory of Unmanned Vehicles and Navigation\n\nWorkshops:\n- Additive technology & machinery workshop\n- Rapid prototyping workshop\n\nKey research fields: chaos theory & applications, numerical simulation, cryptography, sensors, robotics, unmanned vehicles, advanced AI, memristors, nonlinear dynamics & analysis, finite-element analysis, 3D printing, signal processing, and communication systems.",
     "researchersDescription": "Meet our team of expert researchers and their work.",
-    "sandboxDescription": "Experiment with our interactive CAD tools and simulations.",
+    "sandboxDescription": "Experiment with our interactive tools and simulations.",
     "partnersDescription": "Discover our collaborations with industry leaders and academic institutions.",
-    "trainingDescription": "Access educational materials and courses in CAD technologies."
+    "trainingDescription": "Access educational materials and courses in advanced technologies.",
+    "sectionTitles": {
+      "labsAndWorkshops": "Laboratories and Workshops",
+      "laboratories": "Laboratories",
+      "workshops": "Workshops",
+      "researchFields": "Key Research Fields"
+    }
   },
   "navigation": {
     "projects": "Projects",

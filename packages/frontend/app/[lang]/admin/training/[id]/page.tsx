@@ -212,8 +212,8 @@ export default function TrainingFormPage({
               required
             />
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-4">
+            <div className="space-y-2 mt-4">
+              <div className="flex flex-col justify-center gap-4">
                 <div>
                   <Button
                     type="button"

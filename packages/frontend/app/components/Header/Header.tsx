@@ -49,9 +49,9 @@ export default function Header({ lang }: HeaderProps) {
                 <li key={item.key}>
                   <Link
                     href={`/${lang}/${item.key}`}
-                    className={`hover:text-accent-foreground dark:hover:text-accent-foreground transition-colors ${pathname === `/${lang}/${item.key}` || pathname.startsWith(`/${lang}/${item.key}/`)
-                      ? "text-accent-foreground dark:text-accent-foreground font-semibold"
-                      : "text-white dark:text-accent-foreground"
+                    className={`hover:text-indigo-200 hover:dark:text-indigo-400 transition-colors ${pathname === `/${lang}/${item.key}` || pathname.startsWith(`/${lang}/${item.key}/`)
+                      ? "text-indigo-200 dark:text-indigo-400 font-semibold"
+                      : "text-white"
                       }`}
                   >
                     {item.label}
@@ -68,14 +68,14 @@ export default function Header({ lang }: HeaderProps) {
       </div>
       {isMenuOpen && (
         <div className="md:hidden">
-          <nav className="px-4 pt-2 pb-4 bg-blue-500 dark:bg-gray-700">
+          <nav className="px-4 pt-2 pb-4 bg-indigo-500 dark:bg-gray-700">
             <ul className="space-y-2">
               {menuItems.map((item) => (
                 <li key={item.key}>
                   <Link
                     href={`/${lang}/${item.key}`}
-                    className={`block py-2 hover:text-blue-200 dark:hover:text-blue-400 transition-colors ${pathname === `/${lang}/${item.key}` || pathname.startsWith(`/${lang}/${item.key}/`)
-                      ? "text-blue-200 dark:text-blue-400 font-semibold"
+                    className={`block py-2 hover:text-indigo-600 hover:dark:text-indigo-400 transition-colors ${pathname === `/${lang}/${item.key}` || pathname.startsWith(`/${lang}/${item.key}/`)
+                      ? "text-indigo-600 dark:text-indigo-400 font-semibold"
                       : "text-white dark:text-gray-300"
                       }`}
                     onClick={toggleMenu}

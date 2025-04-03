@@ -1,4 +1,4 @@
-import { Locale, Publication } from "../../types";
+import { Locale } from "../../types";
 import { getDictionary } from "../../dictionaries";
 import { PublicationsTable } from "./PublicationsTable";
 import { api } from "@/lib/api";

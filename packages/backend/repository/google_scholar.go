@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 	"unicode"
@@ -159,17 +158,7 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 		log.Println(err)
 	}
 
-	if strings.Contains(url, "user=x0YUMPkAAAAJ") {
-		_, filename, _, _ := runtime.Caller(0)
-		fileDir := filepath.Dir(filename)
-		htmlPath := filepath.Join(fileDir, "..", "html", "butusov.html")
-
-		contentBytes, err := os.ReadFile(htmlPath)
-		if err != nil {
-			return nil, fmt.Errorf("error reading local HTML file: %w", err)
-		}
-		content = string(contentBytes)
-	} else if cachedResp != nil {
+	if cachedResp != nil {
 		content = cachedResp.Content
 	} else {
 		client := &http.Client{
