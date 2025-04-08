@@ -31,6 +31,7 @@
     "goHome": "Go to Homepage"
   },
   "common": {
+    "laboratoryName": "Youth Research Institute ETU",
     "learnMore": "Learn More",
     "loading": "Loading...",
     "saving": "Saving...",
@@ -268,7 +269,8 @@
     "selectAuthors": "Select Authors",
     "totalRecords": "Total Records",
     "newPublications": "New Publications",
-    "profilesSection": "Social & Academic Profiles"
+    "profilesSection": "Social & Academic Profiles",
+    "noPublicationsFound": "No publications found"
   },
   "validation": {
     "required": "This field is required",

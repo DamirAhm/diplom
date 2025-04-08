@@ -1,8 +1,4 @@
 {
-  "/[lang]/page": "app/[lang]/page.js",
-  "/[lang]/admin/training/page": "app/[lang]/admin/training/page.js",
-  "/[lang]/admin/training/[id]/page": "app/[lang]/admin/training/[id]/page.js",
-  "/[lang]/admin/page": "app/[lang]/admin/page.js",
-  "/[lang]/admin/researchers/page": "app/[lang]/admin/researchers/page.js",
-  "/[lang]/admin/publications/page": "app/[lang]/admin/publications/page.js"
+  "/[lang]/admin/projects/[id]/page": "app/[lang]/admin/projects/[id]/page.js",
+  "/[lang]/admin/projects/page": "app/[lang]/admin/projects/page.js"
 }

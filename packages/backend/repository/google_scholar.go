@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -27,6 +28,7 @@ type GoogleScholar struct {
 	cacheEnabled    bool
 	cacheDuration   time.Duration
 	cacheDir        string
+	requestLimit    int
 }
 
 type CachedResponse struct {
@@ -38,12 +40,20 @@ type CachedResponse struct {
 }
 
 func NewGoogleScholar(researcherRepo ResearcherRepo, publicationRepo PublicationRepo) *GoogleScholar {
+	requestLimit := 10
+	if limitStr := os.Getenv("GOOGLE_SCHOLAR_REQUEST_LIMIT"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			requestLimit = limit
+		}
+	}
+
 	return &GoogleScholar{
 		researcherRepo:  researcherRepo,
 		publicationRepo: publicationRepo,
 		cacheEnabled:    true,
 		cacheDuration:   24 * time.Hour,
 		cacheDir:        "./cache/google_scholar",
+		requestLimit:    requestLimit,
 	}
 }
 
@@ -61,6 +71,12 @@ func (g *GoogleScholar) SetCacheDuration(duration time.Duration) {
 
 func (g *GoogleScholar) SetCacheDir(dir string) {
 	g.cacheDir = dir
+}
+
+func (g *GoogleScholar) SetRequestLimit(limit int) {
+	if limit > 0 {
+		g.requestLimit = limit
+	}
 }
 
 func (g *GoogleScholar) getCacheFilePath(url string) string {
@@ -140,6 +156,8 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 		return nil, errors.New("invalid Google Scholar URL format")
 	}
 
+	log.Printf("Scraping Google Scholar with request limit: %d", g.requestLimit)
+
 	var content string
 	var resp *http.Response
 
@@ -191,8 +209,13 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 
 	var publications []models.Publication
 	var processingErrors []error
+	requestCount := 0
 
 	doc.Find("#gsc_a_b .gsc_a_tr").Each(func(i int, s *goquery.Selection) {
+		if requestCount >= g.requestLimit {
+			return
+		}
+
 		titleElement := s.Find(".gsc_a_t a")
 		title := titleElement.Text()
 		pubURL, _ := titleElement.Attr("href")
@@ -216,9 +239,11 @@ func (g *GoogleScholar) Scrape(url string) ([]models.Publication, error) {
 		}
 
 		publications = append(publications, *detailedPub)
+		requestCount++
 	})
 
 	if len(publications) > 0 {
+		log.Printf("Fetched %d publications from Google Scholar (made %d requests)", len(publications), requestCount)
 		return publications, nil
 	}
 

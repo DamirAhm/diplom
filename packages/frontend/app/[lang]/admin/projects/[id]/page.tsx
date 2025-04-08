@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { TextField, LocalizedTextField } from "@/components/ui/form-fields";
 import * as z from "zod";
+import { AutoComplete } from "@/components/ui/autocomplete";
 
 const projectSchema = z.object({
   title: z.object({
@@ -219,7 +220,7 @@ export default function ProjectFormPage({
                       <span>{pub.title[lang]}</span>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="destructive"
                         size="icon"
                         onClick={() => handleRemovePublication(pub.id)}
                       >
@@ -228,23 +229,21 @@ export default function ProjectFormPage({
                     </div>
                   ))}
                 </div>
-                <select
-                  className="mt-2 w-full p-2 border rounded"
-                  onChange={(e) => handleAddPublication(Number(e.target.value))}
-                  value=""
-                >
-                  <option value="">{dictionary.admin.addPublication}</option>
-                  {publications
-                    .filter(
-                      (p) =>
-                        !projectPublications.some((proj) => proj.id === p.id)
-                    )
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.title[lang]}
-                      </option>
-                    ))}
-                </select>
+                <div className="mt-2">
+                  <AutoComplete
+                    options={publications
+                      .filter((p) => !projectPublications.some((proj) => proj.id === p.id))
+                      .map((p) => ({
+                        value: p.id.toString(),
+                        label: p.title[lang],
+                      }))}
+                    placeholder={dictionary.admin.searchPublications}
+                    emptyMessage={dictionary.admin.noPublicationsFound}
+                    onValueChange={(option) => {
+                      handleAddPublication(parseInt(option.value));
+                    }}
+                  />
+                </div>
               </div>
             </div>
 

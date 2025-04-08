@@ -34,7 +34,7 @@ export default function Header({ lang }: HeaderProps) {
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           <Link href={`/${lang}`} className="text-2xl font-bold">
-            ETU CAD Laboratory
+            {dictionary.common.laboratoryName}
           </Link>
           <div className="flex items-center space-x-4 md:hidden">
             <ThemeToggle />

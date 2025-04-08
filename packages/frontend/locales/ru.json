@@ -31,6 +31,7 @@
     "goHome": "Перейти на главную страницу"
   },
   "common": {
+    "laboratoryName": "Молодежный НИИ ЛЭТИ",
     "learnMore": "Узнать больше",
     "loading": "Загрузка...",
     "saving": "Сохранение...",
@@ -278,7 +279,9 @@
     "selectAuthors": "Выбрать авторов",
     "totalRecords": "Всего записей",
     "newPublications": "Новые публикации",
-    "profilesSection": "Социальные и научные профили"
+    "profilesSection": "Социальные и научные профили",
+    "searchPublications": "Поиск публикаций...",
+    "noPublicationsFound": "Публикации не найдены"
   },
   "validation": {
     "required": "Обязательное поле",
