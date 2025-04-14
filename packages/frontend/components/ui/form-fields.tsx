@@ -330,6 +330,7 @@ export function LocalizedTextField({
                         multiline={multiline}
                         lang={lang}
                     />
+                    <FormMessage getter={(err) => err?.message || (err as any)?.en?.message || (err as any)?.ru?.message} />
                 </FormItem>
             )}
         />

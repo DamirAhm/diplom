@@ -10,11 +10,12 @@
 
 @layer components {
   :root {
-    --primary: 216 91% 22%;
+    --title: 243 75% 59%;
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 100%;
     --secondary-foreground: 0 0% 100%;
-    --accent: 221 76% 48%;
+    --accent: 243 75% 59%;
     --accent-foreground: 0 0% 100%;
   }
 
@@ -28,7 +29,7 @@
   }
 
   .btn-primary {
-    @apply bg-primary text-white hover:bg-blue-700 dark:bg-blue-500 dark:text-gray-100 dark:hover:bg-primary;
+    @apply bg-primary text-white hover:bg-indigo-700 dark:bg-blue-500 dark:text-gray-100 dark:hover:bg-primary;
   }
 
   .btn-secondary {

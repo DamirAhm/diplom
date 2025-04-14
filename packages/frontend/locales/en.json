@@ -99,17 +99,20 @@
     "projectVideos": "Project Videos"
   },
   "publications": {
-    "title": "Publication Activity",
+    "title": "Researchers' Publications",
     "sortBy": "Sort by:",
     "year": "Year",
-    "filterByYear": "Filter by year:",
+    "filterByYear": "Year:",
     "allYears": "All years",
     "viewPublication": "View Publication",
     "authors": "Authors",
     "externalAuthors": "External Authors",
     "journal": "Journal",
     "citations": "Citations",
-    "publishedAt": "Publication Date"
+    "publishedAt": "Publication Date",
+    "filterByAuthor": "Author:",
+    "allAuthors": "All authors",
+    "searchPlaceholder": "Search by title..."
   },
   "researchers": {
     "title": "Principal Researchers",

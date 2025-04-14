@@ -1,29 +1,9 @@
 {
   "pages": {
-    "/[lang]/admin/projects/[id]/page": [
+    "/[lang]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/[lang]/admin/projects/[id]/page.js"
-    ],
-    "/[lang]/admin/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/[lang]/admin/layout.js"
-    ],
-    "/[lang]/admin/error": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/[lang]/admin/error.js"
-    ],
-    "/[lang]/admin/loading": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/[lang]/admin/loading.js"
-    ],
-    "/[lang]/admin/not-found": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/[lang]/admin/not-found.js"
+      "static/chunks/app/[lang]/page.js"
     ],
     "/[lang]/layout": [
       "static/chunks/webpack.js",
@@ -46,10 +26,90 @@
       "static/chunks/main-app.js",
       "static/chunks/app/not-found.js"
     ],
-    "/[lang]/admin/projects/page": [
+    "/[lang]/publications/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/[lang]/admin/projects/page.js"
+      "static/chunks/app/[lang]/publications/page.js"
+    ],
+    "/[lang]/publications/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/publications/loading.js"
+    ],
+    "/[lang]/projects/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/projects/page.js"
+    ],
+    "/[lang]/projects/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/projects/loading.js"
+    ],
+    "/[lang]/researchers/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/researchers/page.js"
+    ],
+    "/[lang]/researchers/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/researchers/loading.js"
+    ],
+    "/[lang]/researchers/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/researchers/[id]/page.js"
+    ],
+    "/[lang]/researchers/[id]/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/researchers/[id]/loading.js"
+    ],
+    "/[lang]/admin/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/page.js"
+    ],
+    "/[lang]/admin/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/layout.js"
+    ],
+    "/[lang]/admin/error": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/error.js"
+    ],
+    "/[lang]/admin/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/loading.js"
+    ],
+    "/[lang]/admin/not-found": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/not-found.js"
+    ],
+    "/[lang]/admin/researchers/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/researchers/page.js"
+    ],
+    "/[lang]/admin/researchers/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/researchers/[id]/page.js"
+    ],
+    "/[lang]/sandbox/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/sandbox/page.js"
+    ],
+    "/[lang]/sandbox/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/sandbox/layout.js"
     ]
   }
 }

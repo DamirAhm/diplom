@@ -11,10 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { ResearcherFormData, researcherSchema } from "../schema";
 import { api, uploadFile } from "@/lib/api";
-import { Form } from "@/components/ui/form";
+import { Form, FormMessage } from "@/components/ui/form";
 import { LocalizedTextField } from "@/components/ui/form-fields";
 import { ProfileDialog } from "@/app/components/ui/profile-dialog";
 import { ImageWithFallback } from "@/app/components/ImageWithFallback";
+import { FormField, FormItem } from "@/components/ui/form";
 
 type ProfileKey = 'researchgate' | 'googleScholar' | 'scopus' | 'publons' | 'orcid';
 
@@ -42,6 +43,7 @@ export default function ResearcherFormPage({
   const form = useForm<ResearcherFormData>({
     resolver: zodResolver(researcherSchema),
     defaultValues: emptyForm,
+    mode: "onBlur",
   });
 
   const { setValue, watch } = form;
@@ -131,9 +133,6 @@ export default function ResearcherFormPage({
     );
   }
 
-  console.log(form.formState.errors);
-
-
   return (
     <div>
       <div className="mb-6">
@@ -154,6 +153,12 @@ export default function ResearcherFormPage({
 
       <Form {...form}>
         <form onSubmit={onSubmit} className="space-y-8">
+          {form.formState.errors.root && (
+            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              {form.formState.errors.root.message}
+            </div>
+          )}
+
           <div className="space-y-4">
             <LocalizedTextField
               name="name"
@@ -214,6 +219,15 @@ export default function ResearcherFormPage({
                   />
                 </div>
               )}
+              <FormField
+                control={form.control}
+                name="photo"
+                render={() => (
+                  <FormItem>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <div className="space-y-2">
@@ -250,6 +264,15 @@ export default function ResearcherFormPage({
                   </div>
                 ))}
               </div>
+              <FormField
+                control={form.control}
+                name="profiles"
+                render={() => (
+                  <FormItem>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </div>
 

@@ -14,7 +14,7 @@ const PublicationsPage = async ({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center">
+      <h1 className="text-3xl text-indigo-700 dark:text-indigo-400 font-bold mb-8 text-center">
         {dictionary.publications.title}
       </h1>
       <PublicationsTable publications={publications} lang={lang} />

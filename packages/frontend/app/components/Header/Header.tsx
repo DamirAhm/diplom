@@ -74,8 +74,8 @@ export default function Header({ lang }: HeaderProps) {
                 <li key={item.key}>
                   <Link
                     href={`/${lang}/${item.key}`}
-                    className={`block py-2 hover:text-indigo-600 hover:dark:text-indigo-400 transition-colors ${pathname === `/${lang}/${item.key}` || pathname.startsWith(`/${lang}/${item.key}/`)
-                      ? "text-indigo-600 dark:text-indigo-400 font-semibold"
+                    className={`block py-2 hover:text-indigo-200 hover:dark:text-indigo-400 transition-colors ${pathname === `/${lang}/${item.key}` || pathname.startsWith(`/${lang}/${item.key}/`)
+                      ? "text-indigo-200 dark:text-indigo-400 font-semibold"
                       : "text-white dark:text-gray-300"
                       }`}
                     onClick={toggleMenu}

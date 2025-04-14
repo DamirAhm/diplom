@@ -20,7 +20,7 @@ export default function LanguageSelector({ currentLang }: LanguageSelectorProps)
     <select
       value={currentLang}
       onChange={(e) => handleLanguageChange(e.target.value)}
-      className="bg-blue-700 dark:bg-gray-700 text-white px-2 py-1 rounded hover:bg-blue-800 dark:hover:bg-gray-600 transition-colors"
+      className="bg-indigo-700 dark:bg-gray-700 text-white px-2 py-1 rounded hover:bg-blue-800 dark:hover:bg-gray-600 transition-colors"
     >
       <option value="en">En</option>
       <option value="ru">Ру</option>

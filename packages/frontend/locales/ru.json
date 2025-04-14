@@ -102,17 +102,20 @@
     "projectVideos": "Видео проекта"
   },
   "publications": {
-    "title": "Публикационная активность",
+    "title": "Публикации исследователей лаборатории",
     "sortBy": "Сортировать по:",
     "year": "Дата публикации",
-    "filterByYear": "Фильтр по дате:",
-    "allYears": "Все даты",
+    "filterByYear": "Год:",
+    "allYears": "Все года",
     "viewPublication": "Просмотреть публикацию",
     "authors": "Авторы",
     "externalAuthors": "Внешние авторы",
     "journal": "Журнал",
     "citations": "Цитирования",
-    "publishedAt": "Дата публикации"
+    "publishedAt": "Дата публикации",
+    "filterByAuthor": "Автор:",
+    "allAuthors": "Все авторы",
+    "searchPlaceholder": "Поиск по заголовку..."
   },
   "researchers": {
     "title": "Ведущие исследователи",
@@ -189,7 +192,7 @@
     "uploadError": "Не удалось загрузить файл",
     "fetchError": "Не удалось загрузить данные",
     "confirmDelete": "Вы уверены, что хотите удалить этот элемент?",
-    "name": "Название",
+    "name": "Имя",
     "lastName": "Фамилия",
     "title": "Заголовок",
     "position": "Должность",

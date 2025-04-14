@@ -1,12 +1,19 @@
 package repository
 
-import "github.com/damirahm/diplom/backend/models"
+import (
+	"database/sql"
+
+	"github.com/damirahm/diplom/backend/models"
+)
 
 type LocalizedStringRepo interface {
 	Create(ls models.LocalizedString) (int64, error)
+	CreateTx(tx *sql.Tx, ls models.LocalizedString) (int64, error)
 	Get(id int64) (*models.LocalizedString, error)
 	Update(id int64, ls models.LocalizedString) error
+	UpdateTx(tx *sql.Tx, id int64, ls models.LocalizedString) error
 	Delete(id int64) error
+	DeleteTx(tx *sql.Tx, id int64) error
 }
 
 type PartnerRepo interface {
