@@ -2,6 +2,7 @@ package cron
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"time"
@@ -36,24 +37,37 @@ func (gs *GoogleScholarSource) Name() string {
 	return "Google Scholar"
 }
 
-func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) ([]models.Publication, error) {
+func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) ([]models.Publication, []models.Publication, error) {
 	if researcher.Profiles.GoogleScholar == nil || *researcher.Profiles.GoogleScholar == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	scholarID := extractScholarID(*researcher.Profiles.GoogleScholar)
 	if scholarID == "" {
-		return nil, fmt.Errorf("invalid Google Scholar URL")
+		return nil, nil, fmt.Errorf("invalid Google Scholar URL")
 	}
 
-	url := constructURL(scholarID)
+	url := constructURL(scholarID, "pubdate")
 
-	publications, err := gs.googleScholar.Scrape(url)
+	publications, publicationsToUpdateByDate, err := gs.googleScholar.Scrape(url, []string{})
 	if err != nil {
-		return nil, fmt.Errorf("error scraping Google Scholar: %w", err)
+		log.Printf("error scraping Google Scholar: %w", err)
 	}
 
-	return publications, nil
+	url = constructURL(scholarID, "citations")
+
+	fetchedPublicationTitles := make([]string, 0, len(publications))
+
+	for _, publication := range publications {
+		fetchedPublicationTitles = append(fetchedPublicationTitles, publication.Title.En)
+	}
+
+	publications, publicationsToUpdateByCitations, err := gs.googleScholar.Scrape(url, fetchedPublicationTitles)
+	if err != nil {
+		log.Printf("error scraping Google Scholar: %w", err)
+	}
+
+	return publications, append(publicationsToUpdateByCitations, publicationsToUpdateByDate...), nil
 }
 
 func extractScholarID(url string) string {
@@ -67,7 +81,7 @@ func extractScholarID(url string) string {
 	return scholarID
 }
 
-func constructURL(scholarID string) string {
-	url := fmt.Sprintf("https://scholar.google.com/citations?user=%s&hl=en&view_op=list_works&sortby=pubdate", scholarID)
+func constructURL(scholarID string, sortBy string) string {
+	url := fmt.Sprintf("https://scholar.google.com/citations?user=%s&hl=en&view_op=list_works&sortby=%s", scholarID, sortBy)
 	return url
 }

@@ -22,7 +22,7 @@ type PublicationCrawler struct {
 
 type PublicationSource interface {
 	Name() string
-	FetchPublications(researcher models.Researcher) ([]models.Publication, error)
+	FetchPublications(researcher models.Researcher) ([]models.Publication, []models.Publication, error)
 }
 
 func NewPublicationCrawler(
@@ -71,7 +71,7 @@ func (pc *PublicationCrawler) crawlAllResearchers() {
 	successCount := 0
 	errorCount := 0
 	for _, researcher := range researchers {
-		if err := pc.crawlResearcher(researcher); err != nil {
+		if err := pc.CrawlResearcher(researcher); err != nil {
 			errorCount++
 		} else {
 			successCount++
@@ -81,7 +81,7 @@ func (pc *PublicationCrawler) crawlAllResearchers() {
 	pc.lastCrawlTime = time.Now()
 }
 
-func (pc *PublicationCrawler) crawlResearcher(researcher models.Researcher) error {
+func (pc *PublicationCrawler) CrawlResearcher(researcher models.Researcher) error {
 	if researcher.Profiles.GoogleScholar == nil || *researcher.Profiles.GoogleScholar == "" {
 		return nil
 	}
@@ -100,7 +100,7 @@ func (pc *PublicationCrawler) crawlResearcher(researcher models.Researcher) erro
 	totalNewPubs := 0
 
 	for _, source := range pc.sources {
-		publications, err := source.FetchPublications(researcher)
+		publications, publicationsToUpdate, err := source.FetchPublications(researcher)
 		if err != nil {
 			fmt.Println(err)
 
@@ -124,6 +124,10 @@ func (pc *PublicationCrawler) crawlResearcher(researcher models.Researcher) erro
 					}
 				}
 			}
+		}
+
+		for _, pub := range publicationsToUpdate {
+			pc.publicationRepo.Update(pub)
 		}
 
 		totalNewPubs += newPubCount

@@ -26,9 +26,6 @@ import (
 // @title           Diplom Backend API
 // @version         1.0
 
-
-
-
 type application struct {
 	server             *http.Server
 	db                 *sql.DB
@@ -58,6 +55,32 @@ func main() {
 	projectRepo := repository.NewSQLiteProjectRepo(db.DB, localizedStringRepo)
 	trainingMaterialRepo := repository.NewSQLiteTrainingMaterialRepo(db.DB, localizedStringRepo)
 
+	publicationCrawler := cron.NewPublicationCrawler(
+		db.DB,
+		researcherRepo,
+		publicationRepo,
+		cfg.Cron.CrawlInterval,
+		ctx,
+	)
+
+	googleScholarRepo := repository.NewGoogleScholar(researcherRepo, publicationRepo)
+	log.Println("Initializing Google Scholar repository")
+
+	googleScholarRepo.EnableCache()
+	googleScholarRepo.SetCacheDuration(24 * time.Hour)
+	googleScholarRepo.SetCacheDir("./cache/google_scholar")
+
+	publicationCrawler.AddSource(cron.NewGoogleScholarSourceWithRepo(googleScholarRepo))
+	log.Println("Added Google Scholar source with repository to the crawler")
+
+	partnersHandler := handlers.NewPartnerHandler(partnerRepo)
+	projectsHandler := handlers.NewProjectHandler(projectRepo)
+	researchersHandler := handlers.NewResearcherHandler(researcherRepo, publicationCrawler) // Now publicationCrawler is defined
+	publicationsHandler := handlers.NewPublicationHandler(publicationRepo)
+	trainingHandler := handlers.NewTrainingHandler(trainingMaterialRepo)
+	authHandler := handlers.NewAuthHandler(cfg)
+	fileHandler := handlers.NewFileHandler()
+
 	router := mux.NewRouter()
 
 	router.Use(middleware.Logger)
@@ -65,14 +88,6 @@ func main() {
 	docs.SwaggerInfo.BasePath = "/api"
 	docs.SwaggerInfo.Host = cfg.Server.Host + ":" + cfg.Server.Port
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
-
-	partnersHandler := handlers.NewPartnerHandler(partnerRepo)
-	projectsHandler := handlers.NewProjectHandler(projectRepo)
-	researchersHandler := handlers.NewResearcherHandler(researcherRepo)
-	publicationsHandler := handlers.NewPublicationHandler(publicationRepo)
-	trainingHandler := handlers.NewTrainingHandler(trainingMaterialRepo)
-	authHandler := handlers.NewAuthHandler(cfg)
-	fileHandler := handlers.NewFileHandler()
 
 	api := router.PathPrefix("/api").Subrouter()
 
@@ -128,27 +143,6 @@ func main() {
 		MaxAge:           86400,
 	})
 
-	var publicationCrawler *cron.PublicationCrawler
-	if cfg.Cron.Enabled {
-		publicationCrawler = cron.NewPublicationCrawler(
-			db.DB,
-			researcherRepo,
-			publicationRepo,
-			cfg.Cron.CrawlInterval,
-			ctx,
-		)
-
-		googleScholarRepo := repository.NewGoogleScholar(researcherRepo, publicationRepo)
-		log.Println("Initializing Google Scholar repository")
-
-		googleScholarRepo.EnableCache()
-		googleScholarRepo.SetCacheDuration(24 * time.Hour)
-		googleScholarRepo.SetCacheDir("./cache/google_scholar")
-
-		publicationCrawler.AddSource(cron.NewGoogleScholarSourceWithRepo(googleScholarRepo))
-		log.Println("Added Google Scholar source with repository to the crawler")
-	}
-
 	app := &application{
 		server: &http.Server{
 			Addr:         ":" + cfg.Server.Port,
@@ -165,6 +159,8 @@ func main() {
 	if cfg.Cron.Enabled && publicationCrawler != nil {
 		go publicationCrawler.Start()
 		log.Printf("Publication crawler started with interval: %v", cfg.Cron.CrawlInterval)
+	} else if cfg.Cron.Enabled && publicationCrawler == nil {
+		log.Println("Cron is enabled but publication crawler failed to initialize.")
 	}
 
 	go func() {

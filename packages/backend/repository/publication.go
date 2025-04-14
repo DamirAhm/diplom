@@ -660,22 +660,39 @@ func (r *SQLitePublicationRepo) GetByIDs(ids []int) ([]models.Publication, error
 	return publications, nil
 }
 
-func (r *SQLitePublicationRepo) GetByTitle(title string) (int, error) {
+func (r *SQLitePublicationRepo) GetByTitle(title string) (*models.Publication, error) {
 	query := `
-		SELECT p.id
+		SELECT p.id, ls.en, ls.ru, p.link, p.journal, p.published_at, p.citations_count, p.visible
 		FROM publications p
 		JOIN localized_strings ls ON p.title_id = ls.id
 		WHERE ls.en = ? OR ls.ru = ?
 	`
 
 	var pubID int
-	err := r.db.QueryRow(query, title, title).Scan(&pubID)
+	var titleEn, titleRu string
+	var link string
+	var journal string
+	var publishedAt string
+	var citationsCount int
+	var visible bool
+	err := r.db.QueryRow(query, title, title).Scan(&pubID, &titleEn, &titleRu, &link, &journal, &publishedAt, &citationsCount, &visible)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return -1, nil
+			return nil, nil
 		}
-		return -1, err
+		return nil, err
 	}
 
-	return pubID, nil
+	return &models.Publication{
+		ID: pubID,
+		Title: models.LocalizedString{
+			En: titleEn,
+			Ru: titleRu,
+		},
+		Link:           link,
+		Journal:        journal,
+		PublishedAt:    publishedAt,
+		CitationsCount: citationsCount,
+		Visible:        visible,
+	}, nil
 }

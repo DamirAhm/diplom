@@ -29,7 +29,7 @@ type PublicationRepo interface {
 	GetByID(id int) (*models.Publication, error)
 	GetByIDs(ids []int) ([]models.Publication, error)
 	GetAll() ([]models.Publication, error)
-	GetByTitle(title string) (int, error)
+	GetByTitle(title string) (*models.Publication, error)
 	Update(pub models.Publication) error
 	Delete(id int) error
 	GetAuthors(id int) ([]models.Researcher, error)

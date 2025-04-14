@@ -5,17 +5,22 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/damirahm/diplom/backend/cron"
 	"github.com/damirahm/diplom/backend/models"
 	"github.com/damirahm/diplom/backend/repository"
 	"github.com/gorilla/mux"
 )
 
 type ResearcherHandler struct {
-	researcherRepo repository.ResearcherRepo
+	researcherRepo     repository.ResearcherRepo
+	publicationCrawler *cron.PublicationCrawler
 }
 
-func NewResearcherHandler(rr repository.ResearcherRepo) *ResearcherHandler {
-	return &ResearcherHandler{researcherRepo: rr}
+func NewResearcherHandler(rr repository.ResearcherRepo, pc *cron.PublicationCrawler) *ResearcherHandler {
+	return &ResearcherHandler{
+		researcherRepo:     rr,
+		publicationCrawler: pc,
+	}
 }
 
 // GetResearchers godoc
@@ -94,6 +99,8 @@ func (h *ResearcherHandler) CreateResearcher(w http.ResponseWriter, r *http.Requ
 	}
 	researcher.ID = int(id)
 
+	go h.publicationCrawler.CrawlResearcher(researcher)
+
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(researcher)
 }
@@ -134,6 +141,10 @@ func (h *ResearcherHandler) UpdateResearcher(w http.ResponseWriter, r *http.Requ
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if researcher.Profiles.GoogleScholar != nil && *researcher.Profiles.GoogleScholar != "" {
+		go h.publicationCrawler.CrawlResearcher(researcher)
 	}
 
 	json.NewEncoder(w).Encode(researcher)
