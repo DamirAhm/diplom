@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getDictionary } from "@/app/dictionaries";
 import type { Locale } from "@/app/types";
+import { cn } from "@/lib/utils";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -21,6 +22,9 @@ interface ConfirmDialogProps {
   title?: string;
   description?: string;
   lang: Locale;
+  variant?: "destructive";
+  confirmText?: string;
+  cancelText?: string;
 }
 
 export function ConfirmDialog({
@@ -30,12 +34,15 @@ export function ConfirmDialog({
   title,
   description,
   lang,
+  variant,
+  confirmText,
+  cancelText,
 }: ConfirmDialogProps) {
   const dictionary = getDictionary(lang);
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-white text-primary dark:bg-primary">
+      <AlertDialogContent className="bg-card text-foreground dark:bg-secondary">
         <AlertDialogHeader>
           <AlertDialogTitle>
             {title || dictionary.admin.confirmDelete}
@@ -45,10 +52,16 @@ export function ConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction onClick={onConfirm} variant="destructive">
-            {dictionary.common.delete}
+          <AlertDialogCancel>{cancelText || dictionary.common.cancel}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className={cn({
+              "bg-destructive text-destructive-foreground hover:bg-destructive/90":
+                variant === "destructive",
+            })}
+          >
+            {confirmText || dictionary.common.delete}
           </AlertDialogAction>
-          <AlertDialogCancel>{dictionary.common.cancel}</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

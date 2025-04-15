@@ -62,12 +62,12 @@ export function Pagination({
             <SelectTrigger className="w-[100px] hover:bg-accent">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-background">
+            <SelectContent>
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <SelectItem
                   key={size}
                   value={size.toString()}
-                  className="cursor-pointer bg-background hover:bg-accent focus:bg-accent data-[highlighted]:bg-accent"
+                  className="cursor-pointer hover:bg-accent focus:bg-accent data-[highlighted]:bg-accent"
                 >
                   {size}
                 </SelectItem>

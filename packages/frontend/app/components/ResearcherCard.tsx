@@ -3,7 +3,7 @@ import Link from "next/link"
 import { getDictionary } from "../dictionaries"
 import type { Locale } from "../types"
 import { ImageWithFallback } from "./ImageWithFallback"
-import { ExternalLink, Users, Award, BookOpen } from "lucide-react"
+import { ExternalLink, Award } from "lucide-react"
 
 interface Researcher {
   id: number
@@ -12,6 +12,7 @@ interface Researcher {
   position: { en: string; ru: string }
   photo: string
   totalCitations: number
+  publications?: any[]
   profiles: {
     researchgate?: string
     googleScholar?: string
@@ -24,9 +25,14 @@ interface Researcher {
 interface ResearcherCardProps {
   researcher: Researcher
   lang: Locale
+  isCompact?: boolean
 }
 
-const ResearcherCard: React.FC<ResearcherCardProps> = ({ researcher, lang }) => {
+const ResearcherCard: React.FC<ResearcherCardProps> = ({
+  researcher,
+  lang,
+  isCompact = false
+}) => {
   const dictionary = getDictionary(lang)
 
   // Map profile names to more readable formats
@@ -36,6 +42,38 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({ researcher, lang }) => 
     scopus: "Scopus",
     publons: "Publons",
     orcid: "ORCID"
+  }
+
+  if (isCompact) {
+    return (
+      <div className="flex gap-4 p-4 bg-card dark:bg-card border border-border/30 rounded-lg hover:border-primary/30 transition-colors">
+        <div className="w-20 h-20 flex-shrink-0">
+          <ImageWithFallback
+            src={researcher.photo}
+            alt={`${researcher.name[lang]} ${researcher.lastName[lang]}`}
+            width={80}
+            height={80}
+            className="w-full h-full object-cover rounded-md"
+            fallbackType="initials"
+          />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-medium text-lg">
+            <Link
+              href={`/${lang}/researchers/${researcher.id}`}
+              className="hover:text-primary transition-colors"
+            >
+              {researcher.name[lang]} {researcher.lastName[lang]}
+            </Link>
+          </h3>
+          <p className="text-sm text-foreground/70 mb-1">{researcher.position[lang]}</p>
+          <div className="text-xs text-foreground/60">
+            <span className="mr-3">{dictionary.publications.citations}: {researcher.totalCitations}</span>
+            <span>{lang === "en" ? "Publications" : "Публикации"}: {researcher.publications?.length || 0}</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -48,6 +86,7 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({ researcher, lang }) => 
             width={300}
             height={300}
             className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-300"
+            fallbackType="icon"
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent"></div>

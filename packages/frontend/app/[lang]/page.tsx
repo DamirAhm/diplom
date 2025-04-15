@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getDictionary } from "../dictionaries";
 import type { Locale } from "../types";
+import PhaseSpaceBackground from "@/components/PhaseSpaceBackground";
 
 interface HomePageProps {
   params: {
@@ -72,13 +73,8 @@ export default async function HomePage(args: HomePageProps) {
 
   return (
     <div className="relative">
-      {/* Hero Section with 3D Effect and Animated Gradient */}
       <section className="relative overflow-hidden">
-        {/* Background pattern */}
-        <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-
-        <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 blur-3xl -top-20 -left-20 opacity-40 animate-pulse"></div>
-        <div className="absolute w-[300px] h-[300px] rounded-full bg-gradient-to-r from-secondary/20 to-accent/20 blur-2xl bottom-0 right-0 opacity-50 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <PhaseSpaceBackground colorScheme="primary" complexity="medium" opacity={0.15} />
 
         <div className="container relative mx-auto px-4 py-28 md:py-36">
           <div className="max-w-4xl mx-auto text-center space-y-8">
@@ -114,17 +110,6 @@ export default async function HomePage(args: HomePageProps) {
               </Link>
             </div>
           </div>
-        </div>
-
-        {/* Decorative elements */}
-        <div className="hidden lg:block absolute bottom-10 left-10">
-          <div className="relative w-16 h-16">
-            <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-ping" style={{ animationDuration: '3s' }}></div>
-            <div className="absolute inset-2 rounded-full border-2 border-secondary/50"></div>
-          </div>
-        </div>
-        <div className="hidden lg:block absolute top-20 right-20">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-accent/10 to-secondary/10 backdrop-blur-sm border border-accent/20"></div>
         </div>
       </section>
 

@@ -175,6 +175,7 @@
     "invalidCredentials": "Invalid username or password",
     "serverError": "Server error occurred. Please try again.",
     "dashboard": "Admin Dashboard",
+    "adminPanel": "Admin Panel",
     "welcome": "Welcome to Admin Dashboard",
     "selectSection": "Please select a section from the sidebar to manage content.",
     "logout": "Logout",

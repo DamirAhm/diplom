@@ -102,6 +102,36 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/[lang]/admin/partners/page.js"
+    ],
+    "/[lang]/publications/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/publications/page.js"
+    ],
+    "/[lang]/publications/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/publications/loading.js"
+    ],
+    "/[lang]/projects/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/projects/page.js"
+    ],
+    "/[lang]/projects/loading": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/projects/loading.js"
+    ],
+    "/[lang]/admin/projects/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/projects/page.js"
+    ],
+    "/[lang]/admin/projects/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/admin/projects/[id]/page.js"
     ]
   }
 }

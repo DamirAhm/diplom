@@ -461,7 +461,7 @@ func (r *SQLiteResearcherRepo) GetResearcherPublications(researcherID int) ([]mo
 		SELECT p.id, p.title_id, p.link, p.journal, p.published_at, p.citations_count
 		FROM publications p
 		JOIN publication_authors pa ON p.id = pa.publication_id
-		WHERE pa.researcher_id = ?
+		WHERE pa.researcher_id = ? and p.visible = 1
 		ORDER BY p.published_at DESC
 	`, researcherID)
 	if err != nil {

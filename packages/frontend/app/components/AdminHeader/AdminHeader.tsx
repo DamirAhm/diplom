@@ -60,11 +60,11 @@ export const AdminHeader = ({
   };
 
   return (
-    <header className="bg-primary dark:bg-primary text-white">
+    <header className="bg-sidebar-background dark:bg-sidebar-background text-sidebar-foreground">
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           <Link href={`/${lang}/admin/dashboard`} className="text-2xl font-bold">
-            Admin Panel
+            {dictionary.admin.adminPanel}
           </Link>
           <nav className="flex items-center space-x-4">
             {navigation.map((item) => {
@@ -79,8 +79,8 @@ export const AdminHeader = ({
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors duration-200 ease-in-out rounded-lg",
                     isActive
-                      ? "bg-accent dark:bg-gray-700 text-white"
-                      : "text-white hover:bg-accent dark:hover:bg-gray-700"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -94,7 +94,7 @@ export const AdminHeader = ({
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="text-white hover:bg-accent dark:hover:bg-gray-700"
+              className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               <LogOut className="mr-2 h-4 w-4" />
               {dictionary.admin.logout}
