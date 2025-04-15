@@ -1,9 +1,9 @@
 {
-  "/[lang]/publications/page": "app/[lang]/publications/page.js",
-  "/[lang]/researchers/page": "app/[lang]/researchers/page.js",
-  "/[lang]/page": "app/[lang]/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/[lang]/researchers/[id]/page": "app/[lang]/researchers/[id]/page.js",
+  "/[lang]/training/page": "app/[lang]/training/page.js",
+  "/[lang]/partners/page": "app/[lang]/partners/page.js",
+  "/[lang]/admin/researchers/page": "app/[lang]/admin/researchers/page.js",
   "/[lang]/admin/researchers/[id]/page": "app/[lang]/admin/researchers/[id]/page.js",
-  "/[lang]/sandbox/page": "app/[lang]/sandbox/page.js",
-  "/[lang]/admin/page": "app/[lang]/admin/page.js",
-  "/[lang]/admin/researchers/page": "app/[lang]/admin/researchers/page.js"
+  "/[lang]/admin/partners/page": "app/[lang]/admin/partners/page.js"
 }

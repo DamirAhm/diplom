@@ -9,12 +9,15 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-full bg-indigo-700 dark:bg-gray-700 text-white hover:bg-blue-800 dark:hover:bg-gray-600 transition-colors"
+      className="inline-flex items-center justify-center rounded-md border border-border/50 bg-background p-2 text-foreground/80 hover:bg-muted transition-colors"
       aria-label={
         theme === "light" ? "Switch to dark mode" : "Switch to light mode"
       }
     >
-      {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
+      {theme === "light" ?
+        <Moon size={16} className="text-primary" /> :
+        <Sun size={16} className="text-secondary" />
+      }
     </button>
   );
 }

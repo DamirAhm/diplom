@@ -1,6 +1,8 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Globe } from "lucide-react"
 import type { Locale } from "../../types"
 
 interface LanguageSelectorProps {
@@ -8,23 +10,19 @@ interface LanguageSelectorProps {
 }
 
 export default function LanguageSelector({ currentLang }: LanguageSelectorProps) {
-  const router = useRouter()
   const pathname = usePathname()
-
-  const handleLanguageChange = (newLang: string) => {
-    const newPathname = pathname.replace(`/${currentLang}`, `/${newLang}`)
-    router.push(newPathname)
-  }
+  const otherLang = currentLang === "en" ? "ru" : "en"
+  const newPathname = pathname.replace(`/${currentLang}`, `/${otherLang}`)
 
   return (
-    <select
-      value={currentLang}
-      onChange={(e) => handleLanguageChange(e.target.value)}
-      className="bg-indigo-700 dark:bg-gray-700 text-white px-2 py-1 rounded hover:bg-blue-800 dark:hover:bg-gray-600 transition-colors"
+    <Link
+      href={newPathname}
+      className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-background px-2 py-1.5 text-sm font-medium text-foreground/80 hover:bg-muted transition-colors"
+      title={otherLang === "en" ? "Switch to English" : "Переключиться на русский"}
     >
-      <option value="en">En</option>
-      <option value="ru">Ру</option>
-    </select>
+      <Globe size={16} className="text-primary" />
+      <span>{otherLang.toUpperCase()}</span>
+    </Link>
   )
 }
 

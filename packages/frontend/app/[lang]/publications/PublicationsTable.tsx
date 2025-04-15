@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import type { Locale, Publication, Author } from "@/app/types"
 import { getDictionary } from "@/app/dictionaries"
 import PublicationItem from "@/app/components/PublicationItem"
-import { Search } from "lucide-react"
+import { Search, SlidersHorizontal, ChevronDown, X } from "lucide-react"
 
 export type Props = {
   publications: Publication[]
@@ -13,30 +13,18 @@ export type Props = {
 
 export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
   const dictionary = getDictionary(lang)
-  const [sortBy, setSortBy] = useState<"year" | "title">("year")
+  const [sortBy, setSortBy] = useState<"year" | "citations">("year")
   const [filterYear, setFilterYear] = useState<number | null>(null)
   const [filterAuthor, setFilterAuthor] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState<string>("")
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
-  const sortedPublications = [...publications].sort((a, b) => {
-    if (sortBy === "year") {
-      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
-    } else {
-      return b.citationsCount - a.citationsCount
-    }
-  })
+  // Get unique years and sort them
+  const years = Array.from(
+    new Set(publications.map((pub) => new Date(pub.publishedAt).getFullYear()))
+  ).sort((a, b) => b - a)
 
-  const filteredPublications = sortedPublications
-    .filter(pub => filterYear ? new Date(pub.publishedAt).getFullYear() === filterYear : true)
-    .filter(pub => filterAuthor ? pub.authors.some(author => author.id === filterAuthor) : true)
-    .filter(pub => {
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
-      return pub.title[lang].toLowerCase().includes(query);
-    })
-
-  const years = Array.from(new Set(publications.map((pub) => new Date(pub.publishedAt).getFullYear()))).sort((a, b) => b - a)
-
+  // Get unique authors
   const authors = Array.from(
     new Map(
       publications
@@ -46,206 +34,231 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
     ).values()
   ).sort((a, b) => a.name[lang].localeCompare(b.name[lang]))
 
+  // Sort publications
+  const sortedPublications = [...publications].sort((a, b) => {
+    if (sortBy === "year") {
+      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+    } else {
+      return b.citationsCount - a.citationsCount
+    }
+  })
+
+  // Apply filters
+  const filteredPublications = sortedPublications
+    .filter(pub => filterYear ? new Date(pub.publishedAt).getFullYear() === filterYear : true)
+    .filter(pub => filterAuthor ? pub.authors.some(author => author.id === filterAuthor) : true)
+    .filter(pub => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return pub.title[lang].toLowerCase().includes(query);
+    })
+
+  // Reset all filters
+  const resetFilters = () => {
+    setSortBy("year")
+    setFilterYear(null)
+    setFilterAuthor(null)
+    setSearchQuery("")
+  }
+
   return (
-    <>
-      <div className="mb-3">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+    <div className="space-y-6">
+      <div className="bg-card rounded-lg border border-border/50 overflow-hidden">
+        {/* Search and filters header */}
+        <div className="p-4 border-b border-border/50">
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:space-y-0 md:space-x-4">
+            {/* Search input */}
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className="w-4 h-4 text-foreground/50" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-md bg-muted/50 border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder={dictionary.publications.searchPlaceholder}
+              />
+            </div>
+
+            {/* Desktop filters */}
+            <div className="hidden md:flex md:items-center md:space-x-3">
+              <div className="flex items-center space-x-2">
+                <label htmlFor="sortBy" className="text-sm text-foreground/70 whitespace-nowrap">
+                  {dictionary.publications.sortBy}:
+                </label>
+                <select
+                  id="sortBy"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as "year" | "citations")}
+                  className="text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="year">{dictionary.publications.year}</option>
+                  <option value="citations">{dictionary.publications.citations}</option>
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <label htmlFor="filterYear" className="text-sm text-foreground/70 whitespace-nowrap">
+                  {dictionary.publications.year}:
+                </label>
+                <select
+                  id="filterYear"
+                  value={filterYear || ""}
+                  onChange={(e) => setFilterYear(e.target.value ? Number.parseInt(e.target.value) : null)}
+                  className="text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">{dictionary.publications.allYears}</option>
+                  {years.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <label htmlFor="filterAuthor" className="text-sm text-foreground/70 whitespace-nowrap">
+                  {dictionary.publications.filterByAuthor}:
+                </label>
+                <select
+                  id="filterAuthor"
+                  value={filterAuthor || ""}
+                  onChange={(e) => setFilterAuthor(e.target.value ? Number.parseInt(e.target.value) : null)}
+                  className="text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">{dictionary.publications.allAuthors}</option>
+                  {authors.map((author) => (
+                    <option key={author.id} value={author.id}>
+                      {author.name[lang]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {(filterYear !== null || filterAuthor !== null || sortBy !== "year" || searchQuery) && (
+                <button
+                  onClick={resetFilters}
+                  className="flex items-center text-sm text-primary hover:text-primary/80"
+                >
+                  <X size={16} className="mr-1" />
+                  {lang === "en" ? "Reset Filters" : "Сбросить фильтры"}
+                </button>
+              )}
+            </div>
+
+            {/* Mobile filter toggle */}
+            <button
+              className="flex items-center justify-center md:hidden px-4 py-2 text-sm rounded-md border border-border/50 bg-muted/50 hover:bg-muted"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+            >
+              <SlidersHorizontal size={16} className="mr-2" />
+              {lang === "en" ? "Filters" : "Фильтры"}
+            </button>
           </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            placeholder={dictionary.publications.searchPlaceholder}
-          />
+
+          {/* Mobile filters */}
+          {filtersOpen && (
+            <div className="mt-4 space-y-3 md:hidden">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="sortBy-mobile" className="block text-sm text-foreground/70 mb-1">
+                    {dictionary.publications.sortBy}
+                  </label>
+                  <select
+                    id="sortBy-mobile"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as "year" | "citations")}
+                    className="w-full text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3"
+                  >
+                    <option value="year">{dictionary.publications.year}</option>
+                    <option value="citations">{dictionary.publications.citations}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="filterYear-mobile" className="block text-sm text-foreground/70 mb-1">
+                    {dictionary.publications.year}
+                  </label>
+                  <select
+                    id="filterYear-mobile"
+                    value={filterYear || ""}
+                    onChange={(e) => setFilterYear(e.target.value ? Number.parseInt(e.target.value) : null)}
+                    className="w-full text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3"
+                  >
+                    <option value="">{dictionary.publications.allYears}</option>
+                    {years.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="filterAuthor-mobile" className="block text-sm text-foreground/70 mb-1">
+                  {dictionary.publications.filterByAuthor}
+                </label>
+                <select
+                  id="filterAuthor-mobile"
+                  value={filterAuthor || ""}
+                  onChange={(e) => setFilterAuthor(e.target.value ? Number.parseInt(e.target.value) : null)}
+                  className="w-full text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3"
+                >
+                  <option value="">{dictionary.publications.allAuthors}</option>
+                  {authors.map((author) => (
+                    <option key={author.id} value={author.id}>
+                      {author.name[lang]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {(filterYear !== null || filterAuthor !== null || sortBy !== "year" || searchQuery) && (
+                <button
+                  onClick={resetFilters}
+                  className="flex items-center text-sm text-primary py-1"
+                >
+                  <X size={16} className="mr-1" />
+                  {lang === "en" ? "Reset Filters" : "Сбросить фильтры"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Results count */}
+        <div className="p-4 border-b border-border/50 bg-muted/30">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-foreground/70">
+              {lang === "en"
+                ? `Showing ${filteredPublications.length} results`
+                : `Показано результатов: ${filteredPublications.length}`}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Мобильный макет (XS экраны) */}
-      <div className="mb-5 sm:hidden">
-        <div className="flex items-center mb-2">
-          <label htmlFor="sortBy-mobile" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-            {dictionary.publications.sortBy}
-          </label>
-          <select
-            id="sortBy-mobile"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "year" | "title")}
-            className="flex-1 text-sm border rounded p-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          >
-            <option value="year">{dictionary.publications.year}</option>
-            <option value="title">{dictionary.publications.title}</option>
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex items-center">
-            <label htmlFor="filterYear-mobile" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              {dictionary.publications.filterByYear}
-            </label>
-            <select
-              id="filterYear-mobile"
-              value={filterYear || ""}
-              onChange={(e) => setFilterYear(e.target.value ? Number.parseInt(e.target.value) : null)}
-              className="flex-1 text-sm border rounded p-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">{dictionary.publications.allYears}</option>
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center">
-            <label htmlFor="filterAuthor-mobile" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              {dictionary.publications.filterByAuthor}
-            </label>
-            <select
-              id="filterAuthor-mobile"
-              value={filterAuthor || ""}
-              onChange={(e) => setFilterAuthor(e.target.value ? Number.parseInt(e.target.value) : null)}
-              className="flex-1 text-sm border rounded p-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">{dictionary.publications.allAuthors}</option>
-              {authors.map((author) => (
-                <option key={author.id} value={author.id}>
-                  {author.name[lang]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Средний макет (SM-MD экраны) */}
-      <div className="mb-5 hidden sm:block lg:hidden">
-        <div className="flex flex-wrap items-center justify-start gap-4">
-          <div className="flex items-center">
-            <label htmlFor="sortBy-md" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              {dictionary.publications.sortBy}
-            </label>
-            <select
-              id="sortBy-md"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as "year" | "title")}
-              className="text-sm border rounded p-1.5 w-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="year">{dictionary.publications.year}</option>
-              <option value="title">{dictionary.publications.title}</option>
-            </select>
-          </div>
-          <div className="flex items-center">
-            <label htmlFor="filterYear-md" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              {dictionary.publications.filterByYear}
-            </label>
-            <select
-              id="filterYear-md"
-              value={filterYear || ""}
-              onChange={(e) => setFilterYear(e.target.value ? Number.parseInt(e.target.value) : null)}
-              className="text-sm border rounded p-1.5 w-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">{dictionary.publications.allYears}</option>
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center">
-            <label htmlFor="filterAuthor-md" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-              {dictionary.publications.filterByAuthor}
-            </label>
-            <select
-              id="filterAuthor-md"
-              value={filterAuthor || ""}
-              onChange={(e) => setFilterAuthor(e.target.value ? Number.parseInt(e.target.value) : null)}
-              className="text-sm border rounded p-1.5 w-32 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">{dictionary.publications.allAuthors}</option>
-              {authors.map((author) => (
-                <option key={author.id} value={author.id}>
-                  {author.name[lang]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Большой макет (LG+ экраны) */}
-      <div className="mb-5 hidden lg:grid lg:grid-cols-3 lg:gap-2">
-        <div className="flex items-center">
-          <label htmlFor="sortBy-lg" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-            {dictionary.publications.sortBy}
-          </label>
-          <select
-            id="sortBy-lg"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "year" | "title")}
-            className="flex-1 text-sm border rounded p-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          >
-            <option value="year">{dictionary.publications.year}</option>
-            <option value="title">{dictionary.publications.title}</option>
-          </select>
-        </div>
-        <div className="flex items-center">
-          <label htmlFor="filterYear-lg" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-            {dictionary.publications.filterByYear}
-          </label>
-          <select
-            id="filterYear-lg"
-            value={filterYear || ""}
-            onChange={(e) => setFilterYear(e.target.value ? Number.parseInt(e.target.value) : null)}
-            className="flex-1 text-sm border rounded p-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          >
-            <option value="">{dictionary.publications.allYears}</option>
-            {years.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center">
-          <label htmlFor="filterAuthor-lg" className="mr-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-            {dictionary.publications.filterByAuthor}
-          </label>
-          <select
-            id="filterAuthor-lg"
-            value={filterAuthor || ""}
-            onChange={(e) => setFilterAuthor(e.target.value ? Number.parseInt(e.target.value) : null)}
-            className="flex-1 text-sm border rounded p-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          >
-            <option value="">{dictionary.publications.allAuthors}</option>
-            {authors.map((author) => (
-              <option key={author.id} value={author.id}>
-                {author.name[lang]}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="space-y-8">
-        {filteredPublications.length > 0 ? (
-          filteredPublications.map((publication) => (
+      {/* Publications list */}
+      {filteredPublications.length > 0 ? (
+        <div className="grid grid-cols-1 gap-6">
+          {filteredPublications.map((publication) => (
             <PublicationItem
               key={publication.id}
-              lang={lang}
               publication={publication}
+              lang={lang}
             />
-          ))
-        ) : (
-          <p className="text-center text-gray-500 dark:text-gray-400">
-            {dictionary.common.noResults}
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-16 bg-card rounded-lg border border-border/50">
+          <p className="text-foreground/70">
+            {lang === "en" ? "No publications found" : "Публикации не найдены"}
           </p>
-        )}
-      </div>
-    </>
-  )
+        </div>
+      )}
+    </div>
+  );
 }
 
