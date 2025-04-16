@@ -74,7 +74,7 @@ export default async function HomePage(args: HomePageProps) {
   return (
     <div className="relative">
       <section className="relative overflow-hidden">
-        <PhaseSpaceBackground colorScheme="primary" complexity="medium" opacity={0.15} />
+        <PhaseSpaceBackground colorScheme="primary" complexity="high" opacity={0.15} />
 
         <div className="container relative mx-auto px-4 py-28 md:py-36">
           <div className="max-w-4xl mx-auto text-center space-y-8">

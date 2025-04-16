@@ -132,6 +132,16 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/[lang]/admin/projects/[id]/page.js"
+    ],
+    "/[lang]/sandbox/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/sandbox/page.js"
+    ],
+    "/[lang]/sandbox/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/[lang]/sandbox/layout.js"
     ]
   }
 }

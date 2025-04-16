@@ -20,7 +20,7 @@ export default function LanguageSelector({ currentLang }: LanguageSelectorProps)
       className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-background px-2 py-1.5 text-sm font-medium text-foreground/80 hover:bg-muted transition-colors"
       title={otherLang === "en" ? "Switch to English" : "Переключиться на русский"}
     >
-      <Globe size={16} className="text-primary" />
+      <Globe size={16} className="text-primary dark:text-secondary" />
       <span>{otherLang.toUpperCase()}</span>
     </Link>
   )

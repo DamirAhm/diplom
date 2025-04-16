@@ -47,12 +47,12 @@ export default function Header({ lang }: HeaderProps) {
 
   return (
     <header className={`sticky top-0 z-40 w-full transition-all duration-200 ${scrolled
-        ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm"
-        : "bg-transparent"
+      ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm"
+      : "bg-transparent"
       }`}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          <Link href={`/${lang}`} className="font-heading text-2xl font-bold text-primary transition-colors hover:text-primary/80">
+          <Link href={`/${lang}`} className="font-heading text-2xl font-bold text-primary dark:text-secondary transition-colors hover:text-primary/80 dark:hover:text-secondary/80">
             {dictionary.common.laboratoryName}
           </Link>
 
@@ -77,8 +77,8 @@ export default function Header({ lang }: HeaderProps) {
                     <Link
                       href={`/${lang}/${item.key}`}
                       className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
-                          ? "text-primary dark:text-secondary font-semibold"
-                          : "text-foreground/70 hover:text-primary dark:hover:text-secondary"
+                        ? "text-primary dark:text-secondary font-semibold"
+                        : "text-foreground/70 hover:text-primary dark:hover:text-secondary"
                         }`}
                     >
                       {item.label}
@@ -110,8 +110,8 @@ export default function Header({ lang }: HeaderProps) {
                     <Link
                       href={`/${lang}/${item.key}`}
                       className={`block py-3 transition-colors ${isActive
-                          ? "text-primary dark:text-secondary font-semibold"
-                          : "text-foreground/70 hover:text-primary dark:hover:text-secondary"
+                        ? "text-primary dark:text-secondary font-semibold"
+                        : "text-foreground/70 hover:text-primary dark:hover:text-secondary"
                         }`}
                       onClick={toggleMenu}
                     >

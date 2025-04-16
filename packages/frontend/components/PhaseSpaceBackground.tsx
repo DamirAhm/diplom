@@ -8,10 +8,17 @@ interface PhaseSpaceBackgroundProps {
     complexity?: 'low' | 'medium' | 'high';
 }
 
+const SIMULATION_SETTINGS = {
+    defaultScale: 0.03,
+    maxScale: 0.01,
+    minScale: -0.01,
+    maxFadeSpeed: 4e-4,
+}
+
 const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
     colorScheme = 'primary',
     opacity = 0.15,
-    complexity = 'medium'
+    complexity = 'high'
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestIdRef = useRef<number>();
@@ -30,7 +37,7 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
     const complexitySettings = {
         low: { points: 80, historyLength: 30, fadeSpeed: 0.03 },
         medium: { points: 120, historyLength: 50, fadeSpeed: 0.02 },
-        high: { points: 200, historyLength: 70, fadeSpeed: 0.015 }
+        high: { points: 200, historyLength: 50, fadeSpeed: 0.015 }
     };
 
     const settings = complexitySettings[complexity];
@@ -60,9 +67,8 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
     const PARAMS = {
         sigma: 10,
         beta: 8 / 3,
-        rho: 28,
-        scale: 0.01,
-        timeStep: 0.1
+        rho: 25,
+        scale: SIMULATION_SETTINGS.defaultScale,
     };
 
     useEffect(() => {
@@ -102,10 +108,17 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
             initializePoints();
 
             const animate = () => {
+                PARAMS.scale = Math.min(
+                    Math.max(
+                        SIMULATION_SETTINGS.minScale,
+                        PARAMS.scale + Math.random() * SIMULATION_SETTINGS.maxFadeSpeed - SIMULATION_SETTINGS.maxFadeSpeed / 2
+                    ),
+                    SIMULATION_SETTINGS.maxScale
+                );
+
                 if (!canvasRef.current || !ctx) return;
 
-                ctx.fillStyle = `rgba(0, 0, 0, ${settings.fadeSpeed})`;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 const width = canvas.width;
                 const height = canvas.height;
@@ -148,19 +161,19 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                         const side = Math.floor(Math.random() * 4);
 
                         switch (side) {
-                            case 0: // top
+                            case 0:
                                 spawnX = Math.random() * width;
                                 spawnY = -20;
                                 break;
-                            case 1: // right
+                            case 1:
                                 spawnX = width + 20;
                                 spawnY = Math.random() * height;
                                 break;
-                            case 2: // bottom
+                            case 2:
                                 spawnX = Math.random() * width;
                                 spawnY = height + 20;
                                 break;
-                            case 3: // left
+                            case 3:
                                 spawnX = -20;
                                 spawnY = Math.random() * height;
                                 break;
@@ -188,7 +201,7 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                             const curr = point.history[i];
 
                             const ageRatio = i / point.history.length;
-                            const opacity = ageRatio * 0.8;
+                            const opacity = ageRatio * 0.5;
 
                             ctx.beginPath();
                             ctx.moveTo(prev.x, prev.y);
@@ -221,7 +234,6 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
         <canvas
             ref={canvasRef}
             className="absolute inset-0 w-full h-full"
-            style={{ opacity }}
         />
     );
 };

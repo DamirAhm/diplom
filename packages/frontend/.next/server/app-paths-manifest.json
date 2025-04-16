@@ -1,7 +1,7 @@
 {
-  "/[lang]/publications/page": "app/[lang]/publications/page.js",
-  "/[lang]/projects/page": "app/[lang]/projects/page.js",
   "/[lang]/page": "app/[lang]/page.js",
-  "/[lang]/admin/projects/page": "app/[lang]/admin/projects/page.js",
-  "/[lang]/admin/projects/[id]/page": "app/[lang]/admin/projects/[id]/page.js"
+  "/[lang]/researchers/page": "app/[lang]/researchers/page.js",
+  "/[lang]/researchers/[id]/page": "app/[lang]/researchers/[id]/page.js",
+  "/[lang]/admin/projects/[id]/page": "app/[lang]/admin/projects/[id]/page.js",
+  "/[lang]/sandbox/page": "app/[lang]/sandbox/page.js"
 }
