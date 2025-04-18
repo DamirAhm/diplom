@@ -647,7 +647,7 @@ video {
     --popover: 218 23% 16%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 230 70% 50%;
+    --primary: 220 40% 50%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 190 100% 50%;
@@ -3733,10 +3733,6 @@ a {
 .dark\:text-red-400:is(.dark *) {
   --tw-text-opacity: 1;
   color: rgb(248 113 113 / var(--tw-text-opacity, 1));
-}
-
-.dark\:text-secondary:is(.dark *) {
-  color: hsl(var(--secondary));
 }
 
 .dark\:text-white:is(.dark *) {

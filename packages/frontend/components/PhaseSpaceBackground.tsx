@@ -12,7 +12,7 @@ const SIMULATION_SETTINGS = {
     defaultScale: 0.03,
     maxScale: 0.01,
     minScale: -0.01,
-    maxFadeSpeed: 4e-4,
+    maxFadeSpeed: 10e-4,
 }
 
 const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
@@ -25,13 +25,15 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
     const pointsRef = useRef<Array<{
         x: number;
         y: number;
-        vx: number;
-        vy: number;
         age: number;
         history: Array<{ x: number, y: number }>;
         colorIndex: number;
     }>>([]);
 
+    const performanceRef = useRef({
+        disabled: false,
+        maxAllowedFrameTime: 100
+    });
 
     const complexitySettings = {
         low: { points: 80, historyLength: 30, fadeSpeed: 0.03 },
@@ -92,8 +94,6 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                     pointsRef.current.push({
                         x: Math.random() * canvas.width,
                         y: Math.random() * canvas.height,
-                        vx: (Math.random() - 0.5) * 0.5,
-                        vy: (Math.random() - 0.5) * 0.5,
                         age: 0,
                         history: [],
                         colorIndex: Math.floor(Math.random() * colorSchemes[colorScheme].length)
@@ -105,14 +105,25 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
             window.addEventListener('resize', resizeCanvas);
             initializePoints();
 
-            const animate = () => {
-                PARAMS.scale = Math.min(
-                    Math.max(
-                        SIMULATION_SETTINGS.minScale,
-                        PARAMS.scale + Math.random() * SIMULATION_SETTINGS.maxFadeSpeed - SIMULATION_SETTINGS.maxFadeSpeed / 2
-                    ),
-                    SIMULATION_SETTINGS.maxScale
-                );
+            let lastTime = performance.now();
+            const targetFPS = 60;
+            const targetFrameTime = 1000 / targetFPS;
+
+            const animate = (currentTime: number) => {
+                const frameDuration = currentTime - lastTime;
+                const deltaTime = frameDuration * 5 / targetFrameTime;
+                lastTime = currentTime;
+
+                const perf = performanceRef.current;
+                if (!perf.disabled && frameDuration > perf.maxAllowedFrameTime) {
+                    console.warn(`Animation disabled due to poor performance. Frame time: ${frameDuration.toFixed(2)}ms`);
+                    perf.disabled = true;
+                }
+
+                if (perf.disabled) {
+                    requestIdRef.current = requestAnimationFrame(animate);
+                    return;
+                }
 
                 if (!canvasRef.current || !ctx) return;
 
@@ -131,14 +142,8 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                     let dx = PARAMS.sigma * (normalizedY - normalizedX);
                     let dy = normalizedX * (PARAMS.rho - normalizedZ) - normalizedY;
 
-                    point.vx += dx * PARAMS.scale;
-                    point.vy += dy * PARAMS.scale;
-
-                    point.vx *= 0.99;
-                    point.vy *= 0.99;
-
-                    point.x += point.vx;
-                    point.y += point.vy;
+                    point.x += dx * PARAMS.scale * deltaTime;
+                    point.y += dy * PARAMS.scale * deltaTime;
 
                     point.history.push({ x: point.x, y: point.y });
 
@@ -146,7 +151,7 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                         point.history.shift();
                     }
 
-                    point.age++;
+                    point.age += deltaTime;
 
                     if (point.x < -width * 0.1 ||
                         point.x > width * 1.1 ||
@@ -179,8 +184,6 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                         pointsRef.current[idx] = {
                             x: spawnX,
                             y: spawnY,
-                            vx: (Math.random() - 0.5) * 0.5,
-                            vy: (Math.random() - 0.5) * 0.5,
                             age: 0,
                             history: [],
                             colorIndex: Math.floor(Math.random() * colorSchemes[colorScheme].length)
