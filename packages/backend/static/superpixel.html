@@ -173,6 +173,12 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="gridSize">Размер сетки градиентов: <span id="gridSizeValue"
+                            class="value-display">20</span></label>
+                    <input type="range" id="gridSize" name="gridSize" min="5" max="30" value="20">
+                </div>
+
+                <div class="form-group">
                     <label for="imageFile">Выберите изображение:</label>
                     <input type="file" id="imageFile" name="imageFile" accept="image/jpeg, image/png">
                 </div>
@@ -208,6 +214,16 @@
                     <h3>Мазки</h3>
                     <canvas id="strokesCanvas"></canvas>
                 </div>
+                <div class="canvas-box">
+                    <h3>Визуализация градиентов</h3>
+                    <canvas id="gradientsCanvas"></canvas>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="showGradients" checked>
+                            Показать направления градиентов
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <div>
@@ -236,21 +252,26 @@
             const loadingIndicator = document.getElementById('loadingIndicator');
             const originalCanvas = document.getElementById('originalCanvas');
             const strokesCanvas = document.getElementById('strokesCanvas');
+            const gradientsCanvas = document.getElementById('gradientsCanvas');
+            const showGradientsCheckbox = document.getElementById('showGradients');
             const animateButton = document.getElementById('animateButton');
             const resetButton = document.getElementById('resetButton');
             const statsDiv = document.getElementById('stats');
 
             const originalCtx = originalCanvas.getContext('2d');
             const strokesCtx = strokesCanvas.getContext('2d');
+            const gradientsCtx = gradientsCanvas.getContext('2d');
 
             let originalImage = new Image();
             let strokeData = null;
             let animationFrame = null;
             let animationIndex = 0;
             let animationSpeed = 5; // Мазков за кадр
+            let scaleX = 1; // Масштаб по X
+            let scaleY = 1; // Масштаб по Y
 
             // Update slider value displays
-            const sliders = ['numberOfSuperpixels', 'compactnessFactor', 'elongation', 'iterations'];
+            const sliders = ['numberOfSuperpixels', 'compactnessFactor', 'elongation', 'iterations', 'gridSize'];
             sliders.forEach(sliderId => {
                 const slider = document.getElementById(sliderId);
                 const valueDisplay = document.getElementById(sliderId + 'Value');
@@ -290,6 +311,12 @@
                             originalCanvas.height = height;
                             strokesCanvas.width = width;
                             strokesCanvas.height = height;
+                            gradientsCanvas.width = width;
+                            gradientsCanvas.height = height;
+
+                            // Вычисляем масштаб
+                            scaleX = width / originalImage.width;
+                            scaleY = height / originalImage.height;
 
                             // Draw original image
                             originalCtx.clearRect(0, 0, width, height);
@@ -339,7 +366,8 @@
                     numberOfSuperpixels: parseInt(document.getElementById('numberOfSuperpixels').value),
                     compactnessFactor: parseFloat(document.getElementById('compactnessFactor').value),
                     elongation: parseFloat(document.getElementById('elongation').value),
-                    iterations: parseInt(document.getElementById('iterations').value)
+                    iterations: parseInt(document.getElementById('iterations').value),
+                    gridSize: parseInt(document.getElementById('gridSize').value)
                 };
 
                 formData.append('params', JSON.stringify(params));
@@ -370,6 +398,11 @@
 
                         // Draw all strokes at once initially
                         drawAllStrokes(strokesCtx, strokeData.strokes);
+
+                        // Draw gradient vectors if checkbox is checked
+                        if (showGradientsCheckbox.checked && strokeData.gridVectors) {
+                            drawGradientVectors(gradientsCtx, strokeData.gridVectors);
+                        }
 
                         // Update stats
                         updateStats(strokeData);
@@ -422,26 +455,64 @@
                 // Draw all strokes
                 drawAllStrokes(strokesCtx, strokeData.strokes);
 
+                // Redraw gradient vectors if needed
+                if (showGradientsCheckbox.checked && strokeData.gridVectors) {
+                    gradientsCtx.clearRect(0, 0, gradientsCanvas.width, gradientsCanvas.height);
+                    drawGradientVectors(gradientsCtx, strokeData.gridVectors);
+                }
+
                 // Enable animation button
                 animateButton.disabled = false;
+            });
+
+            // Toggle gradient vectors display
+            showGradientsCheckbox.addEventListener('change', function () {
+                if (!strokeData || !strokeData.gridVectors) return;
+
+                gradientsCtx.clearRect(0, 0, gradientsCanvas.width, gradientsCanvas.height);
+
+                if (this.checked) {
+                    drawGradientVectors(gradientsCtx, strokeData.gridVectors);
+                }
             });
 
             // Function to animate strokes
             function animateStrokes() {
                 if (animationIndex < strokeData.strokes.length) {
-                    // Draw next batch of strokes
-                    const endIndex = Math.min(animationIndex + animationSpeed, strokeData.strokes.length);
+                    // Рисуем все мазки текущей цветовой группы
+                    const currentGroup = strokeData.strokes[animationIndex].colorGroup;
+                    let endIndex = animationIndex;
 
-                    for (let i = animationIndex; i < endIndex; i++) {
+                    // Находим все мазки текущей цветовой группы
+                    while (endIndex < strokeData.strokes.length &&
+                        strokeData.strokes[endIndex].colorGroup === currentGroup) {
+                        endIndex++;
+                    }
+
+                    // Рисуем мазки группы с учетом скорости анимации
+                    let batchEndIndex = Math.min(animationIndex + animationSpeed, endIndex);
+
+                    for (let i = animationIndex; i < batchEndIndex; i++) {
                         drawStroke(strokesCtx, strokeData.strokes[i]);
                     }
 
-                    animationIndex = endIndex;
+                    animationIndex = batchEndIndex;
 
-                    // Continue animation
-                    animationFrame = requestAnimationFrame(animateStrokes);
+                    // Если закончили группу и ещё есть место для других мазков этого кадра, сразу переходим к следующей группе
+                    if (animationIndex === endIndex &&
+                        endIndex < strokeData.strokes.length &&
+                        (endIndex - animationIndex) < animationSpeed) {
+
+                        // Продолжаем анимацию без задержки
+                        animationFrame = requestAnimationFrame(animateStrokes);
+                    } else {
+                        // Продолжаем анимацию с задержкой между кадрами
+                        setTimeout(() => {
+                            animationFrame = requestAnimationFrame(animateStrokes);
+                        }, 10); // Небольшая задержка между кадрами для плавности
+                    }
                 } else {
-                    // Animation complete
+                    // Анимация завершена
                     animationFrame = null;
                     animateButton.disabled = false;
                 }
@@ -453,7 +524,20 @@
 
                 // Draw each pixel in the stroke
                 for (const pixel of stroke.pixels) {
-                    ctx.fillRect(pixel[0], pixel[1], 1, 1);
+                    // Масштабируем координаты
+                    const x = Math.floor(pixel[0] * scaleX);
+                    const y = Math.floor(pixel[1] * scaleY);
+
+                    // Используем размер кисти в зависимости от масштаба
+                    const brushSize = Math.max(1, Math.min(scaleX, scaleY));
+                    if (brushSize <= 1) {
+                        ctx.fillRect(x, y, 1, 1);
+                    } else {
+                        // Используем закругленную кисть для более эстетичного результата
+                        ctx.beginPath();
+                        ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
             }
 
@@ -466,9 +550,14 @@
 
             // Function to update statistics
             function updateStats(data) {
+                // Определяем количество цветовых групп
+                const numColorGroups = data.strokes.length > 0 ?
+                    Math.max(...data.strokes.map(s => s.colorGroup)) + 1 : 0;
+
                 statsDiv.innerHTML = `
                     Размер изображения: ${data.imageWidth} x ${data.imageHeight}<br>
                     Количество мазков: ${data.strokes.length}<br>
+                    Количество цветовых групп: ${numColorGroups}<br>
                     Средний размер мазка: ${Math.round(data.strokes.reduce((sum, s) => sum + s.pixels.length, 0) / data.strokes.length)} пикселей<br>
                 `;
             }
@@ -493,6 +582,62 @@
                 animationSpeed = parseInt(this.value);
                 speedDisplay.textContent = animationSpeed;
             });
+
+            // Function to draw gradient vectors
+            function drawGradientVectors(ctx, vectors) {
+                // Сначала копируем исходное изображение для контекста
+                ctx.drawImage(originalCanvas, 0, 0);
+
+                // Делаем изображение полупрозрачным
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+                // Рисуем каждый вектор
+                for (const vector of vectors) {
+                    // Масштабируем координаты
+                    const x = Math.floor(vector.x * scaleX);
+                    const y = Math.floor(vector.y * scaleY);
+
+                    // Вычисляем длину линии вектора (10-30 пикселей, зависит от magnitude)
+                    const lineLength = 10 + vector.length * 20;
+
+                    // Вычисляем конечную точку вектора
+                    const endX = x + Math.cos(vector.theta) * lineLength;
+                    const endY = y + Math.sin(vector.theta) * lineLength;
+
+                    // Рисуем линию вектора
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(endX, endY);
+                    ctx.strokeStyle = 'rgba(0, 100, 255, 0.7)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Рисуем наконечник стрелки
+                    const arrowSize = 5;
+                    const angle = vector.theta;
+
+                    ctx.beginPath();
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(
+                        endX - arrowSize * Math.cos(angle - Math.PI / 6),
+                        endY - arrowSize * Math.sin(angle - Math.PI / 6)
+                    );
+                    ctx.lineTo(
+                        endX - arrowSize * Math.cos(angle + Math.PI / 6),
+                        endY - arrowSize * Math.sin(angle + Math.PI / 6)
+                    );
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(0, 100, 255, 0.9)';
+                    ctx.fill();
+
+                    // Рисуем точку начала вектора
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+                    ctx.fill();
+                }
+            }
         });
     </script>
 </body>

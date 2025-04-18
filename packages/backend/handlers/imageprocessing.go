@@ -19,6 +19,7 @@ type SuperpixelRequest struct {
 	CompactnessFactor   float64 `json:"compactnessFactor"`
 	Elongation          float64 `json:"elongation"` // p parameter in the formula
 	Iterations          int     `json:"iterations"`
+	GridSize            int     `json:"gridSize"` // Size of the gradient vector grid
 }
 
 // Stroke represents a single brush stroke with its properties
@@ -32,11 +33,20 @@ type Stroke struct {
 	Height  float64  `json:"height"` // Approximate height of the stroke
 }
 
+// GridVector represents a vector in a grid for gradient visualization
+type GridVector struct {
+	X      int     `json:"x"`      // X coordinate
+	Y      int     `json:"y"`      // Y coordinate
+	Theta  float64 `json:"theta"`  // Direction angle
+	Length float64 `json:"length"` // Vector length (based on gradient magnitude)
+}
+
 // SuperpixelResponse represents the result of superpixel processing
 type SuperpixelResponse struct {
-	ImageWidth  int      `json:"imageWidth"`
-	ImageHeight int      `json:"imageHeight"`
-	Strokes     []Stroke `json:"strokes"`
+	ImageWidth  int          `json:"imageWidth"`
+	ImageHeight int          `json:"imageHeight"`
+	Strokes     []Stroke     `json:"strokes"`
+	GridVectors []GridVector `json:"gridVectors"` // Grid of vectors for gradient visualization
 }
 
 // ImageProcessingHandler handles image processing operations
@@ -63,6 +73,11 @@ func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *ht
 	if err := json.Unmarshal([]byte(paramJSON), &req); err != nil {
 		http.Error(w, "Invalid parameters: "+err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	// Установка значения по умолчанию для размера сетки, если не указан
+	if req.GridSize <= 0 {
+		req.GridSize = 20
 	}
 
 	// Get image file
@@ -94,11 +109,15 @@ func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *ht
 	// Process image with modified SLIC algorithm and extract stroke data
 	strokes := h.extractStrokeData(img, req.NumberOfSuperpixels, req.CompactnessFactor, req.Elongation, req.Iterations)
 
+	// Создаем сетку векторов с указанным размером
+	gridVectors := h.createGradientGrid(img, req.GridSize)
+
 	// Return stroke data
 	resp := SuperpixelResponse{
 		ImageWidth:  img.Bounds().Dx(),
 		ImageHeight: img.Bounds().Dy(),
 		Strokes:     strokes,
+		GridVectors: gridVectors,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -130,16 +149,195 @@ type Cluster struct {
 	Pixels           []Pixel
 }
 
+// calculateStructureTensor вычисляет структурный тензор изображения и его собственные векторы
+func (h *ImageProcessingHandler) calculateStructureTensor(img image.Image) ([][]float64, [][]float64, [][]float64) {
+	bounds := img.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+
+	// Подготавливаем изображение - конвертируем в градации серого
+	grayImg := make([][]float64, height)
+	for y := 0; y < height; y++ {
+		grayImg[y] = make([]float64, width)
+		for x := 0; x < width; x++ {
+			r, g, b, _ := img.At(x, y).RGBA()
+			// Преобразуем в яркость
+			grayImg[y][x] = 0.2126*float64(r)/65535.0 + 0.7152*float64(g)/65535.0 + 0.0722*float64(b)/65535.0
+		}
+	}
+
+	// Применяем предварительное размытие по Гауссу к изображению для уменьшения шума
+	grayImg = h.applyGaussianSmoothing(grayImg, width, height)
+
+	// Вычисляем градиенты с помощью оператора Собеля
+	gradX := make([][]float64, height)
+	gradY := make([][]float64, height)
+
+	for y := 0; y < height; y++ {
+		gradX[y] = make([]float64, width)
+		gradY[y] = make([]float64, width)
+	}
+
+	// Оператор Собеля для X и Y направлений
+	kernelX := [][]float64{
+		{-1, 0, 1},
+		{-2, 0, 2},
+		{-1, 0, 1},
+	}
+	kernelY := [][]float64{
+		{-1, -2, -1},
+		{0, 0, 0},
+		{1, 2, 1},
+	}
+
+	// Вычисляем градиенты для всего изображения
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
+			sumX, sumY := 0.0, 0.0
+
+			for ky := -1; ky <= 1; ky++ {
+				for kx := -1; kx <= 1; kx++ {
+					sumX += grayImg[y+ky][x+kx] * kernelX[ky+1][kx+1]
+					sumY += grayImg[y+ky][x+kx] * kernelY[ky+1][kx+1]
+				}
+			}
+
+			gradX[y][x] = sumX
+			gradY[y][x] = sumY
+		}
+	}
+
+	// Создаем тензорное поле структуры
+	tensorA := make([][]float64, height)
+	tensorB := make([][]float64, height)
+	tensorC := make([][]float64, height)
+
+	for y := 0; y < height; y++ {
+		tensorA[y] = make([]float64, width)
+		tensorB[y] = make([]float64, width)
+		tensorC[y] = make([]float64, width)
+	}
+
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
+			// Создаем тензорное поле структуры (матрица 2x2)
+			gx := gradX[y][x]
+			gy := gradY[y][x]
+
+			// A = Gx*Gx, B = Gx*Gy, C = Gy*Gy
+			tensorA[y][x] = gx * gx
+			tensorB[y][x] = gx * gy
+			tensorC[y][x] = gy * gy
+		}
+	}
+
+	// Применяем сглаживание к тензорному полю с помощью гауссова фильтра
+	// Несколько проходов сглаживания для лучшей связности
+	for i := 0; i < 3; i++ {
+		tensorA = h.applyGaussianSmoothing(tensorA, width, height)
+		tensorB = h.applyGaussianSmoothing(tensorB, width, height)
+		tensorC = h.applyGaussianSmoothing(tensorC, width, height)
+	}
+
+	// Вычисляем собственные векторы и собственные значения
+	majorVectorX := make([][]float64, height)
+	majorVectorY := make([][]float64, height)
+	coherence := make([][]float64, height)
+
+	for y := 0; y < height; y++ {
+		majorVectorX[y] = make([]float64, width)
+		majorVectorY[y] = make([]float64, width)
+		coherence[y] = make([]float64, width)
+	}
+
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
+			a := tensorA[y][x]
+			b := tensorB[y][x]
+			c := tensorC[y][x]
+
+			// Вычисляем собственные значения
+			// λ1,2 = (A + C ± sqrt((A-C)² + 4B²))/2
+			discriminant := math.Sqrt(math.Max(0, (a-c)*(a-c)+4*b*b))
+			lambda1 := (a + c + discriminant) / 2
+			lambda2 := (a + c - discriminant) / 2
+
+			// Вычисляем когерентность (меру анизотропии)
+			if lambda1+lambda2 > 1e-10 {
+				coherence[y][x] = (lambda1 - lambda2) / (lambda1 + lambda2)
+			} else {
+				coherence[y][x] = 0
+			}
+
+			// Вычисляем собственный вектор для наибольшего собственного значения
+			// Этот вектор указывает направление максимального изменения (перпендикулярно границе)
+			if math.Abs(b) < 1e-10 {
+				// Если B близко к нулю, собственный вектор (1,0) или (0,1)
+				if a >= c {
+					majorVectorX[y][x] = 1
+					majorVectorY[y][x] = 0
+				} else {
+					majorVectorX[y][x] = 0
+					majorVectorY[y][x] = 1
+				}
+			} else {
+				// Иначе используем формулу для собственного вектора
+				majorVectorX[y][x] = lambda1 - c
+				majorVectorY[y][x] = b
+
+				// Нормализуем вектор
+				length := math.Sqrt(majorVectorX[y][x]*majorVectorX[y][x] + majorVectorY[y][x]*majorVectorY[y][x])
+				if length > 1e-10 {
+					majorVectorX[y][x] /= length
+					majorVectorY[y][x] /= length
+				}
+			}
+		}
+	}
+
+	// Сглаживаем векторное поле для устранения локальных флуктуаций
+	for i := 0; i < 2; i++ {
+		majorVectorX = h.smoothVector(majorVectorX, width, height)
+		majorVectorY = h.smoothVector(majorVectorY, width, height)
+	}
+
+	return majorVectorX, majorVectorY, coherence
+}
+
+// calculateThetaFromTensor вычисляет угол для точки изображения из тензорного поля
+// Эта функция теперь не используется, так как мы применяем перпендикулярное направление напрямую
+func (h *ImageProcessingHandler) calculateThetaFromTensor(x, y int, majorVectorX, majorVectorY [][]float64, width, height int) float64 {
+	if x < 2 || x >= width-2 || y < 2 || y >= height-2 {
+		// Для граничных точек возвращаем некоторое значение по умолчанию
+		return 0.0
+	}
+
+	// Получаем компоненты вектора
+	vx := majorVectorX[y][x]
+	vy := majorVectorY[y][x]
+
+	// Нам нужно направление вдоль границы (структуры),
+	// а не поперек, поэтому берем перпендикулярное направление
+	perpX := -vy
+	perpY := vx
+
+	// Вычисляем угол вектора, перпендикулярного к градиенту
+	return math.Atan2(perpY, perpX)
+}
+
 // extractStrokeData processes the image and returns stroke data for frontend rendering
 func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSuperpixels int, compactness float64, elongation float64, iterations int) []Stroke {
 	bounds := img.Bounds()
 	width, height := bounds.Dx(), bounds.Dy()
 
-	// Convert image to LAB color space and compute gradients
-	labImg, gradients := h.preprocessImage(img)
+	// Вычисляем структурный тензор изображения и получаем поле направлений
+	// Используем тот же код для вычисления тензорного поля, что и в createGradientGrid
+	majorVectorX, majorVectorY, _ := h.calculateStructureTensor(img)
+
+	// Convert image to LAB color space
+	labImg, _ := h.preprocessImage(img)
 
 	// Initialize clusters
-	clusters := h.initializeClusters(labImg, gradients, numberOfSuperpixels, width, height)
+	clusters := h.initializeClusters(labImg, nil, numberOfSuperpixels, width, height, majorVectorX, majorVectorY)
 
 	// Compute S - the grid interval (approximately equal to sqrt(N/k))
 	S := int(math.Sqrt(float64(width*height) / float64(numberOfSuperpixels)))
@@ -225,7 +423,19 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 				if labels[y][x] >= 0 {
 					// Add this pixel to the corresponding cluster
 					l, a, b := rgbToLab(img.At(x, y))
-					theta := calculateTheta(img, x, y)
+
+					// Важно: используем тот же самый метод вычисления угла, что и в createGradientGrid
+					// Получаем перпендикулярный вектор (вдоль структуры)
+					var theta float64
+					if x >= 2 && x < width-2 && y >= 2 && y < height-2 {
+						perpX := -majorVectorY[y][x] // Поворачиваем на 90 градусов
+						perpY := majorVectorX[y][x]
+						theta = math.Atan2(perpY, perpX)
+					} else {
+						// Для граничных случаев
+						theta = 0.0
+					}
+
 					pixel := Pixel{
 						X:     x,
 						Y:     y,
@@ -355,7 +565,8 @@ func (h *ImageProcessingHandler) clustersToStrokes(img image.Image, clusters []C
 
 // calculateTheta calculates the angle perpendicular to the gradient at (x,y)
 func calculateTheta(img image.Image, x, y int) float64 {
-	// Simple implementation - in a real app you'd want more sophisticated gradient calculation
+	// Эту функцию мы оставляем для обратной совместимости,
+	// но в основных вычислениях вместо неё используем calculateThetaFromTensor
 	bounds := img.Bounds()
 	if x <= bounds.Min.X || x >= bounds.Max.X-1 || y <= bounds.Min.Y || y >= bounds.Max.Y-1 {
 		return 0 // Default for borders
@@ -536,7 +747,7 @@ func (h *ImageProcessingHandler) smoothGradients(pixels [][]Pixel, rawGradients 
 }
 
 // initializeClusters initializes the superpixel clusters
-func (h *ImageProcessingHandler) initializeClusters(pixels [][]Pixel, gradients [][][]float64, numberOfSuperpixels int, width, height int) []Cluster {
+func (h *ImageProcessingHandler) initializeClusters(pixels [][]Pixel, gradients [][][]float64, numberOfSuperpixels int, width, height int, majorVectorX, majorVectorY [][]float64) []Cluster {
 	// Compute grid interval
 	S := int(math.Sqrt(float64(width*height) / float64(numberOfSuperpixels)))
 
@@ -553,9 +764,22 @@ func (h *ImageProcessingHandler) initializeClusters(pixels [][]Pixel, gradients 
 					newX, newY := x+nx, y+ny
 
 					if newX >= 0 && newX < width && newY >= 0 && newY < height {
-						gx := gradients[newY][newX][0]
-						gy := gradients[newY][newX][1]
-						g := gx*gx + gy*gy
+						var g float64
+
+						if gradients != nil {
+							// Если доступны градиенты из preprocessImage, используем их
+							gx := gradients[newY][newX][0]
+							gy := gradients[newY][newX][1]
+							g = gx*gx + gy*gy
+						} else if majorVectorX != nil && majorVectorY != nil {
+							// Если доступны компоненты векторов из тензорного поля, используем их
+							vx := majorVectorX[newY][newX]
+							vy := majorVectorY[newY][newX]
+							g = 1.0 - (vx*vx + vy*vy) // Инвертируем для поиска минимума в местах с максимальной согласованностью
+						} else {
+							// Используем простой подход из оригинального кода
+							g = 1.0 // Значение по умолчанию
+						}
 
 						if g < minGradient {
 							minGradient = g
@@ -566,14 +790,47 @@ func (h *ImageProcessingHandler) initializeClusters(pixels [][]Pixel, gradients 
 			}
 
 			// Create cluster at local minimum
-			pixel := pixels[minY][minX]
+			var theta float64
+			var l, a, b float64
+
+			if pixels != nil && minY < len(pixels) && minX < len(pixels[minY]) {
+				// Используем данные из подготовленных пикселей
+				theta = pixels[minY][minX].Theta
+				l = pixels[minY][minX].L
+				a = pixels[minY][minX].A
+				b = pixels[minY][minX].B
+			} else {
+				// Если предобработанные пиксели не доступны
+				if majorVectorX != nil && majorVectorY != nil && minX > 0 && minX < width-1 && minY > 0 && minY < height-1 {
+					// Используем направление из тензорного поля
+					vx := majorVectorX[minY][minX]
+					vy := majorVectorY[minY][minX]
+					perpX := -vy // Перпендикулярный вектор
+					perpY := vx
+					theta = math.Atan2(perpY, perpX)
+				} else {
+					// Значение по умолчанию
+					theta = 0.0
+				}
+
+				// Если нет LAB значений, вычисляем из RGB
+				if minY < len(pixels) && minX < len(pixels[minY]) {
+					l = pixels[minY][minX].L
+					a = pixels[minY][minX].A
+					b = pixels[minY][minX].B
+				} else {
+					// Просто используем чёрный цвет, если все другие методы недоступны
+					l, a, b = 0, 0, 0
+				}
+			}
+
 			clusters = append(clusters, Cluster{
 				CenterX: float64(minX),
 				CenterY: float64(minY),
-				L:       pixel.L,
-				A:       pixel.A,
-				B:       pixel.B,
-				Theta:   pixel.Theta,
+				L:       l,
+				A:       a,
+				B:       b,
+				Theta:   theta,
 			})
 		}
 	}
@@ -657,4 +914,190 @@ func unpivotXyz(n float64) float64 {
 		return n * n * n
 	}
 	return (n*116 - 16) / 903.3
+}
+
+// createGradientGrid создает сетку векторов направлений градиентов для визуализации
+func (h *ImageProcessingHandler) createGradientGrid(img image.Image, gridSize int) []GridVector {
+	bounds := img.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+
+	// Вычисляем структурный тензор и получаем поле направлений
+	// Используем тот же самый метод, что и в extractStrokeData
+	majorVectorX, majorVectorY, coherence := h.calculateStructureTensor(img)
+
+	// Определяем шаг сетки
+	stepX := width / gridSize
+	stepY := height / gridSize
+
+	if stepX < 1 {
+		stepX = 1
+	}
+	if stepY < 1 {
+		stepY = 1
+	}
+
+	// Формируем сетку векторов, усредняя направления в каждой клетке
+	vectors := make([]GridVector, 0, gridSize*gridSize)
+
+	for cellY := 0; cellY < gridSize; cellY++ {
+		for cellX := 0; cellX < gridSize; cellX++ {
+			// Определяем границы текущей клетки
+			startX := cellX * stepX
+			endX := (cellX + 1) * stepX
+			if endX > width {
+				endX = width
+			}
+
+			startY := cellY * stepY
+			endY := (cellY + 1) * stepY
+			if endY > height {
+				endY = height
+			}
+
+			// Пропускаем клетки, которые не полностью входят в изображение
+			if startX < 3 || endX >= width-3 || startY < 3 || endY >= height-3 {
+				continue
+			}
+
+			// Вычисляем средний вектор для всех точек в клетке
+			sumVecX := 0.0
+			sumVecY := 0.0
+			sumCoherence := 0.0
+			pointCount := 0
+
+			for y := startY; y < endY; y++ {
+				for x := startX; x < endX; x++ {
+					// Получаем перпендикулярный вектор (вдоль структуры)
+					// Тот же метод, что используется в extractStrokeData
+					perpX := -majorVectorY[y][x] // Поворачиваем на 90 градусов
+					perpY := majorVectorX[y][x]
+
+					// Суммируем компоненты векторов (это правильно для усреднения направлений)
+					sumVecX += perpX
+					sumVecY += perpY
+					sumCoherence += coherence[y][x]
+					pointCount++
+				}
+			}
+
+			// Если в клетке нет точек, пропускаем её
+			if pointCount == 0 {
+				continue
+			}
+
+			// Вычисляем среднее
+			avgVecX := sumVecX / float64(pointCount)
+			avgVecY := sumVecY / float64(pointCount)
+			avgCoherence := sumCoherence / float64(pointCount)
+
+			// Нормализуем вектор
+			length := math.Sqrt(avgVecX*avgVecX + avgVecY*avgVecY)
+			if length > 1e-10 {
+				avgVecX /= length
+				avgVecY /= length
+			}
+
+			// Вычисляем угол среднего вектора
+			theta := math.Atan2(avgVecY, avgVecX)
+
+			// Координаты центра клетки для отображения вектора
+			centerX := startX + (endX-startX)/2
+			centerY := startY + (endY-startY)/2
+
+			// Длина вектора пропорциональна когерентности
+			vecLength := math.Min(1.0, math.Max(0.1, avgCoherence*2.0))
+
+			vectors = append(vectors, GridVector{
+				X:      centerX,
+				Y:      centerY,
+				Theta:  theta,
+				Length: vecLength,
+			})
+		}
+	}
+
+	return vectors
+}
+
+// smoothVector применяет сглаживание к полю векторов
+func (h *ImageProcessingHandler) smoothVector(vectorField [][]float64, width, height int) [][]float64 {
+	result := make([][]float64, height)
+	for y := 0; y < height; y++ {
+		result[y] = make([]float64, width)
+	}
+
+	// Простое усреднение по соседям 3x3
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
+			sum := 0.0
+			count := 0.0
+
+			for ky := -1; ky <= 1; ky++ {
+				for kx := -1; kx <= 1; kx++ {
+					sum += vectorField[y+ky][x+kx]
+					count += 1.0
+				}
+			}
+
+			result[y][x] = sum / count
+		}
+	}
+
+	// Копируем граничные значения
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if y < 1 || y >= height-1 || x < 1 || x >= width-1 {
+				result[y][x] = vectorField[y][x]
+			}
+		}
+	}
+
+	return result
+}
+
+// applyGaussianSmoothing применяет гауссовское сглаживание к матрице данных
+func (h *ImageProcessingHandler) applyGaussianSmoothing(data [][]float64, width, height int) [][]float64 {
+	// Создаем новую матрицу для результата
+	result := make([][]float64, height)
+	for y := 0; y < height; y++ {
+		result[y] = make([]float64, width)
+	}
+
+	// Гауссов фильтр 5x5
+	kernel := [][]float64{
+		{1.0 / 273, 4.0 / 273, 7.0 / 273, 4.0 / 273, 1.0 / 273},
+		{4.0 / 273, 16.0 / 273, 26.0 / 273, 16.0 / 273, 4.0 / 273},
+		{7.0 / 273, 26.0 / 273, 41.0 / 273, 26.0 / 273, 7.0 / 273},
+		{4.0 / 273, 16.0 / 273, 26.0 / 273, 16.0 / 273, 4.0 / 273},
+		{1.0 / 273, 4.0 / 273, 7.0 / 273, 4.0 / 273, 1.0 / 273},
+	}
+
+	kernelSize := 5
+	halfKernel := kernelSize / 2
+
+	// Применяем свертку с ядром
+	for y := halfKernel; y < height-halfKernel; y++ {
+		for x := halfKernel; x < width-halfKernel; x++ {
+			sum := 0.0
+
+			for ky := -halfKernel; ky <= halfKernel; ky++ {
+				for kx := -halfKernel; kx <= halfKernel; kx++ {
+					sum += data[y+ky][x+kx] * kernel[ky+halfKernel][kx+halfKernel]
+				}
+			}
+
+			result[y][x] = sum
+		}
+	}
+
+	// Копируем граничные значения
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if y < halfKernel || y >= height-halfKernel || x < halfKernel || x >= width-halfKernel {
+				result[y][x] = data[y][x]
+			}
+		}
+	}
+
+	return result
 }
