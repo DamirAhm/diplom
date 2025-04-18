@@ -111,7 +111,7 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
 
             const animate = (currentTime: number) => {
                 const frameDuration = currentTime - lastTime;
-                const deltaTime = frameDuration * 5 / targetFrameTime;
+                const deltaTime = frameDuration * 10 / targetFrameTime;
                 lastTime = currentTime;
 
                 const perf = performanceRef.current;

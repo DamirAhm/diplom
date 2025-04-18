@@ -48,6 +48,16 @@ func main() {
 		log.Fatal("Failed to initialize database:", err)
 	}
 
+	// Создаем директорию для загруженных файлов, если она не существует
+	if err := os.MkdirAll("./uploads", 0755); err != nil {
+		log.Fatal("Failed to create uploads directory:", err)
+	}
+
+	// Создаем директорию для статических файлов, если она не существует
+	if err := os.MkdirAll("./static", 0755); err != nil {
+		log.Fatal("Failed to create static directory:", err)
+	}
+
 	localizedStringRepo := repository.NewSQLiteLocalizedStringRepo(db.DB)
 	partnerRepo := repository.NewSQLitePartnerRepo(db.DB)
 	researcherRepo := repository.NewSQLiteResearcherRepo(db.DB, localizedStringRepo)
@@ -81,6 +91,9 @@ func main() {
 	authHandler := handlers.NewAuthHandler(cfg)
 	fileHandler := handlers.NewFileHandler()
 
+	// Создание обработчика для алгоритма разбиения изображения
+	imageProcessingHandler := handlers.NewImageProcessingHandler("./uploads")
+
 	router := mux.NewRouter()
 
 	router.Use(middleware.Logger)
@@ -88,6 +101,14 @@ func main() {
 	docs.SwaggerInfo.BasePath = "/api"
 	docs.SwaggerInfo.Host = cfg.Server.Host + ":" + cfg.Server.Port
 	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+
+	// Обработка статических файлов
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+
+	// Демонстрация алгоритма
+	router.HandleFunc("/demo/superpixels", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./static/superpixel.html")
+	})
 
 	api := router.PathPrefix("/api").Subrouter()
 
@@ -132,6 +153,9 @@ func main() {
 
 	protected.HandleFunc("/upload", fileHandler.UploadFile).Methods("POST")
 
+	// Новый маршрут для обработки изображений с модифицированным алгоритмом SLIC
+	api.HandleFunc("/image/superpixels", imageProcessingHandler.ProcessSuperpixels).Methods("POST")
+
 	router.HandleFunc("/uploads/{filename}", fileHandler.ServeFile).Methods("GET")
 
 	c := cors.New(cors.Options{
@@ -166,6 +190,7 @@ func main() {
 	go func() {
 		log.Printf("Server starting on %s:%s...", cfg.Server.Host, cfg.Server.Port)
 		log.Printf("Swagger documentation available at http://%s:%s/swagger/index.html", cfg.Server.Host, cfg.Server.Port)
+		log.Printf("Superpixel demo available at http://%s:%s/demo/superpixels", cfg.Server.Host, cfg.Server.Port)
 		if err := app.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("Server error: %v", err)
 			cancel()

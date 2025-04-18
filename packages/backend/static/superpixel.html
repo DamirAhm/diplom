@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Демонстрация алгоритма разбиения изображения на мазки</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .control-panel {
+            flex: 1;
+            min-width: 300px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .image-area {
+            flex: 2;
+            min-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .image-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .image-box {
+            flex: 1;
+            min-width: 300px;
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .image-box img {
+            max-width: 100%;
+            max-height: 400px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        input[type="file"] {
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .value-display {
+            display: inline-block;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Демонстрация алгоритма разбиения изображения на мазки</h1>
+
+    <div class="container">
+        <div class="control-panel">
+            <h2>Параметры алгоритма</h2>
+            <form id="processForm">
+                <div class="form-group">
+                    <label for="numberOfSuperpixels">Количество мазков: <span id="numberOfSuperpixelsValue"
+                            class="value-display">100</span></label>
+                    <input type="range" id="numberOfSuperpixels" name="numberOfSuperpixels" min="10" max="5000"
+                        value="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="compactnessFactor">Компактность: <span id="compactnessFactorValue"
+                            class="value-display">20</span></label>
+                    <input type="range" id="compactnessFactor" name="compactnessFactor" min="1" max="100" value="20">
+                </div>
+
+                <div class="form-group">
+                    <label for="elongation">Вытянутость (p): <span id="elongationValue"
+                            class="value-display">2.0</span></label>
+                    <input type="range" id="elongation" name="elongation" min="1" max="10" step="0.1" value="2.0">
+                </div>
+
+                <div class="form-group">
+                    <label for="iterations">Количество итераций: <span id="iterationsValue"
+                            class="value-display">10</span></label>
+                    <input type="range" id="iterations" name="iterations" min="1" max="30" value="10">
+                </div>
+
+                <div class="form-group">
+                    <label for="imageFile">Выберите изображение:</label>
+                    <input type="file" id="imageFile" name="imageFile" accept="image/jpeg, image/png">
+                </div>
+
+                <button type="submit" id="processButton">Обработать изображение</button>
+            </form>
+
+            <div class="loading" id="loadingIndicator">
+                Обработка изображения... Это может занять несколько секунд.
+            </div>
+        </div>
+
+        <div class="image-area">
+            <h2>Результаты</h2>
+            <div class="image-container">
+                <div class="image-box">
+                    <h3>Исходное изображение</h3>
+                    <img id="originalImage" src="" alt="Исходное изображение появится здесь">
+                </div>
+                <div class="image-box">
+                    <h3>Обработанное изображение</h3>
+                    <img id="processedImage" src="" alt="Обработанное изображение появится здесь">
+                </div>
+            </div>
+
+            <div>
+                <h3>Описание алгоритма:</h3>
+                <p>
+                    Этот алгоритм является модификацией классического алгоритма разбиения изображения на суперпиксели
+                    SLIC.
+                    Основное отличие заключается в использовании нормалей к градиентам для создания вытянутых мазков.
+                </p>
+                <p>
+                    Вместо стандартной метрики расстояния используется эллиптическая метрика:
+                    X² + (pY)² ≤ d², где p > 1 - параметр вытянутости.
+                </p>
+                <p>
+                    Это позволяет суперпикселям расти в p раз быстрее вдоль нормалей к градиенту, чем в ортогональном
+                    направлении,
+                    создавая эффект мазков кисти, следующих за контурами объектов на изображении.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('processForm');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const originalImage = document.getElementById('originalImage');
+            const processedImage = document.getElementById('processedImage');
+
+            // Update slider value displays
+            const sliders = ['numberOfSuperpixels', 'compactnessFactor', 'elongation', 'iterations'];
+            sliders.forEach(sliderId => {
+                const slider = document.getElementById(sliderId);
+                const valueDisplay = document.getElementById(sliderId + 'Value');
+
+                valueDisplay.textContent = slider.value;
+                slider.addEventListener('input', function () {
+                    valueDisplay.textContent = this.value;
+                });
+            });
+
+            // Preview selected image
+            document.getElementById('imageFile').addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        originalImage.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Form submission
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const formData = new FormData();
+                const imageFile = document.getElementById('imageFile').files[0];
+
+                if (!imageFile) {
+                    alert('Пожалуйста, выберите изображение');
+                    return;
+                }
+
+                // Add image file to FormData
+                formData.append('image', imageFile);
+
+                // Add parameters as JSON
+                const params = {
+                    numberOfSuperpixels: parseInt(document.getElementById('numberOfSuperpixels').value),
+                    compactnessFactor: parseFloat(document.getElementById('compactnessFactor').value),
+                    elongation: parseFloat(document.getElementById('elongation').value),
+                    iterations: parseInt(document.getElementById('iterations').value)
+                };
+
+                formData.append('params', JSON.stringify(params));
+
+                // Show loading indicator
+                loadingIndicator.style.display = 'block';
+                document.getElementById('processButton').disabled = true;
+
+                // Send request to API
+                fetch('/api/image/superpixels', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Ошибка обработки: ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Display result
+                        processedImage.src = data.imageUrl;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Произошла ошибка при обработке изображения: ' + error.message);
+                    })
+                    .finally(() => {
+                        // Hide loading indicator
+                        loadingIndicator.style.display = 'none';
+                        document.getElementById('processButton').disabled = false;
+                    });
+            });
+        });
+    </script>
+</body>
+
+</html>
