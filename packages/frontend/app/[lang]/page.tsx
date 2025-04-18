@@ -86,7 +86,7 @@ export default async function HomePage(args: HomePageProps) {
 
             <h1 className="font-heading text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight">
               <span className="text-foreground">{dictionary.home.title.split(' ').slice(0, -1).join(' ')} </span>
-              <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent dark:from-indigo-400 dark:via-indigo-300 dark:to-blue-400">
                 {dictionary.home.title.split(' ').slice(-1)[0]}
               </span>
             </h1>
@@ -118,19 +118,19 @@ export default async function HomePage(args: HomePageProps) {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8">
             <div className="text-center">
-              <p className="text-4xl font-heading font-bold text-primary">{laboratories.length}</p>
+              <p className="text-4xl font-heading font-bold text-primary dark:text-indigo-400">{laboratories.length}</p>
               <p className="text-foreground/70 text-sm mt-1">{lang === "en" ? "Laboratories" : "Лаборатории"}</p>
             </div>
             <div className="text-center">
-              <p className="text-4xl font-heading font-bold text-secondary">{workshops.length}</p>
+              <p className="text-4xl font-heading font-bold text-secondary dark:text-indigo-400">{workshops.length}</p>
               <p className="text-foreground/70 text-sm mt-1">{lang === "en" ? "Workshops" : "Мастерские"}</p>
             </div>
             <div className="text-center">
-              <p className="text-4xl font-heading font-bold text-accent">{researchFields.length}</p>
+              <p className="text-4xl font-heading font-bold text-accent dark:text-indigo-400">{researchFields.length}</p>
               <p className="text-foreground/70 text-sm mt-1">{lang === "en" ? "Research Fields" : "Направления исследований"}</p>
             </div>
             <div className="text-center">
-              <p className="text-4xl font-heading font-bold text-primary">50+</p>
+              <p className="text-4xl font-heading font-bold text-primary dark:text-indigo-400">50+</p>
               <p className="text-foreground/70 text-sm mt-1">{lang === "en" ? "Publications" : "Публикации"}</p>
             </div>
           </div>
@@ -141,7 +141,7 @@ export default async function HomePage(args: HomePageProps) {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4 dark:text-indigo-400">
               {lang === "en" ? "Research Fields" : "Направления исследований"}
             </h2>
             <p className="text-foreground/70 max-w-2xl mx-auto">
@@ -156,13 +156,13 @@ export default async function HomePage(args: HomePageProps) {
               <div key={index} className="group relative overflow-hidden rounded-xl bg-card card-hover p-6 transition-all">
                 <div className="absolute top-0 left-0 h-1 w-0 bg-gradient-to-r from-primary to-secondary group-hover:w-full transition-all duration-300"></div>
                 <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 mt-1 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                  <div className="flex-shrink-0 mt-1 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-lg font-medium text-foreground">{field}</h3>
+                    <h3 className="text-lg font-medium text-foreground dark:text-indigo-400">{field}</h3>
                     <p className="mt-2 text-sm text-foreground/70">
                       {lang === "en"
                         ? "Cutting-edge research in this exciting field with international recognition."
@@ -180,7 +180,7 @@ export default async function HomePage(args: HomePageProps) {
       <section className="py-20 bg-muted/30 dark:bg-gray-800/20 border-y border-border/40">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4 dark:text-indigo-400">
               {lang === "en" ? "Our Infrastructure" : "Наша инфраструктура"}
             </h2>
             <p className="text-foreground/70 max-w-2xl mx-auto">
@@ -194,7 +194,7 @@ export default async function HomePage(args: HomePageProps) {
             <div className="bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
               <div className="h-3 bg-gradient-to-r from-primary to-secondary"></div>
               <div className="p-8">
-                <h3 className="text-2xl font-heading font-semibold mb-6 text-primary">
+                <h3 className="text-2xl font-heading font-semibold mb-6 text-primary dark:text-indigo-400">
                   {lang === "en" ? "Laboratories" : "Лаборатории"}
                 </h3>
                 <ul className="space-y-4">
@@ -215,7 +215,7 @@ export default async function HomePage(args: HomePageProps) {
             <div className="bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
               <div className="h-3 bg-gradient-to-r from-secondary to-accent"></div>
               <div className="p-8">
-                <h3 className="text-2xl font-heading font-semibold mb-6 text-secondary">
+                <h3 className="text-2xl font-heading font-semibold mb-6 text-secondary dark:text-indigo-400">
                   {lang === "en" ? "Workshops" : "Мастерские"}
                 </h3>
                 <ul className="space-y-4">
@@ -240,7 +240,7 @@ export default async function HomePage(args: HomePageProps) {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4 dark:text-indigo-400">
               {lang === "en" ? "Explore Our Resources" : "Изучите наши ресурсы"}
             </h2>
             <p className="text-foreground/70 max-w-2xl mx-auto">

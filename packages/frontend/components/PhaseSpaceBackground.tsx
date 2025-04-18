@@ -28,7 +28,6 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
         vx: number;
         vy: number;
         age: number;
-        maxAge: number;
         history: Array<{ x: number, y: number }>;
         colorIndex: number;
     }>>([]);
@@ -96,7 +95,6 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                         vx: (Math.random() - 0.5) * 0.5,
                         vy: (Math.random() - 0.5) * 0.5,
                         age: 0,
-                        maxAge: 200 + Math.random() * 300,
                         history: [],
                         colorIndex: Math.floor(Math.random() * colorSchemes[colorScheme].length)
                     });
@@ -150,8 +148,7 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
 
                     point.age++;
 
-                    if (point.age > point.maxAge ||
-                        point.x < -width * 0.1 ||
+                    if (point.x < -width * 0.1 ||
                         point.x > width * 1.1 ||
                         point.y < -height * 0.1 ||
                         point.y > height * 1.1) {
@@ -185,7 +182,6 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                             vx: (Math.random() - 0.5) * 0.5,
                             vy: (Math.random() - 0.5) * 0.5,
                             age: 0,
-                            maxAge: 200 + Math.random() * 300,
                             history: [],
                             colorIndex: Math.floor(Math.random() * colorSchemes[colorScheme].length)
                         };

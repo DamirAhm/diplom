@@ -100,7 +100,7 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none h-10 py-2 px-4;
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none h-10 py-2 px-4 dark:bg-indigo-400 dark:text-white dark:hover:bg-indigo-500;
   }
 
   .btn-secondary {
@@ -108,7 +108,7 @@
   }
 
   .btn-outline {
-    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none h-10 py-2 px-4;
+    @apply border border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none h-10 py-2 px-4 dark:hover:text-indigo-400 dark:hover:border-indigo-400;
   }
 
   .card {
@@ -116,7 +116,7 @@
   }
 
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-md hover:border-primary/20;
+    @apply transition-all duration-300 hover:shadow-md hover:border-primary/20 dark:hover:border-indigo-400/30;
   }
 }
 
@@ -132,6 +132,19 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.dark a {
+  color: theme('colors.indigo.400');
+}
+
+.dark a.no-color-override,
+.dark nav a,
+.dark a.btn-primary,
+.dark a.btn-secondary,
+.dark a.btn-outline,
+.dark footer a {
+  color: inherit;
 }
 
 * {

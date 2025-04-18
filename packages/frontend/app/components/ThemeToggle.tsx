@@ -16,7 +16,7 @@ export function ThemeToggle() {
     >
       {theme === "light" ?
         <Moon size={16} className="text-primary" /> :
-        <Sun size={16} className="text-secondary" />
+        <Sun size={16} className="text-indigo-400" />
       }
     </button>
   );

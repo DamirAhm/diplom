@@ -63,9 +63,9 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-lg border border-border/50 overflow-hidden">
+      <div className="bg-card rounded-lg border border-border/50 dark:border-indigo-400/20 overflow-hidden">
         {/* Search and filters header */}
-        <div className="p-4 border-b border-border/50">
+        <div className="p-4 border-b border-border/50 dark:border-indigo-400/20">
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:space-y-0 md:space-x-4">
             {/* Search input */}
             <div className="relative flex-1">
@@ -76,7 +76,7 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-md bg-muted/50 border border-border/50 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-md bg-muted/50 border border-border/50 dark:border-indigo-400/30 focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-indigo-400"
                 placeholder={dictionary.publications.searchPlaceholder}
               />
             </div>
@@ -91,7 +91,7 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
                   id="sortBy"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "year" | "citations")}
-                  className="text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="text-sm rounded-md bg-muted/50 border border-border/50 dark:border-indigo-400/30 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-indigo-400"
                 >
                   <option value="year">{dictionary.publications.year}</option>
                   <option value="citations">{dictionary.publications.citations}</option>
@@ -106,7 +106,7 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
                   id="filterYear"
                   value={filterYear || ""}
                   onChange={(e) => setFilterYear(e.target.value ? Number.parseInt(e.target.value) : null)}
-                  className="text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="text-sm rounded-md bg-muted/50 border border-border/50 dark:border-indigo-400/30 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-indigo-400"
                 >
                   <option value="">{dictionary.publications.allYears}</option>
                   {years.map((year) => (
@@ -125,7 +125,7 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
                   id="filterAuthor"
                   value={filterAuthor || ""}
                   onChange={(e) => setFilterAuthor(e.target.value ? Number.parseInt(e.target.value) : null)}
-                  className="text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="text-sm rounded-md bg-muted/50 border border-border/50 dark:border-indigo-400/30 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-indigo-400"
                 >
                   <option value="">{dictionary.publications.allAuthors}</option>
                   {authors.map((author) => (
@@ -139,7 +139,7 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
               {(filterYear !== null || filterAuthor !== null || sortBy !== "year" || searchQuery) && (
                 <button
                   onClick={resetFilters}
-                  className="flex items-center text-sm text-primary hover:text-primary/80"
+                  className="flex items-center text-sm text-primary hover:text-primary/80 dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
                   <X size={16} className="mr-1" />
                   {lang === "en" ? "Reset Filters" : "Сбросить фильтры"}
@@ -149,7 +149,7 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
 
             {/* Mobile filter toggle */}
             <button
-              className="flex items-center justify-center md:hidden px-4 py-2 text-sm rounded-md border border-border/50 bg-muted/50 hover:bg-muted"
+              className="flex items-center justify-center md:hidden px-4 py-2 text-sm rounded-md border border-border/50 dark:border-indigo-400/30 bg-muted/50 hover:bg-muted"
               onClick={() => setFiltersOpen(!filtersOpen)}
             >
               <SlidersHorizontal size={16} className="mr-2" />

@@ -103,7 +103,7 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({
 
         <div className="mt-4 flex items-center gap-2">
           <div className="flex items-center gap-1.5 text-sm text-foreground/60">
-            <Award size={16} className="text-primary" />
+            <Award size={16} className="text-primary dark:text-indigo-400" />
             <span>{researcher.totalCitations}</span>
             <span className="text-foreground/60">{dictionary.publications.citations}</span>
           </div>
@@ -119,7 +119,7 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({
                     href={value}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 dark:bg-indigo-400/10 dark:text-indigo-400 dark:hover:bg-indigo-400/20 transition-colors"
                   >
                     <ExternalLink size={12} />
                     {profileLabels[key] || key}
@@ -130,7 +130,7 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({
 
           <Link
             href={`/${lang}/researchers/${researcher.id}`}
-            className="inline-flex items-center text-sm text-primary font-medium hover:underline"
+            className="inline-flex items-center text-sm text-primary dark:text-indigo-400 font-medium hover:underline"
           >
             {dictionary.researchers.viewProfile}
             <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

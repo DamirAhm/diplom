@@ -52,7 +52,7 @@ export default function Header({ lang }: HeaderProps) {
       }`}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          <Link href={`/${lang}`} className="font-heading text-2xl font-bold text-primary dark:text-secondary transition-colors hover:text-primary/80 dark:hover:text-secondary/80">
+          <Link href={`/${lang}`} className="font-heading text-2xl font-bold text-primary dark:text-indigo-400 transition-colors hover:text-primary/80 dark:hover:text-indigo-300">
             {dictionary.common.laboratoryName}
           </Link>
 
@@ -77,8 +77,8 @@ export default function Header({ lang }: HeaderProps) {
                     <Link
                       href={`/${lang}/${item.key}`}
                       className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
-                        ? "text-primary dark:text-secondary font-semibold"
-                        : "text-foreground/70 hover:text-primary dark:hover:text-secondary"
+                        ? "text-primary dark:text-indigo-400 font-semibold"
+                        : "text-foreground/70 hover:text-primary dark:hover:text-indigo-400"
                         }`}
                     >
                       {item.label}
@@ -100,18 +100,18 @@ export default function Header({ lang }: HeaderProps) {
 
       {/* Mobile menu */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-[57px] z-40 transition-all duration-200 ease-in-out bg-white dark:bg-gray-900 border-t border-border shadow-lg">
+        <div className="md:hidden fixed inset-x-0 top-[57px] z-40 transition-all duration-200 ease-in-out bg-white dark:bg-gray-900 border-t border-border dark:border-indigo-900/30 shadow-lg">
           <nav className="container mx-auto px-4 py-4">
             <ul className="space-y-2">
               {menuItems.map((item) => {
                 const isActive = pathname === `/${lang}/${item.key}` || pathname.startsWith(`/${lang}/${item.key}/`)
                 return (
-                  <li key={item.key} className="border-b border-border/40 last:border-0">
+                  <li key={item.key} className="border-b border-border/40 dark:border-indigo-900/20 last:border-0">
                     <Link
                       href={`/${lang}/${item.key}`}
                       className={`block py-3 transition-colors ${isActive
-                        ? "text-primary dark:text-secondary font-semibold"
-                        : "text-foreground/70 hover:text-primary dark:hover:text-secondary"
+                        ? "text-primary dark:text-indigo-400 font-semibold"
+                        : "text-foreground/70 hover:text-primary dark:hover:text-indigo-400"
                         }`}
                       onClick={toggleMenu}
                     >

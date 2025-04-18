@@ -84,7 +84,6 @@
     "/[lang]/training/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/[lang]/training/page.css",
       "static/chunks/app/[lang]/training/page.js"
     ],
     "/[lang]/partners/page": [

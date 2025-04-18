@@ -23,7 +23,7 @@ const PublicationItem: React.FC<PublicationItemProps> = ({ publication, lang }) 
           {author.id ? (
             <Link
               href={`/${lang}/researchers/${author.id}`}
-              className="text-primary hover:underline font-medium"
+              className="text-primary hover:underline font-medium dark:text-indigo-400"
             >
               {author.name[lang]}
             </Link>
@@ -52,18 +52,18 @@ const PublicationItem: React.FC<PublicationItemProps> = ({ publication, lang }) 
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
           {publication.journal && (
             <div className="flex items-center gap-1.5 text-foreground/70">
-              <BookOpen size={16} className="text-primary flex-shrink-0" />
+              <BookOpen size={16} className="text-primary dark:text-indigo-400 flex-shrink-0" />
               <span className="line-clamp-1">{publication.journal}</span>
             </div>
           )}
 
           <div className="flex items-center gap-1.5 text-foreground/70">
-            <Calendar size={16} className="text-primary flex-shrink-0" />
+            <Calendar size={16} className="text-primary dark:text-indigo-400 flex-shrink-0" />
             <span>{formattedDate}</span>
           </div>
 
           <div className="flex items-center gap-1.5 text-foreground/70">
-            <Award size={16} className="text-primary flex-shrink-0" />
+            <Award size={16} className="text-primary dark:text-indigo-400 flex-shrink-0" />
             <span>{publication.citationsCount} {dictionary.publications.citations}</span>
           </div>
         </div>
@@ -73,7 +73,7 @@ const PublicationItem: React.FC<PublicationItemProps> = ({ publication, lang }) 
             href={publication.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm text-primary dark:text-indigo-400 font-medium hover:underline"
           >
             {dictionary.publications.viewPublication}
             <ExternalLink size={14} />

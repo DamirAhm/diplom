@@ -22,9 +22,8 @@ const ProjectsPage = async ({ params }: { params: { lang: Locale } }) => {
 
   return (
     <div className="container mx-auto px-4 py-16">
-      {/* Header */}
       <div className="max-w-4xl mx-auto text-center mb-16">
-        <h1 className="font-heading text-4xl md:text-5xl font-bold mb-6">
+        <h1 className="font-heading text-4xl md:text-5xl font-bold mb-6 dark:text-indigo-400">
           {dictionary.projects.title}
         </h1>
         <p className="text-foreground/70 max-w-3xl mx-auto">
@@ -33,27 +32,8 @@ const ProjectsPage = async ({ params }: { params: { lang: Locale } }) => {
             : "Изучите наши текущие исследовательские проекты и их последние результаты."}
         </p>
       </div>
-
-      {/* Stats Summary */}
-      <div className="max-w-5xl mx-auto mb-10 bg-card dark:bg-card border border-border/50 rounded-lg p-6 shadow-sm">
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold">{projects.length}</div>
-            <div className="text-sm text-foreground/70">{lang === "en" ? "Active Projects" : "Активные проекты"}</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{projects.reduce((acc, project) => acc + (project.publications?.length || 0), 0)}</div>
-            <div className="text-sm text-foreground/70">{lang === "en" ? "Related Publications" : "Связанные публикации"}</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold">{projects.filter(project => project.githubLink).length}</div>
-            <div className="text-sm text-foreground/70">{lang === "en" ? "Open Source" : "Открытый исходный код"}</div>
-          </div>
-        </div>
-      </div>
-
       {projects.length === 0 ? (
-        <div className="max-w-md mx-auto bg-card dark:bg-card border border-border/50 rounded-lg p-8 shadow-sm text-center">
+        <div className="max-w-md mx-auto bg-card dark:bg-card border border-border/50 dark:border-indigo-400/20 rounded-lg p-8 shadow-sm text-center">
           <p className="text-xl text-foreground/70">
             {dictionary.projects.noProjectsFound}
           </p>
