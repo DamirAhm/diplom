@@ -21,9 +21,22 @@ type SuperpixelRequest struct {
 	Iterations          int     `json:"iterations"`
 }
 
+// Stroke represents a single brush stroke with its properties
+type Stroke struct {
+	CenterX float64  `json:"centerX"`
+	CenterY float64  `json:"centerY"`
+	Color   [3]uint8 `json:"color"`  // RGB color
+	Pixels  [][2]int `json:"pixels"` // Array of [x,y] coordinates belonging to this stroke
+	Theta   float64  `json:"theta"`  // Orientation angle
+	Width   float64  `json:"width"`  // Approximate width of the stroke
+	Height  float64  `json:"height"` // Approximate height of the stroke
+}
+
 // SuperpixelResponse represents the result of superpixel processing
 type SuperpixelResponse struct {
-	ImageURL string `json:"imageUrl"`
+	ImageWidth  int      `json:"imageWidth"`
+	ImageHeight int      `json:"imageHeight"`
+	Strokes     []Stroke `json:"strokes"`
 }
 
 // ImageProcessingHandler handles image processing operations
@@ -78,31 +91,14 @@ func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Process image with modified SLIC algorithm
-	resultImg := h.modifiedSLIC(img, req.NumberOfSuperpixels, req.CompactnessFactor, req.Elongation, req.Iterations)
+	// Process image with modified SLIC algorithm and extract stroke data
+	strokes := h.extractStrokeData(img, req.NumberOfSuperpixels, req.CompactnessFactor, req.Elongation, req.Iterations)
 
-	// Save resulting image
-	filename := filepath.Base(header.Filename)
-	if filename == "" {
-		// Generate a random name if needed
-		filename = "processed_" + filepath.Base(header.Filename)
-	}
-	outputPath := filepath.Join(h.uploadDir, filename)
-	outputFile, err := createFile(outputPath)
-	if err != nil {
-		http.Error(w, "Failed to create output file: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer outputFile.Close()
-
-	if err := png.Encode(outputFile, resultImg); err != nil {
-		http.Error(w, "Failed to encode output image: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return URL to the processed image
+	// Return stroke data
 	resp := SuperpixelResponse{
-		ImageURL: "/uploads/" + filename,
+		ImageWidth:  img.Bounds().Dx(),
+		ImageHeight: img.Bounds().Dy(),
+		Strokes:     strokes,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -134,8 +130,8 @@ type Cluster struct {
 	Pixels           []Pixel
 }
 
-// modifiedSLIC implements the modified SLIC algorithm with elliptical distance
-func (h *ImageProcessingHandler) modifiedSLIC(img image.Image, numberOfSuperpixels int, compactness float64, elongation float64, iterations int) image.Image {
+// extractStrokeData processes the image and returns stroke data for frontend rendering
+func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSuperpixels int, compactness float64, elongation float64, iterations int) []Stroke {
 	bounds := img.Bounds()
 	width, height := bounds.Dx(), bounds.Dy()
 
@@ -249,14 +245,22 @@ func (h *ImageProcessingHandler) modifiedSLIC(img image.Image, numberOfSuperpixe
 				continue
 			}
 
-			sumX, sumY, sumL, sumA, sumB, sumTheta := 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+			sumX, sumY, sumL, sumA, sumB := 0.0, 0.0, 0.0, 0.0, 0.0
+
+			// Для направления используем другой подход
+			// Усредняем компоненты направления, а не сами углы
+			sumCosTheta, sumSinTheta := 0.0, 0.0
+
 			for _, p := range clusters[i].Pixels {
 				sumX += float64(p.X)
 				sumY += float64(p.Y)
 				sumL += p.L
 				sumA += p.A
 				sumB += p.B
-				sumTheta += p.Theta
+
+				// Избегаем проблемы с усреднением углов, используя суммирование векторов
+				sumCosTheta += math.Cos(p.Theta)
+				sumSinTheta += math.Sin(p.Theta)
 			}
 
 			n := float64(len(clusters[i].Pixels))
@@ -265,12 +269,88 @@ func (h *ImageProcessingHandler) modifiedSLIC(img image.Image, numberOfSuperpixe
 			clusters[i].L = sumL / n
 			clusters[i].A = sumA / n
 			clusters[i].B = sumB / n
-			clusters[i].Theta = sumTheta / n
+
+			// Вычисляем средний угол из компонентов вектора
+			clusters[i].Theta = math.Atan2(sumSinTheta, sumCosTheta)
 		}
 	}
 
-	// Create the output image
-	return h.createOutputImage(img, clusters, labels)
+	// Convert clusters to strokes
+	return h.clustersToStrokes(img, clusters, labels)
+}
+
+// clustersToStrokes converts processed clusters to stroke data for rendering
+func (h *ImageProcessingHandler) clustersToStrokes(img image.Image, clusters []Cluster, labels [][]int) []Stroke {
+	bounds := img.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+	strokes := make([]Stroke, 0, len(clusters))
+
+	for i, cluster := range clusters {
+		if len(cluster.Pixels) == 0 {
+			continue
+		}
+
+		// Convert LAB color to RGB for the stroke
+		r, g, b := labToRgb(cluster.L, cluster.A, cluster.B)
+		color := [3]uint8{uint8(r * 255), uint8(g * 255), uint8(b * 255)}
+
+		// Collect all pixels belonging to this cluster
+		pixels := make([][2]int, 0, len(cluster.Pixels))
+		minX, minY := width, height
+		maxX, maxY := 0, 0
+
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				if labels[y][x] == i {
+					pixels = append(pixels, [2]int{x, y})
+
+					// Track bounds of this stroke
+					if x < minX {
+						minX = x
+					}
+					if x > maxX {
+						maxX = x
+					}
+					if y < minY {
+						minY = y
+					}
+					if y > maxY {
+						maxY = y
+					}
+				}
+			}
+		}
+
+		// Calculate approximate width and height of the stroke
+		width := float64(maxX - minX)
+		height := float64(maxY - minY)
+
+		// Create the stroke
+		stroke := Stroke{
+			CenterX: cluster.CenterX,
+			CenterY: cluster.CenterY,
+			Color:   color,
+			Pixels:  pixels,
+			Theta:   cluster.Theta,
+			Width:   width,
+			Height:  height,
+		}
+
+		strokes = append(strokes, stroke)
+	}
+
+	// Sort strokes by size (for animation - drawing larger strokes first)
+	// This is a simple sort - you could implement a more sophisticated ordering
+	// based on stroke size, position, or other factors
+	for i := 0; i < len(strokes); i++ {
+		for j := i + 1; j < len(strokes); j++ {
+			if len(strokes[i].Pixels) < len(strokes[j].Pixels) {
+				strokes[i], strokes[j] = strokes[j], strokes[i]
+			}
+		}
+	}
+
+	return strokes
 }
 
 // calculateTheta calculates the angle perpendicular to the gradient at (x,y)
@@ -281,24 +361,49 @@ func calculateTheta(img image.Image, x, y int) float64 {
 		return 0 // Default for borders
 	}
 
-	// Calculate gradient using Sobel operator
-	r1, g1, b1 := rgbToFloat(img.At(x+1, y))
-	r2, g2, b2 := rgbToFloat(img.At(x-1, y))
-	r3, g3, b3 := rgbToFloat(img.At(x, y+1))
-	r4, g4, b4 := rgbToFloat(img.At(x, y-1))
+	// Улучшенное вычисление градиента с использованием оператора Собеля 3x3
+	// Использую горизонтальный и вертикальный операторы Собеля
+	kernelX := [][]float64{
+		{-1, 0, 1},
+		{-2, 0, 2},
+		{-1, 0, 1},
+	}
 
-	// Use luminance as gradient measure
-	lum1 := 0.2126*r1 + 0.7152*g1 + 0.0722*b1
-	lum2 := 0.2126*r2 + 0.7152*g2 + 0.0722*b2
-	lum3 := 0.2126*r3 + 0.7152*g3 + 0.0722*b3
-	lum4 := 0.2126*r4 + 0.7152*g4 + 0.0722*b4
+	kernelY := [][]float64{
+		{-1, -2, -1},
+		{0, 0, 0},
+		{1, 2, 1},
+	}
 
-	// Compute gradient in x and y directions
-	gx := lum1 - lum2
-	gy := lum3 - lum4
+	sumX, sumY := 0.0, 0.0
 
-	// Return angle perpendicular to gradient
-	return math.Atan2(-gx, gy)
+	// Применяем операторы Собеля
+	for ky := -1; ky <= 1; ky++ {
+		for kx := -1; kx <= 1; kx++ {
+			nx, ny := x+kx, y+ky
+			if nx >= bounds.Min.X && nx < bounds.Max.X && ny >= bounds.Min.Y && ny < bounds.Max.Y {
+				r, g, b, _ := img.At(nx, ny).RGBA()
+				// Преобразуем в яркость
+				lum := 0.2126*float64(r)/65535.0 + 0.7152*float64(g)/65535.0 + 0.0722*float64(b)/65535.0
+
+				sumX += lum * kernelX[ky+1][kx+1]
+				sumY += lum * kernelY[ky+1][kx+1]
+			}
+		}
+	}
+
+	// Проверяем, не близок ли градиент к нулю
+	if math.Abs(sumX) < 1e-5 && math.Abs(sumY) < 1e-5 {
+		// Если градиент близок к нулю, выбираем случайное направление
+		// чтобы добавить разнообразие в ориентацию мазков
+		return math.Pi * 2.0 * (float64(x*y) / float64(bounds.Dx()*bounds.Dy()))
+	}
+
+	// Вычисляем угол градиента
+	gradientAngle := math.Atan2(sumY, sumX)
+
+	// Возвращаем направление перпендикулярное градиенту
+	return gradientAngle + math.Pi/2
 }
 
 // rgbToFloat converts a color.Color to r,g,b float values
@@ -474,36 +579,6 @@ func (h *ImageProcessingHandler) initializeClusters(pixels [][]Pixel, gradients 
 	}
 
 	return clusters
-}
-
-// createOutputImage creates the final output image with superpixels
-func (h *ImageProcessingHandler) createOutputImage(img image.Image, clusters []Cluster, labels [][]int) image.Image {
-	bounds := img.Bounds()
-	width, height := bounds.Dx(), bounds.Dy()
-
-	// Create output image
-	output := image.NewRGBA(bounds)
-
-	// Fill output with cluster average colors
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			clusterIdx := labels[y][x]
-			if clusterIdx >= 0 && clusterIdx < len(clusters) {
-				c := clusters[clusterIdx]
-				r, g, b := labToRgb(c.L, c.A, c.B)
-				output.Set(x+bounds.Min.X, y+bounds.Min.Y, color.RGBA{
-					R: uint8(r * 255),
-					G: uint8(g * 255),
-					B: uint8(b * 255),
-					A: 255,
-				})
-			} else {
-				output.Set(x+bounds.Min.X, y+bounds.Min.Y, img.At(x+bounds.Min.X, y+bounds.Min.Y))
-			}
-		}
-	}
-
-	return output
 }
 
 // rgbToLab converts RGB color to LAB color space

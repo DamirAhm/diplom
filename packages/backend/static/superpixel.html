@@ -43,24 +43,23 @@
 
         .image-container {
             display: flex;
+            flex-direction: column;
             gap: 20px;
-            flex-wrap: wrap;
         }
 
-        .image-box {
+        .canvas-box {
             flex: 1;
-            min-width: 300px;
             border: 1px solid #eee;
             padding: 10px;
             border-radius: 5px;
             text-align: center;
         }
 
-        .image-box img {
+        .canvas-box canvas {
             max-width: 100%;
-            max-height: 400px;
             display: block;
             margin: 0 auto;
+            border: 1px solid #ddd;
         }
 
         .form-group {
@@ -90,10 +89,16 @@
             cursor: pointer;
             font-size: 16px;
             width: 100%;
+            margin-bottom: 10px;
         }
 
         button:hover {
             background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
         }
 
         .value-display {
@@ -107,6 +112,29 @@
             text-align: center;
             margin-top: 20px;
             font-style: italic;
+            color: #666;
+        }
+
+        .animation-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        .animation-controls button {
+            width: auto;
+        }
+
+        .stroke-info {
+            margin-top: 20px;
+            padding: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        .stats {
+            font-size: 14px;
+            margin-top: 10px;
             color: #666;
         }
     </style>
@@ -155,18 +183,30 @@
             <div class="loading" id="loadingIndicator">
                 Обработка изображения... Это может занять несколько секунд.
             </div>
+
+            <div class="animation-controls">
+                <button id="animateButton" disabled>Анимировать рисование</button>
+                <button id="resetButton" disabled>Сбросить</button>
+            </div>
+
+            <div class="stroke-info">
+                <h3>Статистика</h3>
+                <div id="stats" class="stats">
+                    Загрузите изображение для обработки...
+                </div>
+            </div>
         </div>
 
         <div class="image-area">
             <h2>Результаты</h2>
             <div class="image-container">
-                <div class="image-box">
+                <div class="canvas-box">
                     <h3>Исходное изображение</h3>
-                    <img id="originalImage" src="" alt="Исходное изображение появится здесь">
+                    <canvas id="originalCanvas"></canvas>
                 </div>
-                <div class="image-box">
-                    <h3>Обработанное изображение</h3>
-                    <img id="processedImage" src="" alt="Обработанное изображение появится здесь">
+                <div class="canvas-box">
+                    <h3>Мазки</h3>
+                    <canvas id="strokesCanvas"></canvas>
                 </div>
             </div>
 
@@ -194,8 +234,20 @@
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.getElementById('processForm');
             const loadingIndicator = document.getElementById('loadingIndicator');
-            const originalImage = document.getElementById('originalImage');
-            const processedImage = document.getElementById('processedImage');
+            const originalCanvas = document.getElementById('originalCanvas');
+            const strokesCanvas = document.getElementById('strokesCanvas');
+            const animateButton = document.getElementById('animateButton');
+            const resetButton = document.getElementById('resetButton');
+            const statsDiv = document.getElementById('stats');
+
+            const originalCtx = originalCanvas.getContext('2d');
+            const strokesCtx = strokesCanvas.getContext('2d');
+
+            let originalImage = new Image();
+            let strokeData = null;
+            let animationFrame = null;
+            let animationIndex = 0;
+            let animationSpeed = 5; // Мазков за кадр
 
             // Update slider value displays
             const sliders = ['numberOfSuperpixels', 'compactnessFactor', 'elongation', 'iterations'];
@@ -216,6 +268,47 @@
                     const reader = new FileReader();
                     reader.onload = function (e) {
                         originalImage.src = e.target.result;
+                        originalImage.onload = function () {
+                            // Resize canvas to match image dimensions with max width/height constraints
+                            const maxWidth = 800;
+                            const maxHeight = 600;
+                            let width = originalImage.width;
+                            let height = originalImage.height;
+
+                            if (width > maxWidth) {
+                                height = (maxWidth / width) * height;
+                                width = maxWidth;
+                            }
+
+                            if (height > maxHeight) {
+                                width = (maxHeight / height) * width;
+                                height = maxHeight;
+                            }
+
+                            // Set canvas size
+                            originalCanvas.width = width;
+                            originalCanvas.height = height;
+                            strokesCanvas.width = width;
+                            strokesCanvas.height = height;
+
+                            // Draw original image
+                            originalCtx.clearRect(0, 0, width, height);
+                            originalCtx.drawImage(originalImage, 0, 0, width, height);
+
+                            // Clear strokes canvas
+                            strokesCtx.clearRect(0, 0, width, height);
+
+                            // Reset animation related state
+                            strokeData = null;
+                            animationIndex = 0;
+                            if (animationFrame) {
+                                cancelAnimationFrame(animationFrame);
+                                animationFrame = null;
+                            }
+
+                            animateButton.disabled = true;
+                            resetButton.disabled = true;
+                        };
                     };
                     reader.readAsDataURL(file);
                 }
@@ -224,6 +317,11 @@
             // Form submission
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
+
+                if (!originalImage.src) {
+                    alert('Пожалуйста, выберите изображение');
+                    return;
+                }
 
                 const formData = new FormData();
                 const imageFile = document.getElementById('imageFile').files[0];
@@ -249,6 +347,8 @@
                 // Show loading indicator
                 loadingIndicator.style.display = 'block';
                 document.getElementById('processButton').disabled = true;
+                animateButton.disabled = true;
+                resetButton.disabled = true;
 
                 // Send request to API
                 fetch('/api/image/superpixels', {
@@ -262,8 +362,21 @@
                         return response.json();
                     })
                     .then(data => {
-                        // Display result
-                        processedImage.src = data.imageUrl;
+                        // Store stroke data
+                        strokeData = data;
+
+                        // Clear strokes canvas
+                        strokesCtx.clearRect(0, 0, strokesCanvas.width, strokesCanvas.height);
+
+                        // Draw all strokes at once initially
+                        drawAllStrokes(strokesCtx, strokeData.strokes);
+
+                        // Update stats
+                        updateStats(strokeData);
+
+                        // Enable animation controls
+                        animateButton.disabled = false;
+                        resetButton.disabled = false;
                     })
                     .catch(error => {
                         console.error('Error:', error);
@@ -274,6 +387,111 @@
                         loadingIndicator.style.display = 'none';
                         document.getElementById('processButton').disabled = false;
                     });
+            });
+
+            // Animation button
+            animateButton.addEventListener('click', function () {
+                if (!strokeData) return;
+
+                // Reset canvas
+                strokesCtx.clearRect(0, 0, strokesCanvas.width, strokesCanvas.height);
+
+                // Reset animation index
+                animationIndex = 0;
+
+                // Start animation
+                animateStrokes();
+
+                // Disable button during animation
+                animateButton.disabled = true;
+            });
+
+            // Reset button
+            resetButton.addEventListener('click', function () {
+                if (!strokeData) return;
+
+                // Stop any ongoing animation
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                    animationFrame = null;
+                }
+
+                // Reset canvas
+                strokesCtx.clearRect(0, 0, strokesCanvas.width, strokesCanvas.height);
+
+                // Draw all strokes
+                drawAllStrokes(strokesCtx, strokeData.strokes);
+
+                // Enable animation button
+                animateButton.disabled = false;
+            });
+
+            // Function to animate strokes
+            function animateStrokes() {
+                if (animationIndex < strokeData.strokes.length) {
+                    // Draw next batch of strokes
+                    const endIndex = Math.min(animationIndex + animationSpeed, strokeData.strokes.length);
+
+                    for (let i = animationIndex; i < endIndex; i++) {
+                        drawStroke(strokesCtx, strokeData.strokes[i]);
+                    }
+
+                    animationIndex = endIndex;
+
+                    // Continue animation
+                    animationFrame = requestAnimationFrame(animateStrokes);
+                } else {
+                    // Animation complete
+                    animationFrame = null;
+                    animateButton.disabled = false;
+                }
+            }
+
+            // Function to draw a single stroke
+            function drawStroke(ctx, stroke) {
+                ctx.fillStyle = `rgb(${stroke.color[0]}, ${stroke.color[1]}, ${stroke.color[2]})`;
+
+                // Draw each pixel in the stroke
+                for (const pixel of stroke.pixels) {
+                    ctx.fillRect(pixel[0], pixel[1], 1, 1);
+                }
+            }
+
+            // Function to draw all strokes at once
+            function drawAllStrokes(ctx, strokes) {
+                for (const stroke of strokes) {
+                    drawStroke(ctx, stroke);
+                }
+            }
+
+            // Function to update statistics
+            function updateStats(data) {
+                statsDiv.innerHTML = `
+                    Размер изображения: ${data.imageWidth} x ${data.imageHeight}<br>
+                    Количество мазков: ${data.strokes.length}<br>
+                    Средний размер мазка: ${Math.round(data.strokes.reduce((sum, s) => sum + s.pixels.length, 0) / data.strokes.length)} пикселей<br>
+                `;
+            }
+
+            // Add slider for animation speed
+            const speedControl = document.createElement('div');
+            speedControl.className = 'form-group';
+            speedControl.innerHTML = `
+                <label for="animationSpeed">Скорость анимации: <span id="animationSpeedValue" class="value-display">${animationSpeed}</span></label>
+                <input type="range" id="animationSpeed" min="1" max="50" value="${animationSpeed}">
+            `;
+
+            document.querySelector('.animation-controls').parentNode.insertBefore(
+                speedControl,
+                document.querySelector('.animation-controls')
+            );
+
+            const speedSlider = document.getElementById('animationSpeed');
+            const speedDisplay = document.getElementById('animationSpeedValue');
+
+            speedSlider.addEventListener('input', function () {
+                animationSpeed = parseInt(this.value);
+                speedDisplay.textContent = animationSpeed;
             });
         });
     </script>
