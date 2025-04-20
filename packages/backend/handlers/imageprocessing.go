@@ -7,10 +7,11 @@ import (
 	"image/jpeg"
 	"image/png"
 	"math"
+	"math/rand"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // SuperpixelRequest represents the parameters for the superpixel processing
@@ -19,18 +20,25 @@ type SuperpixelRequest struct {
 	CompactnessFactor   float64 `json:"compactnessFactor"`
 	Elongation          float64 `json:"elongation"` // p parameter in the formula
 	Iterations          int     `json:"iterations"`
-	GridSize            int     `json:"gridSize"` // Size of the gradient vector grid
+	GridSize            int     `json:"gridSize"`       // Size of the gradient vector grid
+	AdaptiveFactor      float64 `json:"adaptiveFactor"` // Controls adaptive distribution (0.0-1.0), 0 = regular grid only
 }
 
 // Stroke represents a single brush stroke with its properties
 type Stroke struct {
-	CenterX float64  `json:"centerX"`
-	CenterY float64  `json:"centerY"`
-	Color   [3]uint8 `json:"color"`  // RGB color
-	Pixels  [][2]int `json:"pixels"` // Array of [x,y] coordinates belonging to this stroke
-	Theta   float64  `json:"theta"`  // Orientation angle
-	Width   float64  `json:"width"`  // Approximate width of the stroke
-	Height  float64  `json:"height"` // Approximate height of the stroke
+	ID             int      `json:"id"` // Cluster ID
+	CenterX        float64  `json:"centerX"`
+	CenterY        float64  `json:"centerY"`
+	Color          [3]uint8 `json:"color"`          // RGB color
+	Pixels         [][2]int `json:"pixels"`         // Array of [x,y] coordinates belonging to this stroke
+	Theta          float64  `json:"theta"`          // Orientation angle
+	Width          float64  `json:"width"`          // Approximate width of the stroke
+	Height         float64  `json:"height"`         // Approximate height of the stroke
+	ThetaCoherence float64  `json:"thetaCoherence"` // Coherence of pixel orientations within the cluster (0-1)
+	MinX           int      `json:"minX"`           // Bounding box min X
+	MinY           int      `json:"minY"`           // Bounding box min Y
+	MaxX           int      `json:"maxX"`           // Bounding box max X
+	MaxY           int      `json:"maxY"`           // Bounding box max Y
 }
 
 // GridVector represents a vector in a grid for gradient visualization
@@ -43,10 +51,11 @@ type GridVector struct {
 
 // SuperpixelResponse represents the result of superpixel processing
 type SuperpixelResponse struct {
-	ImageWidth  int          `json:"imageWidth"`
-	ImageHeight int          `json:"imageHeight"`
-	Strokes     []Stroke     `json:"strokes"`
-	GridVectors []GridVector `json:"gridVectors"` // Grid of vectors for gradient visualization
+	ImageWidth    int          `json:"imageWidth"`
+	ImageHeight   int          `json:"imageHeight"`
+	Strokes       []Stroke     `json:"strokes"`
+	GridVectors   []GridVector `json:"gridVectors"`   // Grid of vectors for gradient visualization
+	GradientDebug [][]float64  `json:"gradientDebug"` // Debug visualization of color gradients
 }
 
 // ImageProcessingHandler handles image processing operations
@@ -61,6 +70,9 @@ func NewImageProcessingHandler(uploadDir string) *ImageProcessingHandler {
 
 // ProcessSuperpixels handles the superpixel processing request
 func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *http.Request) {
+	// Initialize random seed for reproducible results
+	rand.Seed(time.Now().UnixNano())
+
 	// Parse multipart form
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(w, "Failed to parse form: "+err.Error(), http.StatusBadRequest)
@@ -78,6 +90,11 @@ func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *ht
 	// Установка значения по умолчанию для размера сетки, если не указан
 	if req.GridSize <= 0 {
 		req.GridSize = 20
+	}
+
+	// Установка значения по умолчанию для адаптивного фактора
+	if req.AdaptiveFactor < 0 || req.AdaptiveFactor > 1.0 {
+		req.AdaptiveFactor = 0.5
 	}
 
 	// Get image file
@@ -106,18 +123,30 @@ func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *ht
 		return
 	}
 
+	// Prepare the image for processing
+	bounds := img.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+	labImg, _ := h.preprocessImage(img)
+
+	// Calculate color gradients for visualization
+	colorGradients := h.calculateColorGradients(labImg, width, height)
+
+	// Normalize gradients for visualization (0.0-1.0 range)
+	normalizedGradients := h.normalizeGradientsForVisualization(colorGradients, width, height)
+
 	// Process image with modified SLIC algorithm and extract stroke data
-	strokes := h.extractStrokeData(img, req.NumberOfSuperpixels, req.CompactnessFactor, req.Elongation, req.Iterations)
+	strokes := h.extractStrokeData(img, req.NumberOfSuperpixels, req.CompactnessFactor, req.Elongation, req.Iterations, req.AdaptiveFactor)
 
 	// Создаем сетку векторов с указанным размером
 	gridVectors := h.createGradientGrid(img, req.GridSize)
 
 	// Return stroke data
 	resp := SuperpixelResponse{
-		ImageWidth:  img.Bounds().Dx(),
-		ImageHeight: img.Bounds().Dy(),
-		Strokes:     strokes,
-		GridVectors: gridVectors,
+		ImageWidth:    width,
+		ImageHeight:   height,
+		Strokes:       strokes,
+		GridVectors:   gridVectors,
+		GradientDebug: normalizedGradients,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -125,11 +154,6 @@ func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *ht
 		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-// Utility to create a file with proper permissions
-func createFile(path string) (*os.File, error) {
-	return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 }
 
 // Pixel represents a pixel with its coordinates and lab color
@@ -303,29 +327,8 @@ func (h *ImageProcessingHandler) calculateStructureTensor(img image.Image) ([][]
 	return majorVectorX, majorVectorY, coherence
 }
 
-// calculateThetaFromTensor вычисляет угол для точки изображения из тензорного поля
-// Эта функция теперь не используется, так как мы применяем перпендикулярное направление напрямую
-func (h *ImageProcessingHandler) calculateThetaFromTensor(x, y int, majorVectorX, majorVectorY [][]float64, width, height int) float64 {
-	if x < 2 || x >= width-2 || y < 2 || y >= height-2 {
-		// Для граничных точек возвращаем некоторое значение по умолчанию
-		return 0.0
-	}
-
-	// Получаем компоненты вектора
-	vx := majorVectorX[y][x]
-	vy := majorVectorY[y][x]
-
-	// Нам нужно направление вдоль границы (структуры),
-	// а не поперек, поэтому берем перпендикулярное направление
-	perpX := -vy
-	perpY := vx
-
-	// Вычисляем угол вектора, перпендикулярного к градиенту
-	return math.Atan2(perpY, perpX)
-}
-
 // extractStrokeData processes the image and returns stroke data for frontend rendering
-func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSuperpixels int, compactness float64, elongation float64, iterations int) []Stroke {
+func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSuperpixels int, compactness float64, elongation float64, iterations int, adaptiveFactor float64) []Stroke {
 	bounds := img.Bounds()
 	width, height := bounds.Dx(), bounds.Dy()
 
@@ -336,8 +339,8 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 	// Convert image to LAB color space
 	labImg, _ := h.preprocessImage(img)
 
-	// Initialize clusters
-	clusters := h.initializeClusters(labImg, nil, numberOfSuperpixels, width, height, majorVectorX, majorVectorY)
+	// Initialize clusters with adaptive factor
+	clusters := h.initializeClustersWithAdaptive(labImg, nil, numberOfSuperpixels, width, height, majorVectorX, majorVectorY, adaptiveFactor)
 
 	// Compute S - the grid interval (approximately equal to sqrt(N/k))
 	S := int(math.Sqrt(float64(width*height) / float64(numberOfSuperpixels)))
@@ -404,7 +407,7 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 						)
 
 						// Combined distance with compactness factor
-						dist := colorDist + compactness*spatialDist/float64(S)
+						dist := 4*colorDist*colorDist + compactness*spatialDist/float64(S)
 
 						// Update if this distance is smaller
 						if dist < distances[y][x] {
@@ -485,6 +488,75 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 		}
 	}
 
+	// После окончания итераций, проверяем наличие незакрашенных пикселей
+	// и назначаем их ближайшему кластеру
+	hasUnlabeledPixels := false
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if labels[y][x] == -1 {
+				hasUnlabeledPixels = true
+				break
+			}
+		}
+		if hasUnlabeledPixels {
+			break
+		}
+	}
+
+	// Если найдены незакрашенные пиксели
+	if hasUnlabeledPixels {
+		// Создаем дополнительную итерацию с увеличенной областью поиска
+		// для назначения всех незакрашенных пикселей ближайшему кластеру
+
+		for y := 0; y < height; y++ {
+			for x := 0; x < width; x++ {
+				if labels[y][x] == -1 {
+					// Ищем ближайший кластер для этого пикселя
+					minDist := math.Inf(1)
+					nearestCluster := -1
+
+					for i, c := range clusters {
+						// Вычисляем простое евклидово расстояние для поиска ближайшего кластера
+						dx := float64(x) - c.CenterX
+						dy := float64(y) - c.CenterY
+						dist := dx*dx + dy*dy
+
+						if dist < minDist {
+							minDist = dist
+							nearestCluster = i
+						}
+					}
+
+					if nearestCluster >= 0 {
+						// Назначаем пиксель ближайшему кластеру
+						labels[y][x] = nearestCluster
+
+						// Добавляем пиксель в кластер
+						l, a, b := rgbToLab(img.At(x, y))
+						var theta float64
+						if x >= 2 && x < width-2 && y >= 2 && y < height-2 {
+							perpX := -majorVectorY[y][x]
+							perpY := majorVectorX[y][x]
+							theta = math.Atan2(perpY, perpX)
+						} else {
+							theta = 0.0
+						}
+
+						pixel := Pixel{
+							X:     x,
+							Y:     y,
+							L:     l,
+							A:     a,
+							B:     b,
+							Theta: theta,
+						}
+						clusters[nearestCluster].Pixels = append(clusters[nearestCluster].Pixels, pixel)
+					}
+				}
+			}
+		}
+	}
+
 	// Convert clusters to strokes
 	return h.clustersToStrokes(img, clusters, labels)
 }
@@ -508,6 +580,8 @@ func (h *ImageProcessingHandler) clustersToStrokes(img image.Image, clusters []C
 		pixels := make([][2]int, 0, len(cluster.Pixels))
 		minX, minY := width, height
 		maxX, maxY := 0, 0
+		sumCosTheta, sumSinTheta := 0.0, 0.0 // Для расчета когерентности
+		numPixels := 0.0
 
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
@@ -527,23 +601,47 @@ func (h *ImageProcessingHandler) clustersToStrokes(img image.Image, clusters []C
 					if y > maxY {
 						maxY = y
 					}
+
+					// Суммируем компоненты угла пикселя для расчета когерентности
+					// Находим соответствующий пиксель в cluster.Pixels (это не самый эффективный способ, но для отладки пойдет)
+					for _, p := range cluster.Pixels {
+						if p.X == x && p.Y == y {
+							sumCosTheta += math.Cos(p.Theta)
+							sumSinTheta += math.Sin(p.Theta)
+							numPixels++
+							break
+						}
+					}
 				}
 			}
 		}
 
 		// Calculate approximate width and height of the stroke
-		width := float64(maxX - minX)
-		height := float64(maxY - minY)
+		strokeWidth := float64(maxX - minX)
+		strokeHeight := float64(maxY - minY)
+
+		// Calculate theta coherence (0-1 range)
+		thetaCoherence := 0.0
+		if numPixels > 0 {
+			// Длина среднего вектора направления
+			thetaCoherence = math.Sqrt(sumCosTheta*sumCosTheta+sumSinTheta*sumSinTheta) / numPixels
+		}
 
 		// Create the stroke
 		stroke := Stroke{
-			CenterX: cluster.CenterX,
-			CenterY: cluster.CenterY,
-			Color:   color,
-			Pixels:  pixels,
-			Theta:   cluster.Theta,
-			Width:   width,
-			Height:  height,
+			ID:             i,
+			CenterX:        cluster.CenterX,
+			CenterY:        cluster.CenterY,
+			Color:          color,
+			Pixels:         pixels,
+			Theta:          cluster.Theta, // Средний угол, рассчитанный ранее
+			Width:          strokeWidth,
+			Height:         strokeHeight,
+			ThetaCoherence: thetaCoherence, // Добавленная когерентность
+			MinX:           minX,
+			MinY:           minY,
+			MaxX:           maxX,
+			MaxY:           maxY,
 		}
 
 		strokes = append(strokes, stroke)
@@ -561,66 +659,6 @@ func (h *ImageProcessingHandler) clustersToStrokes(img image.Image, clusters []C
 	}
 
 	return strokes
-}
-
-// calculateTheta calculates the angle perpendicular to the gradient at (x,y)
-func calculateTheta(img image.Image, x, y int) float64 {
-	// Эту функцию мы оставляем для обратной совместимости,
-	// но в основных вычислениях вместо неё используем calculateThetaFromTensor
-	bounds := img.Bounds()
-	if x <= bounds.Min.X || x >= bounds.Max.X-1 || y <= bounds.Min.Y || y >= bounds.Max.Y-1 {
-		return 0 // Default for borders
-	}
-
-	// Улучшенное вычисление градиента с использованием оператора Собеля 3x3
-	// Использую горизонтальный и вертикальный операторы Собеля
-	kernelX := [][]float64{
-		{-1, 0, 1},
-		{-2, 0, 2},
-		{-1, 0, 1},
-	}
-
-	kernelY := [][]float64{
-		{-1, -2, -1},
-		{0, 0, 0},
-		{1, 2, 1},
-	}
-
-	sumX, sumY := 0.0, 0.0
-
-	// Применяем операторы Собеля
-	for ky := -1; ky <= 1; ky++ {
-		for kx := -1; kx <= 1; kx++ {
-			nx, ny := x+kx, y+ky
-			if nx >= bounds.Min.X && nx < bounds.Max.X && ny >= bounds.Min.Y && ny < bounds.Max.Y {
-				r, g, b, _ := img.At(nx, ny).RGBA()
-				// Преобразуем в яркость
-				lum := 0.2126*float64(r)/65535.0 + 0.7152*float64(g)/65535.0 + 0.0722*float64(b)/65535.0
-
-				sumX += lum * kernelX[ky+1][kx+1]
-				sumY += lum * kernelY[ky+1][kx+1]
-			}
-		}
-	}
-
-	// Проверяем, не близок ли градиент к нулю
-	if math.Abs(sumX) < 1e-5 && math.Abs(sumY) < 1e-5 {
-		// Если градиент близок к нулю, выбираем случайное направление
-		// чтобы добавить разнообразие в ориентацию мазков
-		return math.Pi * 2.0 * (float64(x*y) / float64(bounds.Dx()*bounds.Dy()))
-	}
-
-	// Вычисляем угол градиента
-	gradientAngle := math.Atan2(sumY, sumX)
-
-	// Возвращаем направление перпендикулярное градиенту
-	return gradientAngle + math.Pi/2
-}
-
-// rgbToFloat converts a color.Color to r,g,b float values
-func rgbToFloat(c color.Color) (float64, float64, float64) {
-	r, g, b, _ := c.RGBA()
-	return float64(r) / 65535.0, float64(g) / 65535.0, float64(b) / 65535.0
 }
 
 // preprocessImage computes gradients and prepares data for SLIC
@@ -746,22 +784,90 @@ func (h *ImageProcessingHandler) smoothGradients(pixels [][]Pixel, rawGradients 
 	return smoothedGradients
 }
 
-// initializeClusters initializes the superpixel clusters
-func (h *ImageProcessingHandler) initializeClusters(pixels [][]Pixel, gradients [][][]float64, numberOfSuperpixels int, width, height int, majorVectorX, majorVectorY [][]float64) []Cluster {
-	// Compute grid interval
-	S := int(math.Sqrt(float64(width*height) / float64(numberOfSuperpixels)))
+// initializeClustersWithAdaptive initializes the superpixel clusters with adaptive distribution
+func (h *ImageProcessingHandler) initializeClustersWithAdaptive(pixels [][]Pixel, gradients [][][]float64, numberOfSuperpixels int, width, height int, majorVectorX, majorVectorY [][]float64, adaptiveFactor float64) []Cluster {
+	// Calculate color gradient magnitude map for adaptive clustering
+	colorGradients := h.calculateColorGradients(pixels, width, height)
 
-	// Initialize clusters on a regular grid
+	// Усиливаем влияние градиента, применяя степенную функцию
+	// power > 1 увеличивает контраст между областями с высоким и низким градиентом
+	power := 2.5
+
+	// Находим максимальное значение градиента для нормализации
+	maxGradient := 0.0
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if colorGradients[y][x] > maxGradient {
+				maxGradient = colorGradients[y][x]
+			}
+		}
+	}
+
+	// Избегаем деления на ноль
+	if maxGradient < 0.001 {
+		maxGradient = 0.001
+	}
+
+	// Улучшаем чувствительность градиента
+	enhancedGradients := make([][]float64, height)
+	for y := 0; y < height; y++ {
+		enhancedGradients[y] = make([]float64, width)
+		for x := 0; x < width; x++ {
+			// Нормализуем и усиливаем градиент
+			normalized := colorGradients[y][x] / maxGradient
+			enhancedGradients[y][x] = math.Pow(normalized, power)
+		}
+	}
+
+	// Compute grid interval for base grid
+	// Увеличиваем долю кластеров для регулярной сетки, чтобы обеспечить полное покрытие
+	// При adaptiveFactor = 1.0, примерно 40% кластеров будут в регулярной сетке, 60% - адаптивные
+	baseGridSuperpixels := numberOfSuperpixels
+
+	if adaptiveFactor > 0 {
+		baseGridPercentage := 0.9 - adaptiveFactor*0.5 // от 90% до 40% в зависимости от адаптивного фактора
+		baseGridSuperpixels = int(float64(numberOfSuperpixels) * baseGridPercentage)
+		if baseGridSuperpixels < numberOfSuperpixels/3 {
+			baseGridSuperpixels = numberOfSuperpixels / 3 // Минимум 1/3 от общего числа для базовой сетки
+		}
+	}
+
+	S := int(math.Sqrt(float64(width*height) / float64(baseGridSuperpixels)))
+
+	// Initialize clusters on a jittered regular grid
 	clusters := []Cluster{}
+	jitterFactor := float64(S) * 0.3 // Allow up to 30% jitter
+
+	// First pass: Initialize with jittered grid to ensure coverage
 	for y := S / 2; y < height; y += S {
 		for x := S / 2; x < width; x += S {
-			// Find local minimum gradient in 3x3 neighborhood
+			// Add jitter to the grid position
+			jitterX := int(rand.Float64()*jitterFactor*2 - jitterFactor)
+			jitterY := int(rand.Float64()*jitterFactor*2 - jitterFactor)
+
+			// Ensure jittered position is within bounds
+			posX := x + jitterX
+			posY := y + jitterY
+
+			if posX < 0 {
+				posX = 0
+			} else if posX >= width {
+				posX = width - 1
+			}
+
+			if posY < 0 {
+				posY = 0
+			} else if posY >= height {
+				posY = height - 1
+			}
+
+			// Find local minimum gradient in 3x3 neighborhood to place cluster
 			minGradient := math.Inf(1)
-			minX, minY := x, y
+			minX, minY := posX, posY
 
 			for ny := -1; ny <= 1; ny++ {
 				for nx := -1; nx <= 1; nx++ {
-					newX, newY := x+nx, y+ny
+					newX, newY := posX+nx, posY+ny
 
 					if newX >= 0 && newX < width && newY >= 0 && newY < height {
 						var g float64
@@ -835,7 +941,197 @@ func (h *ImageProcessingHandler) initializeClusters(pixels [][]Pixel, gradients 
 		}
 	}
 
+	// Second pass: Add additional clusters in high-gradient areas if adaptive clustering is enabled
+	if adaptiveFactor > 0 && len(enhancedGradients) > 0 {
+		// Determine number of additional clusters to add
+		additionalClusters := numberOfSuperpixels - len(clusters)
+
+		if additionalClusters > 0 {
+			// Create gradient-weighted probability distribution
+			// Нормализуем улучшенные градиенты для вероятностного распределения
+			totalGradient := 0.0
+			for y := 0; y < height; y++ {
+				for x := 0; x < width; x++ {
+					totalGradient += enhancedGradients[y][x]
+				}
+			}
+
+			// Создаем кумулятивное распределение с улучшенной чувствительностью
+			cumGradient := make([]float64, width*height)
+			idx := 0
+			cumSum := 0.0
+
+			for y := 0; y < height; y++ {
+				for x := 0; x < width; x++ {
+					cumSum += enhancedGradients[y][x] / totalGradient
+					cumGradient[idx] = cumSum
+					idx++
+				}
+			}
+
+			// Вычисляем минимальное расстояние между кластерами
+			// Уменьшаем расстояние в зависимости от адаптивного фактора (более высокий фактор = более плотное размещение)
+			minDistFactor := 0.7 - adaptiveFactor*0.4 // От 0.7 до 0.3 мин. расстояния
+			minDistMultiplier := math.Max(0.3, minDistFactor)
+
+			// Probabilistically select additional cluster centers based on gradient magnitude
+			for i := 0; i < additionalClusters; i++ {
+				// Generate random value between 0 and 1
+				r := rand.Float64()
+
+				// Find corresponding position in cumulative distribution
+				selectedIdx := 0
+				for j := 0; j < len(cumGradient); j++ {
+					if r <= cumGradient[j] {
+						selectedIdx = j
+						break
+					}
+				}
+
+				// Convert linear index back to x,y
+				selectedY := selectedIdx / width
+				selectedX := selectedIdx % width
+
+				// Skip if this position is too close to existing clusters
+				// Расстояние зависит от градиента - в областях с высоким градиентом разрешаем более плотное размещение
+				tooClose := false
+
+				// Получаем значение градиента в выбранной точке для адаптивного минимального расстояния
+				gradientValue := enhancedGradients[selectedY][selectedX]
+				// Коэффициент, уменьшающий минимальное расстояние в областях с высоким градиентом
+				gradientEffect := math.Max(0.5, 1.0-gradientValue)
+
+				minDistance := float64(S) * minDistMultiplier * gradientEffect
+
+				for _, cluster := range clusters {
+					dx := float64(selectedX) - cluster.CenterX
+					dy := float64(selectedY) - cluster.CenterY
+					dist := math.Sqrt(dx*dx + dy*dy)
+
+					if dist < minDistance {
+						tooClose = true
+						break
+					}
+				}
+
+				if tooClose {
+					// Try again with different random value
+					i--
+					continue
+				}
+
+				// Create cluster at selected position
+				var theta float64
+				var l, a, b float64
+
+				if pixels != nil && selectedY < len(pixels) && selectedX < len(pixels[selectedY]) {
+					theta = pixels[selectedY][selectedX].Theta
+					l = pixels[selectedY][selectedX].L
+					a = pixels[selectedY][selectedX].A
+					b = pixels[selectedY][selectedX].B
+				} else {
+					if majorVectorX != nil && majorVectorY != nil &&
+						selectedX > 0 && selectedX < width-1 &&
+						selectedY > 0 && selectedY < height-1 {
+						vx := majorVectorX[selectedY][selectedX]
+						vy := majorVectorY[selectedY][selectedX]
+						perpX := -vy
+						perpY := vx
+						theta = math.Atan2(perpY, perpX)
+					} else {
+						theta = 0.0
+					}
+
+					if selectedY < len(pixels) && selectedX < len(pixels[selectedY]) {
+						l = pixels[selectedY][selectedX].L
+						a = pixels[selectedY][selectedX].A
+						b = pixels[selectedY][selectedX].B
+					} else {
+						l, a, b = 0, 0, 0
+					}
+				}
+
+				clusters = append(clusters, Cluster{
+					CenterX: float64(selectedX),
+					CenterY: float64(selectedY),
+					L:       l,
+					A:       a,
+					B:       b,
+					Theta:   theta,
+				})
+			}
+		}
+	}
+
 	return clusters
+}
+
+// initializeClusters initializes the superpixel clusters (for backward compatibility)
+func (h *ImageProcessingHandler) initializeClusters(pixels [][]Pixel, gradients [][][]float64, numberOfSuperpixels int, width, height int, majorVectorX, majorVectorY [][]float64) []Cluster {
+	// For backward compatibility, use the adaptive implementation with default adaptive factor
+	return h.initializeClustersWithAdaptive(pixels, gradients, numberOfSuperpixels, width, height, majorVectorX, majorVectorY, 0.5)
+}
+
+// calculateColorGradients computes the color gradient magnitude at each pixel
+func (h *ImageProcessingHandler) calculateColorGradients(pixels [][]Pixel, width, height int) [][]float64 {
+	if pixels == nil || len(pixels) == 0 {
+		return nil
+	}
+
+	// Создаем временную матрицу для хранения сглаженных L*a*b* значений
+	smoothedL := make([][]float64, height)
+	smoothedA := make([][]float64, height)
+	smoothedB := make([][]float64, height)
+
+	for y := 0; y < height; y++ {
+		smoothedL[y] = make([]float64, width)
+		smoothedA[y] = make([]float64, width)
+		smoothedB[y] = make([]float64, width)
+
+		// Заполняем матрицы исходными значениями
+		for x := 0; x < width; x++ {
+			if y < len(pixels) && x < len(pixels[y]) {
+				smoothedL[y][x] = pixels[y][x].L
+				smoothedA[y][x] = pixels[y][x].A
+				smoothedB[y][x] = pixels[y][x].B
+			}
+		}
+	}
+
+	// Применяем гауссовское размытие к каждому каналу L*a*b* перед вычислением градиента
+	smoothedL = h.applyGaussianSmoothing(smoothedL, width, height)
+	smoothedA = h.applyGaussianSmoothing(smoothedA, width, height)
+	smoothedB = h.applyGaussianSmoothing(smoothedB, width, height)
+
+	gradients := make([][]float64, height)
+	for y := 0; y < height; y++ {
+		gradients[y] = make([]float64, width)
+	}
+
+	// Compute color gradient magnitudes using smoothed L*a*b* differences
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
+			// Horizontal gradient using smoothed values
+			dLdx := smoothedL[y][x+1] - smoothedL[y][x-1]
+			dAdx := smoothedA[y][x+1] - smoothedA[y][x-1]
+			dBdx := smoothedB[y][x+1] - smoothedB[y][x-1]
+
+			// Vertical gradient using smoothed values
+			dLdy := smoothedL[y+1][x] - smoothedL[y-1][x]
+			dAdy := smoothedA[y+1][x] - smoothedA[y-1][x]
+			dBdy := smoothedB[y+1][x] - smoothedB[y-1][x]
+
+			// Gradient magnitude (Euclidean distance in LAB space)
+			gradX := math.Sqrt(dLdx*dLdx + dAdx*dAdx + dBdx*dBdx)
+			gradY := math.Sqrt(dLdy*dLdy + dAdy*dAdy + dBdy*dBdy)
+
+			// Overall gradient magnitude
+			gradients[y][x] = math.Sqrt(gradX*gradX + gradY*gradY)
+		}
+	}
+
+	// Apply additional Gaussian smoothing to the gradient map for better coherence
+	return h.applyGaussianSmoothing(gradients, width, height)
 }
 
 // rgbToLab converts RGB color to LAB color space
@@ -1082,7 +1378,8 @@ func (h *ImageProcessingHandler) applyGaussianSmoothing(data [][]float64, width,
 
 			for ky := -halfKernel; ky <= halfKernel; ky++ {
 				for kx := -halfKernel; kx <= halfKernel; kx++ {
-					sum += data[y+ky][x+kx] * kernel[ky+halfKernel][kx+halfKernel]
+					gx := data[y+ky][x+kx] * kernel[ky+halfKernel][kx+halfKernel]
+					sum += gx
 				}
 			}
 
@@ -1100,4 +1397,45 @@ func (h *ImageProcessingHandler) applyGaussianSmoothing(data [][]float64, width,
 	}
 
 	return result
+}
+
+// normalizeGradientsForVisualization normalizes the gradient values to 0.0-1.0 range for visualization
+func (h *ImageProcessingHandler) normalizeGradientsForVisualization(gradients [][]float64, width, height int) [][]float64 {
+	if gradients == nil || len(gradients) == 0 {
+		return nil
+	}
+
+	// Find max gradient value
+	maxGradient := 0.0
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			if gradients[y][x] > maxGradient {
+				maxGradient = gradients[y][x]
+			}
+		}
+	}
+
+	// Avoid division by zero
+	if maxGradient < 0.001 {
+		maxGradient = 0.001
+	}
+
+	// Create normalized gradient map with increased sensitivity
+	normalized := make([][]float64, height)
+	for y := 0; y < height; y++ {
+		normalized[y] = make([]float64, width)
+		for x := 0; x < width; x++ {
+			// Apply power function to enhance contrast between low and high gradient areas
+			// This makes weak gradients more visible and high gradients more pronounced
+			normalValue := gradients[y][x] / maxGradient
+
+			// Apply gamma correction to increase sensitivity (gamma < 1 increases visibility of details in dark areas)
+			gamma := 0.5
+			enhancedValue := math.Pow(normalValue, gamma)
+
+			normalized[y][x] = enhancedValue
+		}
+	}
+
+	return normalized
 }

@@ -137,6 +137,11 @@
             margin-top: 10px;
             color: #666;
         }
+
+        .checkbox-label {
+            display: inline-block;
+            margin-left: 10px;
+        }
     </style>
 </head>
 
@@ -179,6 +184,13 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="adaptiveFactor">Адаптивное распределение: <span id="adaptiveFactorValue"
+                            class="value-display">0.5</span></label>
+                    <input type="range" id="adaptiveFactor" name="adaptiveFactor" min="0" max="1" step="0.1"
+                        value="0.5">
+                </div>
+
+                <div class="form-group">
                     <label for="imageFile">Выберите изображение:</label>
                     <input type="file" id="imageFile" name="imageFile" accept="image/jpeg, image/png">
                 </div>
@@ -201,6 +213,13 @@
                     Загрузите изображение для обработки...
                 </div>
             </div>
+
+            <div class="stroke-info">
+                <h3>Отладка кластера</h3>
+                <div id="clusterDebug" class="stats">
+                    Наведите курсор на мазок для отладки...
+                </div>
+            </div>
         </div>
 
         <div class="image-area">
@@ -218,10 +237,23 @@
                     <h3>Визуализация градиентов</h3>
                     <canvas id="gradientsCanvas"></canvas>
                     <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="showGradients" checked>
-                            Показать направления градиентов
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showGradients">
+                            Показать направления
                         </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showCenters">
+                            Показать центры кластеров
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showColorGradient">
+                            Показать цветовой градиент
+                        </label>
+                    </div>
+                    <div class="form-group gradient-sensitivity" style="display: none; margin-top: 10px;">
+                        <label for="gradientSensitivity">Чувствительность градиента: <span id="gradientSensitivityValue"
+                                class="value-display">1.0</span></label>
+                        <input type="range" id="gradientSensitivity" min="0.1" max="2.0" step="0.1" value="1.0">
                     </div>
                 </div>
             </div>
@@ -254,16 +286,37 @@
             const strokesCanvas = document.getElementById('strokesCanvas');
             const gradientsCanvas = document.getElementById('gradientsCanvas');
             const showGradientsCheckbox = document.getElementById('showGradients');
+            const showCentersCheckbox = document.getElementById('showCenters');
+            const showColorGradientCheckbox = document.getElementById('showColorGradient');
             const animateButton = document.getElementById('animateButton');
             const resetButton = document.getElementById('resetButton');
             const statsDiv = document.getElementById('stats');
+            const clusterDebugDiv = document.getElementById('clusterDebug');
+            const gradientSensitivitySlider = document.getElementById('gradientSensitivity');
+            const gradientSensitivityValue = document.getElementById('gradientSensitivityValue');
+            const gradientSensitivityContainer = document.querySelector('.gradient-sensitivity');
 
             const originalCtx = originalCanvas.getContext('2d');
             const strokesCtx = strokesCanvas.getContext('2d');
             const gradientsCtx = gradientsCanvas.getContext('2d');
 
+            const highlightCanvas = document.createElement('canvas'); // Создаем холст для выделения программно
+            const highlightCtx = highlightCanvas.getContext('2d');
+            highlightCanvas.id = 'highlightCanvas';
+            highlightCanvas.style.position = 'absolute';
+            highlightCanvas.style.top = '78px';
+            highlightCanvas.style.left = '78px';
+            highlightCanvas.style.pointerEvents = 'none';
+            highlightCanvas.style.border = '1px solid transparent';
+
+            // Добавляем холст выделения поверх холста мазков
+            const strokesContainer = strokesCanvas.parentElement;
+            strokesContainer.style.position = 'relative';
+            strokesContainer.appendChild(highlightCanvas);
+
             let originalImage = new Image();
             let strokeData = null;
+            let highlightedStrokeId = null; // ID выделенного мазка
             let animationFrame = null;
             let animationIndex = 0;
             let animationSpeed = 5; // Мазков за кадр
@@ -271,7 +324,7 @@
             let scaleY = 1; // Масштаб по Y
 
             // Update slider value displays
-            const sliders = ['numberOfSuperpixels', 'compactnessFactor', 'elongation', 'iterations', 'gridSize'];
+            const sliders = ['numberOfSuperpixels', 'compactnessFactor', 'elongation', 'iterations', 'gridSize', 'adaptiveFactor'];
             sliders.forEach(sliderId => {
                 const slider = document.getElementById(sliderId);
                 const valueDisplay = document.getElementById(sliderId + 'Value');
@@ -313,6 +366,8 @@
                             strokesCanvas.height = height;
                             gradientsCanvas.width = width;
                             gradientsCanvas.height = height;
+                            highlightCanvas.width = width;
+                            highlightCanvas.height = height;
 
                             // Вычисляем масштаб
                             scaleX = width / originalImage.width;
@@ -367,7 +422,8 @@
                     compactnessFactor: parseFloat(document.getElementById('compactnessFactor').value),
                     elongation: parseFloat(document.getElementById('elongation').value),
                     iterations: parseInt(document.getElementById('iterations').value),
-                    gridSize: parseInt(document.getElementById('gridSize').value)
+                    gridSize: parseInt(document.getElementById('gridSize').value),
+                    adaptiveFactor: parseFloat(document.getElementById('adaptiveFactor').value)
                 };
 
                 formData.append('params', JSON.stringify(params));
@@ -399,10 +455,8 @@
                         // Draw all strokes at once initially
                         drawAllStrokes(strokesCtx, strokeData.strokes);
 
-                        // Draw gradient vectors if checkbox is checked
-                        if (showGradientsCheckbox.checked && strokeData.gridVectors) {
-                            drawGradientVectors(gradientsCtx, strokeData.gridVectors);
-                        }
+                        // Update gradients view based on checkbox states
+                        updateGradientsView();
 
                         // Update stats
                         updateStats(strokeData);
@@ -422,57 +476,95 @@
                     });
             });
 
-            // Animation button
-            animateButton.addEventListener('click', function () {
-                if (!strokeData) return;
-
-                // Reset canvas
-                strokesCtx.clearRect(0, 0, strokesCanvas.width, strokesCanvas.height);
-
-                // Reset animation index
-                animationIndex = 0;
-
-                // Start animation
-                animateStrokes();
-
-                // Disable button during animation
-                animateButton.disabled = true;
-            });
-
             // Reset button
             resetButton.addEventListener('click', function () {
-                if (!strokeData) return;
-
-                // Stop any ongoing animation
                 if (animationFrame) {
                     cancelAnimationFrame(animationFrame);
                     animationFrame = null;
                 }
 
-                // Reset canvas
+                // Сбрасываем индекс анимации
+                animationIndex = 0;
+
+                // Очищаем холст мазков
                 strokesCtx.clearRect(0, 0, strokesCanvas.width, strokesCanvas.height);
 
-                // Draw all strokes
-                drawAllStrokes(strokesCtx, strokeData.strokes);
-
-                // Redraw gradient vectors if needed
-                if (showGradientsCheckbox.checked && strokeData.gridVectors) {
-                    gradientsCtx.clearRect(0, 0, gradientsCanvas.width, gradientsCanvas.height);
-                    drawGradientVectors(gradientsCtx, strokeData.gridVectors);
+                // Перерисовываем все мазки
+                if (strokeData && strokeData.strokes) {
+                    drawAllStrokes(strokesCtx, strokeData.strokes);
                 }
 
-                // Enable animation button
+                // Обновляем отображение градиентов и центров
+                gradientsCtx.clearRect(0, 0, gradientsCanvas.width, gradientsCanvas.height);
+                if (showGradientsCheckbox.checked && strokeData && strokeData.gridVectors) {
+                    drawGradientVectors(gradientsCtx, strokeData.gridVectors);
+                }
+                if (showCentersCheckbox.checked && strokeData && strokeData.strokes) {
+                    drawClusterCenters(gradientsCtx, strokeData.strokes);
+                }
+
+                // Сброс выделения
+                highlightCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+                highlightedStrokeId = null;
+                updateDebugInfo(null);
+
+                // Разблокируем кнопку анимации
                 animateButton.disabled = false;
             });
 
-            // Toggle gradient vectors display
+            // Animation button
+            animateButton.addEventListener('click', function () {
+                if (animationFrame) {
+                    // Если анимация уже запущена, останавливаем её
+                    cancelAnimationFrame(animationFrame);
+                    animationFrame = null;
+                    animateButton.textContent = 'Анимировать';
+                    animateButton.disabled = false;
+                } else {
+                    // Запускаем анимацию
+                    if (!strokeData || !strokeData.strokes) return;
+
+                    // Блокируем кнопку во время анимации
+                    animateButton.disabled = true;
+                    animateButton.textContent = 'Анимация...';
+
+                    // Очищаем холст перед началом анимации
+                    strokesCtx.clearRect(0, 0, strokesCanvas.width, strokesCanvas.height);
+
+                    // Сбрасываем индекс анимации
+                    animationIndex = 0;
+
+                    // Очищаем выделение
+                    highlightCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+                    highlightedStrokeId = null;
+                    updateDebugInfo(null);
+
+                    // Запускаем анимацию
+                    animationFrame = requestAnimationFrame(animateStrokes);
+                }
+            });
+
+            // Update showGradients checkbox
             showGradientsCheckbox.addEventListener('change', function () {
-                if (!strokeData || !strokeData.gridVectors) return;
+                updateGradientsView();
+            });
 
-                gradientsCtx.clearRect(0, 0, gradientsCanvas.width, gradientsCanvas.height);
+            // Update showCenters checkbox
+            showCentersCheckbox.addEventListener('change', function () {
+                updateGradientsView();
+            });
 
-                if (this.checked) {
-                    drawGradientVectors(gradientsCtx, strokeData.gridVectors);
+            // Update showColorGradient checkbox
+            showColorGradientCheckbox.addEventListener('change', function () {
+                updateGradientsView();
+                gradientSensitivityContainer.style.display = this.checked ? 'block' : 'none';
+            });
+
+            // Обновление значения чувствительности
+            gradientSensitivitySlider.addEventListener('input', function () {
+                gradientSensitivityValue.textContent = this.value;
+                if (showColorGradientCheckbox.checked) {
+                    updateGradientsView();
                 }
             });
 
@@ -515,6 +607,12 @@
                     // Анимация завершена
                     animationFrame = null;
                     animateButton.disabled = false;
+                    animateButton.textContent = 'Анимировать';
+
+                    // Обновляем отображение центров кластеров, если включено
+                    if (showCentersCheckbox.checked) {
+                        drawClusterCenters(gradientsCtx, strokeData.strokes);
+                    }
                 }
             }
 
@@ -529,15 +627,14 @@
                     const y = Math.floor(pixel[1] * scaleY);
 
                     // Используем размер кисти в зависимости от масштаба
+                    // Всегда рисуем кругом для сглаживания границ мазков
                     const brushSize = Math.max(1, Math.min(scaleX, scaleY));
-                    if (brushSize <= 1) {
-                        ctx.fillRect(x, y, 1, 1);
-                    } else {
-                        // Используем закругленную кисть для более эстетичного результата
-                        ctx.beginPath();
-                        ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
+
+                    // Всегда используем закругленную кисть для более эстетичного результата
+                    ctx.beginPath();
+                    // Используем радиус brushSize/2, минимум 0.5 для покрытия пикселя
+                    ctx.arc(x + 0.5, y + 0.5, Math.max(0.5, brushSize / 2), 0, Math.PI * 2);
+                    ctx.fill();
                 }
             }
 
@@ -637,6 +734,305 @@
                     ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
                     ctx.fill();
                 }
+            }
+
+            // Function to find the nearest stroke to the mouse position
+            function findNearestStroke(mouseX, mouseY, strokes) {
+                let nearestStroke = null;
+                let minDistance = Infinity;
+                const searchRadius = 20; // Search within 20px radius
+
+                for (const stroke of strokes) {
+                    // Scale center coordinates
+                    const centerX = stroke.centerX * scaleX;
+                    const centerY = stroke.centerY * scaleY;
+
+                    const distance = Math.sqrt(Math.pow(mouseX - centerX, 2) + Math.pow(mouseY - centerY, 2));
+
+                    if (distance < minDistance && distance < searchRadius) {
+                        minDistance = distance;
+                        nearestStroke = stroke;
+                    }
+                }
+                return nearestStroke;
+            }
+
+            // Function to update debug info panel
+            function updateDebugInfo(stroke) {
+                if (!stroke) {
+                    clusterDebugDiv.textContent = 'Наведите курсор на мазок для отладки...';
+                    return;
+                }
+
+                const thetaDeg = (stroke.theta * 180 / Math.PI).toFixed(1);
+                const numPixels = stroke.pixels ? stroke.pixels.length : 0;
+                const aspectRatio = stroke.width > 0 ? (stroke.height / stroke.width).toFixed(2) : 'N/A';
+
+                clusterDebugDiv.innerHTML = `
+                    <strong>Кластер ID:</strong> ${stroke.id}<br>
+                    <strong>Центр X:</strong> ${stroke.centerX.toFixed(1)}<br>
+                    <strong>Центр Y:</strong> ${stroke.centerY.toFixed(1)}<br>
+                    <strong>Угол (Theta):</strong> ${thetaDeg}°<br>
+                    <strong>Когерентность Theta:</strong> ${stroke.thetaCoherence ? stroke.thetaCoherence.toFixed(3) : 'N/A'}<br>
+                    <strong>Пикселей:</strong> ${numPixels}<br>
+                    <strong>Ширина:</strong> ${stroke.width.toFixed(1)}<br>
+                    <strong>Высота:</strong> ${stroke.height.toFixed(1)}<br>
+                    <strong>Соотношение ШхВ:</strong> ${aspectRatio}
+                `;
+            }
+
+            // Function to draw highlight (bounding box and vector)
+            function drawStrokeHighlight(ctx, stroke) {
+                if (!stroke) return;
+
+                // Clear previous highlight
+                ctx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+
+                // --- Draw Bounding Box --- 
+                const scaledMinX = Math.floor(stroke.minX * scaleX);
+                const scaledMinY = Math.floor(stroke.minY * scaleY);
+                const scaledMaxX = Math.ceil(stroke.maxX * scaleX);
+                const scaledMaxY = Math.ceil(stroke.maxY * scaleY);
+                const boxWidth = scaledMaxX - scaledMinX;
+                const boxHeight = scaledMaxY - scaledMinY;
+
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; // Red color for highlight
+                ctx.lineWidth = 1;
+                ctx.strokeRect(scaledMinX, scaledMinY, boxWidth, boxHeight);
+
+                // --- Draw Orientation Vector --- 
+                const centerX = stroke.centerX * scaleX;
+                const centerY = stroke.centerY * scaleY;
+                const vectorLength = 30; // Length of the vector to draw
+                const angle = stroke.theta; // Angle from the stroke data
+                const endX = centerX + Math.cos(angle) * vectorLength;
+                const endY = centerY + Math.sin(angle) * vectorLength;
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = 'rgba(0, 255, 0, 0.9)'; // Green color for vector
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw a small circle at the start of the vector
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+                ctx.fill();
+            }
+
+            // Event listener for mouse movement on strokes canvas
+            strokesCanvas.addEventListener('mousemove', function (event) {
+                if (!strokeData || !strokeData.strokes) return;
+
+                const rect = strokesCanvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+
+                const nearestStroke = findNearestStroke(mouseX, mouseY, strokeData.strokes);
+                updateDebugInfo(nearestStroke);
+
+                // Update highlight if the nearest stroke changed
+                const newNearestId = nearestStroke ? nearestStroke.id : null;
+                if (newNearestId !== highlightedStrokeId) {
+                    highlightedStrokeId = newNearestId;
+                    drawStrokeHighlight(highlightCtx, nearestStroke);
+                }
+            });
+
+            strokesCanvas.addEventListener('mouseout', function () {
+                updateDebugInfo(null); // Clear debug info when mouse leaves canvas
+                highlightCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height); // Clear highlight
+                highlightedStrokeId = null;
+            });
+
+            // Add reset event handlers to clear highlight
+            form.addEventListener('submit', function () {
+                highlightCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+                highlightedStrokeId = null;
+                updateDebugInfo(null);
+            });
+
+            resetButton.addEventListener('click', function () {
+                highlightCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+                highlightedStrokeId = null;
+                updateDebugInfo(null);
+            });
+
+            animateButton.addEventListener('click', function () {
+                highlightCtx.clearRect(0, 0, highlightCanvas.width, highlightCanvas.height);
+                highlightedStrokeId = null;
+                updateDebugInfo(null);
+            });
+
+            // Function to draw cluster centers
+            function drawClusterCenters(ctx, strokes) {
+                if (!strokes || strokes.length === 0) return;
+
+                ctx.save();
+
+                // Рисуем центры кластеров
+                for (const stroke of strokes) {
+                    const x = Math.floor(stroke.centerX * scaleX);
+                    const y = Math.floor(stroke.centerY * scaleY);
+
+                    // Рисуем крестик в центре кластера
+                    const size = 5; // Размер крестика
+
+                    ctx.beginPath();
+                    // Горизонтальная линия
+                    ctx.moveTo(x - size, y);
+                    ctx.lineTo(x + size, y);
+                    // Вертикальная линия
+                    ctx.moveTo(x, y - size);
+                    ctx.lineTo(x, y + size);
+
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Рисуем маленький круг в центре
+                    ctx.beginPath();
+                    ctx.arc(x, y, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+
+            function updateGradientsView() {
+                if (!strokeData) return;
+
+                // Clear the canvas
+                gradientsCtx.clearRect(0, 0, gradientsCanvas.width, gradientsCanvas.height);
+
+                // Start with the original image for context
+                gradientsCtx.drawImage(originalCanvas, 0, 0);
+
+                // Apply semi-transparent overlay
+                gradientsCtx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                gradientsCtx.fillRect(0, 0, gradientsCanvas.width, gradientsCanvas.height);
+
+                // Draw color gradient heatmap if option is checked
+                if (showColorGradientCheckbox.checked && strokeData.gradientDebug) {
+                    drawColorGradient(gradientsCtx, strokeData.gradientDebug);
+                }
+
+                // Draw gradient vectors if option is checked
+                if (showGradientsCheckbox.checked && strokeData.gridVectors) {
+                    drawGradientVectors(gradientsCtx, strokeData.gridVectors);
+                }
+
+                // Draw cluster centers if option is checked
+                if (showCentersCheckbox.checked && strokeData.strokes) {
+                    drawClusterCenters(gradientsCtx, strokeData.strokes);
+                }
+            }
+
+            // Function to draw color gradient heatmap
+            function drawColorGradient(ctx, gradientData) {
+                const width = ctx.canvas.width;
+                const height = ctx.canvas.height;
+
+                // Create an ImageData object to draw the gradient
+                const imageData = ctx.createImageData(width, height);
+                const data = imageData.data;
+
+                // Calculate scale factors if the canvas size is different from the gradient data
+                const scaleFactorX = width / gradientData[0].length;
+                const scaleFactorY = height / gradientData.length;
+
+                // Get current sensitivity value
+                const sensitivity = parseFloat(gradientSensitivitySlider.value);
+
+                // Fill the image data with gradient values
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        // Map canvas coordinates to gradient data coordinates
+                        const gradientX = Math.min(Math.floor(x / scaleFactorX), gradientData[0].length - 1);
+                        const gradientY = Math.min(Math.floor(y / scaleFactorY), gradientData.length - 1);
+
+                        // Get gradient value at this point (0.0-1.0)
+                        let value = gradientData[gradientY][gradientX];
+
+                        // Apply sensitivity adjustment
+                        if (sensitivity !== 1.0) {
+                            // For sensitivity < 1.0: enhance low values (make weak gradients more visible)
+                            // For sensitivity > 1.0: enhance high values (make strong gradients stand out more)
+                            value = Math.pow(value, 1.0 / sensitivity);
+
+                            // Keep value in 0-1 range
+                            value = Math.max(0, Math.min(1, value));
+                        }
+
+                        // Use a more vibrant heat map color scheme (magenta-yellow-cyan)
+                        let r, g, b;
+
+                        if (value < 0.33) {
+                            // Magenta to yellow (low to medium-low)
+                            const t = value * 3;
+                            r = 255;
+                            g = Math.floor(255 * t);
+                            b = Math.floor(255 * (1 - t));
+                        } else if (value < 0.66) {
+                            // Yellow to white (medium-low to medium-high)
+                            const t = (value - 0.33) * 3;
+                            r = 255;
+                            g = 255;
+                            b = Math.floor(255 * t);
+                        } else {
+                            // White to cyan (medium-high to high)
+                            const t = (value - 0.66) * 3;
+                            r = Math.floor(255 * (1 - t));
+                            g = 255;
+                            b = 255;
+                        }
+
+                        // Compute the pixel index
+                        const idx = (y * width + x) * 4;
+
+                        // Set pixel data with higher opacity
+                        data[idx] = r;     // Red
+                        data[idx + 1] = g; // Green
+                        data[idx + 2] = b; // Blue
+                        data[idx + 3] = 200; // Alpha (more opaque for better visibility)
+                    }
+                }
+
+                // Put the image data on the canvas
+                ctx.putImageData(imageData, 0, 0);
+
+                // Add a legend for the gradient
+                drawGradientLegend(ctx, width, height, sensitivity);
+            }
+
+            // Function to draw a legend for the gradient visualization
+            function drawGradientLegend(ctx, width, height, sensitivity) {
+                const legendWidth = 200;
+                const legendHeight = 20;
+                const legendX = width - legendWidth - 10;
+                const legendY = height - legendHeight - 10;
+
+                // Draw the gradient bar
+                const gradientBar = ctx.createLinearGradient(legendX, 0, legendX + legendWidth, 0);
+                gradientBar.addColorStop(0, "rgba(255, 0, 255, 0.9)"); // Magenta (low)
+                gradientBar.addColorStop(0.33, "rgba(255, 255, 0, 0.9)"); // Yellow (medium-low)
+                gradientBar.addColorStop(0.66, "rgba(255, 255, 255, 0.9)"); // White (medium-high)
+                gradientBar.addColorStop(1, "rgba(0, 255, 255, 0.9)"); // Cyan (high)
+
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillRect(legendX - 2, legendY - 2, legendWidth + 4, legendHeight + 4);
+
+                ctx.fillStyle = gradientBar;
+                ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
+
+                // Draw labels
+                ctx.fillStyle = "white";
+                ctx.font = "12px Arial";
+                ctx.fillText(`Слабый градиент (x${sensitivity.toFixed(1)})`, legendX, legendY - 5);
+                ctx.fillText("Сильный градиент", legendX + legendWidth - 100, legendY - 5);
             }
         });
     </script>
