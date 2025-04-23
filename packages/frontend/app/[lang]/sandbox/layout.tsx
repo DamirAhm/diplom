@@ -25,26 +25,36 @@ export default function SandboxLayout({
             href: `/${lang}/sandbox/neuron`,
             label: dictionary.sandbox.neuronDynamics,
         },
+        {
+            href: `/${lang}/sandbox/superpixel`,
+            label: dictionary.sandbox.superpixelImageProcessing,
+        },
     ];
 
     return (
         <div className="container mx-auto px-4 py-8">
-            <div className="flex space-x-4 mb-8">
-                {navigation.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className={cn(
-                            "px-4 py-2 rounded-lg transition-colors",
-                            pathname === item.href
-                                ? "bg-primary text-primary-foreground"
-                                : "hover:bg-muted"
-                        )}
-                    >
-                        {item.label}
-                    </Link>
-                ))}
-            </div>
+            <nav className="mb-8">
+                <ul className="flex flex-wrap gap-2">
+                    {navigation.map((item) => {
+                        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                        return (
+                            <li key={item.href}>
+                                <Link
+                                    href={item.href}
+                                    className={cn(
+                                        "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "text-primary dark:text-indigo-400 font-semibold"
+                                            : "text-foreground/70 hover:text-primary dark:hover:text-indigo-400"
+                                    )}
+                                >
+                                    {item.label}
+                                </Link>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </nav>
             {children}
         </div>
     );

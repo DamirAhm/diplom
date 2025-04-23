@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 )
@@ -993,11 +994,33 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 		}
 	}
 
+	// Для каждой итерации
 	for iter := 0; iter < iterations; iter++ {
+		// Очищаем пиксели кластеров
 		for i := range clusters {
 			clusters[i].Pixels = nil
 		}
 
+		// Очищаем расстояния для новой итерации
+		for y := range distances {
+			for x := range distances[y] {
+				distances[y][x] = math.Inf(1)
+				labels[y][x] = -1
+			}
+		}
+
+		// Создаем временные структуры для хранения расчетов каждого кластера
+		type PixelAssignment struct {
+			X        int
+			Y        int
+			Distance float64
+			Cluster  int
+		}
+
+		var mutex sync.Mutex
+		pixelAssignments := make([]PixelAssignment, 0)
+
+		// Параллельная обработка кластеров
 		var wg sync.WaitGroup
 		for i := range clusters {
 			wg.Add(1)
@@ -1005,15 +1028,24 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 				defer wg.Done()
 				c := &clusters[i]
 
-				startX := int(math.Max(0, c.CenterX-float64(S)))
-				endX := int(math.Min(float64(width-1), c.CenterX+float64(S)))
-				startY := int(math.Max(0, c.CenterY-float64(S)))
-				endY := int(math.Min(float64(height-1), c.CenterY+float64(S)))
+				localAssignments := make([]PixelAssignment, 0)
+
+				// Рассматриваем только пиксели в радиусе 2*S от центра кластера
+				startX := int(math.Max(0, c.CenterX-float64(S*2)))
+				endX := int(math.Min(float64(width-1), c.CenterX+float64(S*2)))
+				startY := int(math.Max(0, c.CenterY-float64(S*2)))
+				endY := int(math.Min(float64(height-1), c.CenterY+float64(S*2)))
 
 				for y := startY; y <= endY; y++ {
 					for x := startX; x <= endX; x++ {
 						dx := float64(x) - c.CenterX
 						dy := float64(y) - c.CenterY
+
+						// Быстрая проверка прямого евклидова расстояния
+						straightDist := dx*dx + dy*dy
+						if straightDist > float64(S*S*4) {
+							continue
+						}
 
 						X := dx*math.Cos(c.Theta) + dy*math.Sin(c.Theta)
 						Y := -dx*math.Sin(c.Theta) + dy*math.Cos(c.Theta)
@@ -1029,16 +1061,45 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 
 						dist := 4*colorDist*colorDist + compactness*spatialDist/float64(S)
 
-						if dist < distances[y][x] {
-							distances[y][x] = dist
-							labels[y][x] = i
-						}
+						// Сохраняем результат для этого пикселя
+						localAssignments = append(localAssignments, PixelAssignment{
+							X:        x,
+							Y:        y,
+							Distance: dist,
+							Cluster:  i,
+						})
 					}
 				}
+
+				// Безопасно добавляем локальные результаты к общему списку
+				mutex.Lock()
+				pixelAssignments = append(pixelAssignments, localAssignments...)
+				mutex.Unlock()
 			}(i)
 		}
 		wg.Wait()
 
+		// Сортируем все назначения по расстоянию (от меньшего к большему)
+		sort.Slice(pixelAssignments, func(i, j int) bool {
+			return pixelAssignments[i].Distance < pixelAssignments[j].Distance
+		})
+
+		// Назначаем пиксели кластерам в порядке возрастания расстояния
+		// Это гарантирует, что каждый пиксель будет назначен только одному кластеру - тому, к которому он ближе всего
+		for _, assignment := range pixelAssignments {
+			x, y := assignment.X, assignment.Y
+
+			// Если пиксель уже назначен кластеру с меньшим расстоянием, пропускаем его
+			if labels[y][x] != -1 && distances[y][x] <= assignment.Distance {
+				continue
+			}
+
+			// Назначаем пиксель текущему кластеру
+			distances[y][x] = assignment.Distance
+			labels[y][x] = assignment.Cluster
+		}
+
+		// Добавляем пиксели в найденные для них кластеры
 		for y := 0; y < height; y++ {
 			for x := 0; x < width; x++ {
 				if labels[y][x] >= 0 {
@@ -1066,6 +1127,7 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 			}
 		}
 
+		// Пересчитываем центры кластеров
 		for i := range clusters {
 			if len(clusters[i].Pixels) == 0 {
 				continue
@@ -1095,6 +1157,7 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 		}
 	}
 
+	// Обрабатываем неразмеченные пиксели
 	hasUnlabeledPixels := false
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {

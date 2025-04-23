@@ -81,6 +81,40 @@ export async function uploadFile(file: File): Promise<{ url: string }> {
   });
 }
 
+export interface SuperpixelParams {
+  numberOfSuperpixels: number;
+  compactnessFactor: number;
+  elongation: number;
+  iterations: number;
+  gridSize: number;
+  adaptiveFactor: number;
+}
+
+export interface SuperpixelResponse {
+  imageWidth: number;
+  imageHeight: number;
+  strokes: any[];
+  gridVectors: any[];
+  gradientDebug: number[][];
+}
+
+export async function processSuperpixelImage(imageFile: File, params: SuperpixelParams): Promise<SuperpixelResponse> {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  formData.append('params', JSON.stringify(params));
+
+  const response = await fetch(`${API_URL}/image/superpixels`, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error processing image: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
 export const api = {
   get: <T>(
     endpoint: string,

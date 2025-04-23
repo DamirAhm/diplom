@@ -23,7 +23,7 @@
     "home": "Главная"
   },
   "footer": {
-    "copyright": "© 2025 ЛЭТИ САПР Лаборатория. Все права защищены."
+    "copyright": "© 2025 СПбГЭТУ «ЛЭТИ». Все права защищены."
   },
   "notFound": {
     "title": "Страница не найдена",
@@ -134,7 +134,7 @@
     "jointPublications": "Совместные публикации"
   },
   "sandbox": {
-    "errorOccurred": "Произошла ошибка при выполнении симуляции",
+    "errorOccurred": "Произошла ошибка при запуске симуляции",
     "lorenzSystemControls": "Управление системой Лоренца",
     "axesSize": "Размер осей",
     "systemSelection": "Выбор системы",
@@ -144,7 +144,8 @@
     "simulationParameters": "Параметры симуляции",
     "simulationTime": "Время симуляции",
     "simulationStep": "Шаг симуляции",
-    "neuronDynamics": "Динамика нейрона",
+    "neuronDynamics": "Динамика нейронов",
+    "superpixelImageProcessing": "Обработка изображений Superpixel",
     "modelConfiguration": "Конфигурация модели",
     "modelType": "Тип модели",
     "testType": "Тип теста",
@@ -160,15 +161,39 @@
     "analysisPlaceholder": "Здесь появятся результаты анализа",
     "runSimulation": "Запустить симуляцию",
     "membraneVoltage": "Мембранный потенциал",
-    "noData": "Данные симуляции отсутствуют",
+    "noData": "Нет данных для симуляции",
     "analysisNotAvailable": "Анализ пока недоступен",
+    "superpixel": {
+      "title": "Обработка изображений Superpixel",
+      "description": "Демонстрация алгоритма разбиения изображения на мазки",
+      "originalImage": "Исходное изображение",
+      "strokes": "Мазки",
+      "gradients": "Визуализация градиентов",
+      "parameters": "Параметры алгоритма",
+      "numberOfSuperpixels": "Количество мазков",
+      "compactnessFactor": "Компактность",
+      "elongation": "Вытянутость (p)",
+      "iterations": "Количество итераций",
+      "gridSize": "Размер сетки градиентов",
+      "adaptiveFactor": "Адаптивное распределение",
+      "selectImage": "Выберите изображение",
+      "processImage": "Обработать изображение",
+      "loading": "Обработка изображения... Это может занять несколько секунд.",
+      "showGradients": "Показать направления",
+      "showCenters": "Показать центры кластеров",
+      "showColorGradient": "Показать цветовой градиент",
+      "showBorders": "Показать границы",
+      "gradientSensitivity": "Чувствительность градиента",
+      "algorithmDescription": "Описание алгоритма",
+      "relatedPapers": "Связанные статьи"
+    },
     "chart": {
       "time": "Время (мс)",
       "voltage": "Мембранный потенциал (мВ)",
       "models": {
         "hh": "Модель Ходжкина-Хаксли",
-        "fhn": "Модель Фитцхью-Нагумо",
-        "hr": "Модель Хиндмарша-Роуза"
+        "fhn": "Модель ФитцХью-Нагумо",
+        "hr": "Модель Хиндмарш-Роуз"
       }
     }
   },

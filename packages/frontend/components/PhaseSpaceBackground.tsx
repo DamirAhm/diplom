@@ -115,10 +115,10 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
                 lastTime = currentTime;
 
                 const perf = performanceRef.current;
-                if (!perf.disabled && frameDuration > perf.maxAllowedFrameTime) {
-                    console.warn(`Animation disabled due to poor performance. Frame time: ${frameDuration.toFixed(2)}ms`);
-                    perf.disabled = true;
-                }
+                // if (!perf.disabled && frameDuration > perf.maxAllowedFrameTime) {
+                //     console.warn(`Animation disabled due to poor performance. Frame time: ${frameDuration.toFixed(2)}ms`);
+                //     perf.disabled = true;
+                // }
 
                 if (perf.disabled) {
                     requestIdRef.current = requestAnimationFrame(animate);

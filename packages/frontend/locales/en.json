@@ -23,7 +23,7 @@
     "home": "Home"
   },
   "footer": {
-    "copyright": "© 2025 ETU CAD Laboratory. All rights reserved."
+    "copyright": "© 2025 СПбГЭТУ «ЛЭТИ». All rights reserved."
   },
   "notFound": {
     "title": "Page Not Found",
@@ -140,6 +140,7 @@
     "simulationTime": "Simulation Time",
     "simulationStep": "Simulation Step",
     "neuronDynamics": "Neuron Dynamics",
+    "superpixelImageProcessing": "Superpixel Image Processing",
     "modelConfiguration": "Model Configuration",
     "modelType": "Model Type",
     "testType": "Test Type",
@@ -157,6 +158,30 @@
     "membraneVoltage": "Membrane Voltage",
     "noData": "No simulation data available",
     "analysisNotAvailable": "Analysis is not available yet",
+    "superpixel": {
+      "title": "Superpixel Image Processing",
+      "description": "Demonstration of an algorithm for image segmentation into brush strokes",
+      "originalImage": "Original Image",
+      "strokes": "Strokes",
+      "gradients": "Gradients Visualization",
+      "parameters": "Algorithm Parameters",
+      "numberOfSuperpixels": "Number of Strokes",
+      "compactnessFactor": "Compactness",
+      "elongation": "Elongation (p)",
+      "iterations": "Number of Iterations",
+      "gridSize": "Gradient Grid Size",
+      "adaptiveFactor": "Adaptive Distribution",
+      "selectImage": "Select an image",
+      "processImage": "Process Image",
+      "loading": "Processing image... This may take a few seconds.",
+      "showGradients": "Show Directions",
+      "showCenters": "Show Cluster Centers",
+      "showColorGradient": "Show Color Gradient",
+      "showBorders": "Show Borders",
+      "gradientSensitivity": "Gradient Sensitivity",
+      "algorithmDescription": "Algorithm Description",
+      "relatedPapers": "Related Papers"
+    },
     "chart": {
       "time": "Time (ms)",
       "voltage": "Membrane Potential (mV)",
