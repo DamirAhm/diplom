@@ -112,9 +112,9 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
                     </p>
                     <Slider
                         value={[params.compactnessFactor]}
-                        min={1}
-                        max={100}
-                        step={1}
+                        min={0.1}
+                        max={10}
+                        step={0.1}
                         onValueChange={(value) => handleParamChange('compactnessFactor')(value[0])}
                         className="cursor-pointer"
                     />

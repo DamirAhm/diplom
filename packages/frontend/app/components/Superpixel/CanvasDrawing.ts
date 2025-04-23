@@ -45,20 +45,6 @@ export const drawBorders = async (
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
     ctx.lineWidth = 0.6;
 
-    // Найдем максимальное и минимальное количество пикселей в кластерах
-    // для нормализации прозрачности
-    let maxPixels = 0;
-    let minPixels = Infinity;
-
-    for (const stroke of strokes) {
-        if (stroke.pixels.length > maxPixels) maxPixels = stroke.pixels.length;
-        if (stroke.pixels.length < minPixels) minPixels = stroke.pixels.length;
-    }
-
-    // Диапазон прозрачности
-    const minOpacity = 0.3;
-    const maxOpacity = 0.8;
-
     for (const stroke of strokes) {
         await new Promise(resolve => setTimeout(resolve));
 
@@ -99,16 +85,6 @@ export const drawBorders = async (
                 }
 
                 ctx.closePath();
-
-                // Прозрачность зависит от размера кластера
-                const pixelCountNormalized = (stroke.pixels.length - minPixels) / (maxPixels - minPixels || 1);
-                const opacity = minOpacity + pixelCountNormalized * (maxOpacity - minOpacity);
-
-                // Заливка кластера с полупрозрачным цветом
-                ctx.fillStyle = `rgba(${stroke.color.join(',')}, ${opacity.toFixed(2)})`;
-                ctx.fill();
-
-                // Отрисовка контура поверх заливки
                 ctx.stroke();
             }
         }
