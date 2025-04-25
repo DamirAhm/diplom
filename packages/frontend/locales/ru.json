@@ -145,6 +145,7 @@
     "simulationTime": "Время симуляции",
     "simulationStep": "Шаг симуляции",
     "neuronDynamics": "Динамика нейронов",
+    "tunnelDiodeNeuron": "Нейрон с туннельным диодом",
     "superpixelImageProcessing": "Обработка изображений Superpixel",
     "modelConfiguration": "Конфигурация модели",
     "modelType": "Тип модели",

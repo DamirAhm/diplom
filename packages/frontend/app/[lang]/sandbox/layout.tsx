@@ -18,12 +18,8 @@ export default function SandboxLayout({
 
     const navigation = [
         {
-            href: `/${lang}/sandbox/lorenz`,
-            label: dictionary.sandbox.lorenzSystemControls,
-        },
-        {
             href: `/${lang}/sandbox/neuron`,
-            label: dictionary.sandbox.neuronDynamics,
+            label: dictionary.sandbox.tunnelDiodeNeuron,
         },
         {
             href: `/${lang}/sandbox/superpixel`,

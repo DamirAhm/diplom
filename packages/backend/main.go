@@ -94,6 +94,9 @@ func main() {
 	// Создание обработчика для алгоритма разбиения изображения
 	imageProcessingHandler := handlers.NewImageProcessingHandler("./uploads")
 
+	// Создание обработчика для симуляции нейрона с туннельным диодом
+	neuronHandler := handlers.NewNeuronSimulationHandler()
+
 	router := mux.NewRouter()
 
 	router.Use(middleware.Logger)
@@ -155,6 +158,12 @@ func main() {
 
 	// Новый маршрут для обработки изображений с модифицированным алгоритмом SLIC
 	api.HandleFunc("/image/superpixels", imageProcessingHandler.ProcessSuperpixels).Methods("POST")
+
+	// Маршруты для симуляции нейрона с туннельным диодом
+	api.HandleFunc("/neuron/simulate", neuronHandler.TimeSeriesSimulation).Methods("POST")
+	api.HandleFunc("/neuron/excitability", neuronHandler.ExcitabilityTest).Methods("POST")
+	api.HandleFunc("/neuron/parameter-map", neuronHandler.ParameterMap).Methods("POST")
+	api.HandleFunc("/neuron/custom-signal", neuronHandler.CustomSignalUpload).Methods("POST")
 
 	router.HandleFunc("/uploads/{filename}", fileHandler.ServeFile).Methods("GET")
 

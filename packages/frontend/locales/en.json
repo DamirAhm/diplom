@@ -140,6 +140,7 @@
     "simulationTime": "Simulation Time",
     "simulationStep": "Simulation Step",
     "neuronDynamics": "Neuron Dynamics",
+    "tunnelDiodeNeuron": "Tunnel Diode Neuron",
     "superpixelImageProcessing": "Superpixel Image Processing",
     "modelConfiguration": "Model Configuration",
     "modelType": "Model Type",

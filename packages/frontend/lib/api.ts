@@ -10,7 +10,6 @@ import {
   Project,
   Publication,
   TrainingMaterial,
-  LocalizedString,
 } from "../app/types";
 import { hashPassword } from "./password";
 
@@ -96,6 +95,53 @@ export interface SuperpixelResponse {
   strokes: any[];
   gridVectors: any[];
   gradientDebug: number[][];
+}
+
+export interface NeuronSimulationRequest {
+  capacitance: number;
+  tuningVoltage: number;
+  modVoltage: number;
+  invertMemristor: boolean;
+  diodeModel: string;
+  signalType: string;
+  signalParams: any;
+  simTime: number;
+  timeStep: number;
+}
+
+export interface TimePoint {
+  t: number;
+  v: number;
+  x: number;
+  i: number;
+}
+
+export interface SimulationResponse {
+  data: TimePoint[];
+  parameters: Record<string, any>;
+}
+
+export interface ExcitabilityResponse {
+  class: number;
+  frequencies: number[];
+  currents: number[];
+}
+
+export interface ParameterMapRequest extends NeuronSimulationRequest {
+  mapType: string;
+  xStart: number;
+  xEnd: number;
+  xPoints: number;
+  yStart: number;
+  yEnd: number;
+  yPoints: number;
+}
+
+export interface ParameterMapResponse {
+  xValues: number[];
+  yValues: number[];
+  classes: number[][];
+  ranges: number[][];
 }
 
 export async function processSuperpixelImage(imageFile: File, params: SuperpixelParams): Promise<SuperpixelResponse> {
@@ -197,5 +243,22 @@ export const api = {
       request<TrainingMaterial>(`/training/${id}`, { method: "PUT", data }),
     delete: (id: string) =>
       request<void>(`/training/${id}`, { method: "DELETE" }),
+  },
+  neuron: {
+    simulate: (data: NeuronSimulationRequest) =>
+      api.post<SimulationResponse>("/neuron/simulate", data),
+    excitabilityTest: (data: NeuronSimulationRequest) =>
+      api.post<ExcitabilityResponse>("/neuron/excitability", data),
+    parameterMap: (data: ParameterMapRequest) =>
+      api.post<ParameterMapResponse>("/neuron/parameter-map", data),
+    uploadCustomSignal: (file: File) => {
+      const formData = new FormData();
+      formData.append("signalFile", file);
+      return request<{ status: string }>("/neuron/custom-signal", {
+        method: "POST",
+        body: formData,
+        headers: {},
+      });
+    },
   },
 };
