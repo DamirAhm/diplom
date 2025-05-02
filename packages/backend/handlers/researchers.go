@@ -99,7 +99,9 @@ func (h *ResearcherHandler) CreateResearcher(w http.ResponseWriter, r *http.Requ
 	}
 	researcher.ID = int(id)
 
-	go h.publicationCrawler.CrawlResearcher(researcher)
+	if researcher.Profiles.GoogleScholar != nil && *researcher.Profiles.GoogleScholar != "" {
+		go h.publicationCrawler.CrawlResearcher(researcher)
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(researcher)

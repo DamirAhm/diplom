@@ -1,24 +1,48 @@
-import Link from "next/link"
-import type { Locale } from "../../types"
-import { getDictionary } from "@/app/dictionaries"
+import Link from "next/link";
+import type { Locale } from "../../types";
+import { getDictionary } from "@/app/dictionaries";
 
 interface FooterProps {
-  lang: Locale
+  lang: Locale;
 }
 
 export default function Footer({ lang }: FooterProps) {
-  const dictionary = getDictionary(lang)
-  const currentYear = new Date().getFullYear()
+  const dictionary = getDictionary(lang);
+  const currentYear = new Date().getFullYear();
 
   const footerLinks = [
     { key: "home", href: `/${lang}`, label: dictionary.navigation.home },
-    { key: "projects", href: `/${lang}/projects`, label: dictionary.navigation.projects },
-    { key: "publications", href: `/${lang}/publications`, label: dictionary.navigation.publications },
-    { key: "researchers", href: `/${lang}/researchers`, label: dictionary.navigation.researchers },
-    { key: "sandbox", href: `/${lang}/sandbox`, label: dictionary.navigation.sandbox },
-    { key: "partners", href: `/${lang}/partners`, label: dictionary.navigation.partners },
-    { key: "training", href: `/${lang}/training`, label: dictionary.navigation.training },
-  ]
+    {
+      key: "projects",
+      href: `/${lang}/projects`,
+      label: dictionary.navigation.projects,
+    },
+    {
+      key: "publications",
+      href: `/${lang}/publications`,
+      label: dictionary.navigation.publications,
+    },
+    {
+      key: "researchers",
+      href: `/${lang}/researchers`,
+      label: dictionary.navigation.researchers,
+    },
+    {
+      key: "sandbox",
+      href: `/${lang}/sandbox`,
+      label: dictionary.navigation.sandbox,
+    },
+    {
+      key: "partners",
+      href: `/${lang}/partners`,
+      label: dictionary.navigation.partners,
+    },
+    {
+      key: "training",
+      href: `/${lang}/training`,
+      label: dictionary.navigation.training,
+    },
+  ];
 
   return (
     <footer className="bg-muted/50 dark:bg-gray-900 border-t border-border/50">
@@ -54,15 +78,17 @@ export default function Footer({ lang }: FooterProps) {
             <h4 className="font-heading text-base font-medium text-foreground mb-4">
               {lang === "en" ? "Contact" : "Контакты"}
             </h4>
-            <address className="text-foreground/80 text-sm not-italic">
-              <p className="mb-1">Email: lab@university.edu</p>
-              <p className="mb-1">Tel: +7 (123) 456-7890</p>
-              <p>{lang === "en" ? "University Campus, Building 3" : "Университетский кампус, корпус 3"}</p>
+            <address className="text-primary text-sm not-italic flex flex-col">
+              <a href="mailto:mnii@etu.ru" className="mb-1">
+                mnii@etu.ru
+              </a>
+              <a href="https://yandex.ru/maps/-/CHf-vG4Z">
+                {dictionary.footer.address}
+              </a>
             </address>
           </div>
         </div>
       </div>
     </footer>
-  )
+  );
 }
-

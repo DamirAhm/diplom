@@ -53,10 +53,12 @@ func (r *SQLiteResearcherRepo) Create(researcher models.Researcher) (int64, erro
 
 	res, err := tx.Exec(
 		`INSERT INTO researchers (name_id, last_name_id, position_id, photo, bio_id, google_scholar, research_gate, 
-			publons, orcid, scopus) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			publons, orcid, scopus, total_citations, h_index, recent_citations, recent_h_index) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		nameID, lastNameID, positionID, researcher.Photo, bioID,
 		researcher.Profiles.GoogleScholar, researcher.Profiles.ResearchGate,
 		researcher.Profiles.Publons, researcher.Profiles.Orcid, researcher.Profiles.Scopus,
+		researcher.TotalCitations, researcher.HIndex, researcher.RecentCitations, researcher.RecentHIndex,
 	)
 	if err != nil {
 		return 0, err
@@ -99,12 +101,14 @@ func (r *SQLiteResearcherRepo) GetByID(id int) (*models.Researcher, error) {
 
 	err := r.db.QueryRow(
 		`SELECT id, name_id, last_name_id, photo, bio_id, position_id, google_scholar, research_gate, 
-			publons, orcid, scopus FROM researchers WHERE id = ?`,
+			publons, orcid, scopus, total_citations, h_index, recent_citations, recent_h_index 
+			FROM researchers WHERE id = ?`,
 		id,
 	).Scan(
 		&researcher.ID, &nameID, &lastNameID, &researcher.Photo, &bioID, &positionID,
 		&researcher.Profiles.GoogleScholar, &researcher.Profiles.ResearchGate,
 		&researcher.Profiles.Publons, &researcher.Profiles.Orcid, &researcher.Profiles.Scopus,
+		&researcher.TotalCitations, &researcher.HIndex, &researcher.RecentCitations, &researcher.RecentHIndex,
 	)
 	if err != nil {
 		return nil, err
@@ -141,12 +145,6 @@ func (r *SQLiteResearcherRepo) GetByID(id int) (*models.Researcher, error) {
 	if publications != nil {
 		researcher.Publications = publications
 	}
-
-	totalCitations, err := r.CalculateTotalCitations(id)
-	if err != nil {
-		return nil, err
-	}
-	researcher.TotalCitations = totalCitations
 
 	return &researcher, nil
 }
@@ -228,7 +226,7 @@ func (r *SQLiteResearcherRepo) GetByIDs(ids []int) ([]models.Researcher, error) 
 func (r *SQLiteResearcherRepo) GetAll() ([]models.Researcher, error) {
 	rows, err := r.db.Query(
 		`SELECT id, name_id, last_name_id, photo, bio_id, position_id, google_scholar, research_gate, 
-			publons, orcid, scopus FROM researchers`,
+			publons, orcid, scopus, total_citations, h_index FROM researchers`,
 	)
 	if err != nil {
 		return nil, err
@@ -243,6 +241,7 @@ func (r *SQLiteResearcherRepo) GetAll() ([]models.Researcher, error) {
 			&researcher.ID, &nameID, &lastNameID, &researcher.Photo, &bioID, &positionID,
 			&researcher.Profiles.GoogleScholar, &researcher.Profiles.ResearchGate,
 			&researcher.Profiles.Publons, &researcher.Profiles.Orcid, &researcher.Profiles.Scopus,
+			&researcher.TotalCitations, &researcher.HIndex,
 		)
 		if err != nil {
 			return nil, err
@@ -277,12 +276,6 @@ func (r *SQLiteResearcherRepo) GetAll() ([]models.Researcher, error) {
 			return nil, err
 		}
 		researcher.Publications = publications
-
-		totalCitations, err := r.CalculateTotalCitations(researcher.ID)
-		if err != nil {
-			return nil, err
-		}
-		researcher.TotalCitations = totalCitations
 
 		researchers = append(researchers, researcher)
 	}
@@ -327,10 +320,12 @@ func (r *SQLiteResearcherRepo) Update(researcher models.Researcher) error {
 
 	_, err = tx.Exec(
 		`UPDATE researchers SET photo = ?, google_scholar = ?, research_gate = ?, 
-			publons = ?, orcid = ?, scopus = ? WHERE id = ?`,
+			publons = ?, orcid = ?, scopus = ?, total_citations = ?, h_index = ?, 
+			recent_citations = ?, recent_h_index = ? WHERE id = ?`,
 		researcher.Photo,
 		researcher.Profiles.GoogleScholar, researcher.Profiles.ResearchGate,
 		researcher.Profiles.Publons, researcher.Profiles.Orcid, researcher.Profiles.Scopus,
+		researcher.TotalCitations, researcher.HIndex, researcher.RecentCitations, researcher.RecentHIndex,
 		researcher.ID,
 	)
 	if err != nil {

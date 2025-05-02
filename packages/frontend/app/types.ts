@@ -10,7 +10,7 @@ export interface Partner {
   name: string;
   logo: string;
   url: string;
-  type?: 'university' | 'enterprise';
+  type?: "university" | "enterprise";
 }
 
 export interface PartnersData {
@@ -52,6 +52,7 @@ export interface Researcher {
   profiles: ResearcherProfiles;
   publications: Publication[];
   totalCitations: number;
+  hIndex: number;
 }
 
 export interface ProjectPublication {
@@ -66,13 +67,20 @@ export interface ProjectVideo {
   embedUrl: string;
 }
 
+export interface ProjectImage {
+  id: number;
+  url: string;
+  order: number;
+}
+
 export interface Project {
   id: number;
   title: LocalizedString;
   description: LocalizedString;
   githubLink: string;
-  publications: Publication[];
-  videos: Video[];
+  publications: ProjectPublication[];
+  videos: ProjectVideo[];
+  images: ProjectImage[];
 }
 
 export interface Video {

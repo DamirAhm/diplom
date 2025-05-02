@@ -1,8 +1,16 @@
 {
   "home": {
-    "title": "Youth Research Institute & CAD",
-    "description": "The Youth Research Institute is a scientific Department at Saint Petersburg State Electrotechnical University \"LETI\". The Institute consists of five laboratories and two workshops:\n\nLaboratories:\n- Laboratory of Advanced Robotics and Computer Creativity\n- Laboratory of Nonlinear Science and Applied Mathematics\n- Laboratory of Next-Step Electronics and Sensors\n- Laboratory of Unmanned Vehicles and Navigation\n\nWorkshops:\n- Additive technology & machinery workshop\n- Rapid prototyping workshop\n\nKey research fields: chaos theory & applications, numerical simulation, cryptography, sensors, robotics, unmanned vehicles, advanced AI, memristors, nonlinear dynamics & analysis, finite-element analysis, 3D printing, signal processing, and communication systems.",
+    "title": "Youth Research Institute",
+    "description": "The Youth Research Institute is an innovative scientific department at Saint Petersburg State Electrotechnical University \"LETI\". Our goal is to create an advanced scientific environment for young researchers where they can realize their ideas in robotics, artificial intelligence, nonlinear dynamics, and other promising fields. We strive to develop interdisciplinary research and create future technologies.",
+    "whoWeAre": "Who we are",
+    "whoWeAreDescription": "We are an innovative scientific department at Saint Petersburg State Electrotechnical University \"LETI\".",
+    "ourGoal": "What is our goal",
+    "goalDescription": "Creating an advanced scientific environment for young researchers where they can realize their ideas in robotics, artificial intelligence, nonlinear dynamics, and other promising fields.",
+    "ourAspiration": "Our aspiration",
+    "aspirationDescription": "We strive to develop interdisciplinary research and create future technologies.",
     "researchersDescription": "Meet our team of expert researchers and their work.",
+    "publicationsDescription": "Explore our scientific publications and research findings.",
+    "projectsDescription": "Discover our innovative research projects and their impact.",
     "sandboxDescription": "Experiment with our interactive tools and simulations.",
     "partnersDescription": "Discover our collaborations with industry leaders and academic institutions.",
     "trainingDescription": "Access educational materials and courses in advanced technologies.",
@@ -11,7 +19,46 @@
       "laboratories": "Laboratories",
       "workshops": "Workshops",
       "researchFields": "Key Research Fields"
-    }
+    },
+    "laboratoriesTitle": "Laboratories",
+    "workshopsTitle": "Workshops",
+    "researchFieldsTitleN": "Key research fields",
+    "researchFieldsTitle": "Key research fields",
+    "laboratories": [
+      "Laboratory of Advanced Robotics and Computer Creativity",
+      "Laboratory of Nonlinear Science and Applied Mathematics",
+      "Laboratory of Next-Step Electronics and Sensors",
+      "Laboratory of Unmanned Vehicles and Navigation"
+    ],
+    "workshops": [
+      "Additive technology & machinery workshop",
+      "Rapid prototyping workshop"
+    ],
+    "researchFields": [
+      "chaos theory & applications",
+      "numerical simulation",
+      "cryptography",
+      "sensors",
+      "robotics",
+      "unmanned vehicles",
+      "advanced AI",
+      "memristors",
+      "nonlinear dynamics & analysis",
+      "finite-element analysis",
+      "3D printing",
+      "signal processing and communication systems"
+    ],
+    "scientificInnovations": "Scientific Innovations",
+    "publications": "Publications",
+    "researchFieldsDescription": "Our laboratory focuses on cutting-edge research across multiple disciplines",
+    "researchFieldDescription": "Cutting-edge research in this exciting field with international recognition.",
+    "ourInfrastructure": "Our Infrastructure",
+    "infrastructureDescription": "State-of-the-art laboratories and workshops for groundbreaking research",
+    "exploreOurResources": "Explore Our Resources",
+    "exploreResourcesDescription": "Discover our researchers, sandbox environment, partners, and training materials",
+    "interestedInCollaborating": "Interested in collaborating?",
+    "collaborationDescription": "We're always open to new partnerships and research collaborations.",
+    "contactUs": "Contact Us"
   },
   "navigation": {
     "projects": "Projects",
@@ -23,7 +70,8 @@
     "home": "Home"
   },
   "footer": {
-    "copyright": "© 2025 СПбГЭТУ «ЛЭТИ». All rights reserved."
+    "copyright": "© 2025 СПбГЭТУ «ЛЭТИ». All rights reserved.",
+    "address": "5B Professor Popov Street, Saint Petersburg, 197022"
   },
   "notFound": {
     "title": "Page Not Found",
@@ -283,6 +331,8 @@
     "documentation": "Documentation",
     "video": "Video",
     "image": "Image",
+    "images": "Images",
+    "uploadImages": "Upload images",
     "urlPlaceholder": "Enter URL (e.g., https://example.com)",
     "manageContent": "Manage Content",
     "deletePartner": "Delete Partner",

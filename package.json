@@ -6,12 +6,13 @@
   ],
   "scripts": {
     "dev:frontend": "yarn workspace frontend dev",
-    "dev:backend": "cd packages/backend && ../../go run main.go",
+    "dev:backend": "cd packages/backend && go run main.go",
     "swag:generate": "rm -rf packages/backend/data",
     "db:drop": "rm -rf packages/backend/data",
     "db:seed": "cd packages/backend/cmd/seed && go run main.go"
   },
   "dependencies": {
     "cmdk": "^1.1.1"
-  }
+  },
+  "packageManager": "yarn@4.8.1+sha512.bc946f2a022d7a1a38adfc15b36a66a3807a67629789496c3714dd1703d2e6c6b1c69ff9ec3b43141ac7a1dd853b7685638eb0074300386a59c18df351ef8ff6"
 }

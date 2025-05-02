@@ -1,39 +1,22 @@
-import type React from "react"
-import Link from "next/link"
-import { getDictionary } from "../dictionaries"
-import type { Locale } from "../types"
-import { ImageWithFallback } from "./ImageWithFallback"
-import { ExternalLink, Award } from "lucide-react"
-
-interface Researcher {
-  id: number
-  name: { en: string; ru: string }
-  lastName: { en: string; ru: string }
-  position: { en: string; ru: string }
-  photo: string
-  totalCitations: number
-  publications?: any[]
-  profiles: {
-    researchgate?: string
-    googleScholar?: string
-    scopus?: string
-    publons?: string
-    orcid?: string
-  }
-}
+import type React from "react";
+import Link from "next/link";
+import { getDictionary } from "../dictionaries";
+import type { Locale, Researcher } from "../types";
+import { ImageWithFallback } from "./ImageWithFallback";
+import { ExternalLink, Award, MessageSquareQuote } from "lucide-react";
 
 interface ResearcherCardProps {
-  researcher: Researcher
-  lang: Locale
-  isCompact?: boolean
+  researcher: Researcher;
+  lang: Locale;
+  isCompact?: boolean;
 }
 
 const ResearcherCard: React.FC<ResearcherCardProps> = ({
   researcher,
   lang,
-  isCompact = false
+  isCompact = false,
 }) => {
-  const dictionary = getDictionary(lang)
+  const dictionary = getDictionary(lang);
 
   // Map profile names to more readable formats
   const profileLabels: Record<string, string> = {
@@ -41,8 +24,8 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({
     googleScholar: "Google Scholar",
     scopus: "Scopus",
     publons: "Publons",
-    orcid: "ORCID"
-  }
+    orcid: "ORCID",
+  };
 
   if (isCompact) {
     return (
@@ -66,14 +49,21 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({
               {researcher.name[lang]} {researcher.lastName[lang]}
             </Link>
           </h3>
-          <p className="text-sm text-foreground/70 mb-1">{researcher.position[lang]}</p>
+          <p className="text-sm text-foreground/70 mb-1">
+            {researcher.position[lang]}
+          </p>
           <div className="text-xs text-foreground/60">
-            <span className="mr-3">{dictionary.publications.citations}: {researcher.totalCitations}</span>
-            <span>{lang === "en" ? "Publications" : "Публикации"}: {researcher.publications?.length || 0}</span>
+            <span className="mr-3">
+              {dictionary.publications.citations}: {researcher.totalCitations}
+            </span>
+            <span>
+              {lang === "en" ? "Publications" : "Публикации"}:{" "}
+              {researcher.publications?.length || 0}
+            </span>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -101,11 +91,24 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({
           {researcher.position[lang]}
         </p>
 
-        <div className="mt-4 flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-sm text-foreground/60">
-            <Award size={16} className="text-primary dark:text-indigo-400" />
-            <span>{researcher.totalCitations}</span>
-            <span className="text-foreground/60">{dictionary.publications.citations}</span>
+        <div className="mt-4 flex flex-col items-start gap-2">
+          <div className="flex items-center gap-2 py-1">
+            <MessageSquareQuote className="h-4 w-4 text-primary" />
+            <span className="text-sm">
+              <span className="font-medium">
+                {dictionary.publications.citations}:
+              </span>{" "}
+              {researcher.totalCitations}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 py-1">
+            <Award className="h-4 w-4 text-primary" />
+            <span className="text-sm">
+              <span className="font-medium">
+                {lang === "en" ? "h-index" : "h-индекс"}:
+              </span>{" "}
+              {researcher.hIndex}
+            </span>
           </div>
         </div>
 
@@ -124,24 +127,20 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({
                     <ExternalLink size={12} />
                     {profileLabels[key] || key}
                   </a>
-                ),
+                )
             )}
           </div>
 
           <Link
             href={`/${lang}/researchers/${researcher.id}`}
-            className="inline-flex items-center text-sm text-primary dark:text-indigo-400 font-medium hover:underline"
+            className="inline-flex btn-primary items-center text-sm font-medium hover:underline"
           >
             {dictionary.researchers.viewProfile}
-            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
           </Link>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ResearcherCard
-
+export default ResearcherCard;

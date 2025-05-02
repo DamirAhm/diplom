@@ -35,7 +35,17 @@ func (r *SQLiteProjectRepo) Create(project models.Project) (int64, error) {
 	}
 
 	id, err := res.LastInsertId()
-	return id, err
+	if err != nil {
+		return 0, err
+	}
+
+	for _, image := range project.Images {
+		if err := r.AddImage(int(id), image); err != nil {
+			return 0, err
+		}
+	}
+
+	return id, nil
 }
 
 func (r *SQLiteProjectRepo) GetByID(id int) (*models.Project, error) {
@@ -78,6 +88,14 @@ func (r *SQLiteProjectRepo) GetByID(id int) (*models.Project, error) {
 		project.Videos = videos
 	}
 
+	images, err := r.getProjectImages(id)
+	if err != nil {
+		return nil, err
+	}
+	if images != nil {
+		project.Images = images
+	}
+
 	return &project, nil
 }
 
@@ -88,7 +106,7 @@ func (r *SQLiteProjectRepo) GetAll() ([]models.Project, error) {
 	}
 	defer rows.Close()
 
-	var projects []models.Project
+	projects := []models.Project{}
 	for rows.Next() {
 		project := models.NewProject()
 		var titleID, descriptionID int64
@@ -151,7 +169,50 @@ func (r *SQLiteProjectRepo) Update(project models.Project) error {
 		"UPDATE projects SET github_link = ? WHERE id = ?",
 		project.GithubLink, project.ID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Delete existing images
+	_, err = r.db.Exec("DELETE FROM project_images WHERE project_id = ?", project.ID)
+	if err != nil {
+		return err
+	}
+
+	// Add new images
+	for _, image := range project.Images {
+		if err := r.AddImage(project.ID, image); err != nil {
+			return err
+		}
+	}
+
+	// Delete existing videos
+	_, err = r.db.Exec("DELETE FROM project_videos WHERE project_id = ?", project.ID)
+	if err != nil {
+		return err
+	}
+
+	// Add new videos
+	for _, video := range project.Videos {
+		if err := r.AddVideo(project.ID, video); err != nil {
+			return err
+		}
+	}
+
+	// Delete existing publications
+	_, err = r.db.Exec("DELETE FROM project_publications WHERE project_id = ?", project.ID)
+	if err != nil {
+		return err
+	}
+
+	// Add new publications
+	for _, pub := range project.Publications {
+		if err := r.AddPublication(project.ID, pub); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *SQLiteProjectRepo) Delete(id int) error {
@@ -198,6 +259,14 @@ func (r *SQLiteProjectRepo) AddVideo(projectID int, video models.ProjectVideo) e
 	_, err = r.db.Exec(
 		"INSERT INTO project_videos (project_id, title_id, embed_url) VALUES (?, ?, ?)",
 		projectID, titleID, video.EmbedURL,
+	)
+	return err
+}
+
+func (r *SQLiteProjectRepo) AddImage(projectID int, image models.ProjectImage) error {
+	_, err := r.db.Exec(
+		"INSERT INTO project_images (project_id, url, image_order) VALUES (?, ?, ?)",
+		projectID, image.URL, image.Order,
 	)
 	return err
 }
@@ -258,4 +327,25 @@ func (r *SQLiteProjectRepo) getProjectVideos(projectID int) ([]models.ProjectVid
 		videos = append(videos, video)
 	}
 	return videos, nil
+}
+
+func (r *SQLiteProjectRepo) getProjectImages(projectID int) ([]models.ProjectImage, error) {
+	rows, err := r.db.Query(
+		"SELECT id, url, image_order FROM project_images WHERE project_id = ? ORDER BY image_order",
+		projectID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var images []models.ProjectImage
+	for rows.Next() {
+		var image models.ProjectImage
+		if err := rows.Scan(&image.ID, &image.URL, &image.Order); err != nil {
+			return nil, err
+		}
+		images = append(images, image)
+	}
+	return images, nil
 }

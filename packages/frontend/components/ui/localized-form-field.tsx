@@ -4,12 +4,7 @@ import { useState, useEffect } from "react";
 import { Label } from "./label";
 import { Input } from "./input";
 import { Textarea } from "./textarea";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "./tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDictionary } from "@/app/dictionaries";
@@ -40,15 +35,18 @@ interface LanguageTabProps {
   children: React.ReactNode;
 }
 
-const LanguageTab = ({ value, isActive, isFilled, children }: LanguageTabProps) => (
+const LanguageTab = ({
+  value,
+  isActive,
+  isFilled,
+  children,
+}: LanguageTabProps) => (
   <TabsTrigger
     value={value}
-    className={cn(
-      {
-        ["bg-blue-200 dark:bg-gray-600 dark:text-blue-50"]: isActive,
-        ["text-green-600 dark:text-green-400"]: isFilled,
-      }
-    )}
+    className={cn({
+      ["bg-blue-200 text-white dark:bg-gray-600 dark:text-blue-50"]: isActive,
+      ["text-green-600 dark:text-green-400"]: isFilled,
+    })}
   >
     {children}
     {isFilled && <Check className="ml-2 h-3 w-3" />}

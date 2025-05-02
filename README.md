@@ -21,6 +21,7 @@ diplom/
 ## Getting Started
 
 1. Install dependencies:
+
 ```bash
 # Frontend dependencies
 yarn install
@@ -32,12 +33,15 @@ cd packages/backend && go mod download
 2. Start development servers:
 
 Frontend:
+
 ```bash
 yarn dev:frontend
 ```
 
 Backend:
+
 ```bash
 yarn dev:backend
 # or directly with Go
 cd packages/backend && go run cmd/main.go
+```

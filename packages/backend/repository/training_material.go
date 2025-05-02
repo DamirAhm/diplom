@@ -72,7 +72,7 @@ func (r *SQLiteTrainingMaterialRepo) GetAll() ([]models.TrainingMaterial, error)
 	}
 	defer rows.Close()
 
-	var materials []models.TrainingMaterial
+	materials := []models.TrainingMaterial{}
 	for rows.Next() {
 		var material models.TrainingMaterial
 		var titleID, descriptionID int64

@@ -37,19 +37,19 @@ func (gs *GoogleScholarSource) Name() string {
 	return "Google Scholar"
 }
 
-func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) ([]models.Publication, []models.Publication, error) {
+func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) ([]models.Publication, []models.Publication, *models.Researcher, error) {
 	if researcher.Profiles.GoogleScholar == nil || *researcher.Profiles.GoogleScholar == "" {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	scholarID := extractScholarID(*researcher.Profiles.GoogleScholar)
 	if scholarID == "" {
-		return nil, nil, fmt.Errorf("invalid Google Scholar URL")
+		return nil, nil, nil, fmt.Errorf("invalid Google Scholar URL")
 	}
 
 	url := constructURL(scholarID, "pubdate")
 
-	publications, publicationsToUpdateByDate, err := gs.googleScholar.Scrape(url, []string{})
+	publications, publicationsToUpdateByDate, _, err := gs.googleScholar.Scrape(url, []string{})
 	if err != nil {
 		log.Printf("error scraping Google Scholar: %w", err)
 	}
@@ -62,12 +62,20 @@ func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) (
 		fetchedPublicationTitles = append(fetchedPublicationTitles, publication.Title.En)
 	}
 
-	publications, publicationsToUpdateByCitations, err := gs.googleScholar.Scrape(url, fetchedPublicationTitles)
+	publications, publicationsToUpdateByCitations, stats, err := gs.googleScholar.Scrape(url, fetchedPublicationTitles)
 	if err != nil {
 		log.Printf("error scraping Google Scholar: %w", err)
 	}
 
-	return publications, append(publicationsToUpdateByCitations, publicationsToUpdateByDate...), nil
+	// Update researcher with citation statistics
+	if stats != nil {
+		researcher.TotalCitations = stats.TotalCitations
+		researcher.HIndex = stats.HIndex
+		researcher.RecentCitations = stats.RecentCitations
+		researcher.RecentHIndex = stats.RecentHIndex
+	}
+
+	return publications, append(publicationsToUpdateByCitations, publicationsToUpdateByDate...), &researcher, nil
 }
 
 func extractScholarID(url string) string {

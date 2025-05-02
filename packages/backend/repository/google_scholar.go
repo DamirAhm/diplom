@@ -40,6 +40,13 @@ type CachedResponse struct {
 	CachedAt   time.Time   `json:"cached_at"`
 }
 
+type CitationStats struct {
+	TotalCitations  int
+	HIndex          int
+	RecentCitations int
+	RecentHIndex    int
+}
+
 func NewGoogleScholar(researcherRepo ResearcherRepo, publicationRepo PublicationRepo) *GoogleScholar {
 	requestLimit := 10
 	if limitStr := os.Getenv("GOOGLE_SCHOLAR_REQUEST_LIMIT"); limitStr != "" {
@@ -152,9 +159,9 @@ func (g *GoogleScholar) getFromCache(urlStr string) (*CachedResponse, error) {
 	return &cachedResp, nil
 }
 
-func (g *GoogleScholar) Scrape(url string, fetchedPublicationTitles []string) (newPublications []models.Publication, publicationsToUpdate []models.Publication, err error) {
+func (g *GoogleScholar) Scrape(url string, fetchedPublicationTitles []string) (newPublications []models.Publication, publicationsToUpdate []models.Publication, stats *CitationStats, err error) {
 	if !isValidScholarURL(url) {
-		return nil, nil, errors.New("invalid Google Scholar URL format")
+		return nil, nil, nil, errors.New("invalid Google Scholar URL format")
 	}
 
 	log.Printf("Scraping Google Scholar with request limit: %d", g.requestLimit)
@@ -176,7 +183,7 @@ func (g *GoogleScholar) Scrape(url string, fetchedPublicationTitles []string) (n
 
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error creating request: %w", err)
+			return nil, nil, nil, fmt.Errorf("error creating request: %w", err)
 		}
 
 		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/536.21 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
@@ -185,17 +192,17 @@ func (g *GoogleScholar) Scrape(url string, fetchedPublicationTitles []string) (n
 
 		resp, err = client.Do(req)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error sending request: %w", err)
+			return nil, nil, nil, fmt.Errorf("error sending request: %w", err)
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			return nil, nil, fmt.Errorf("received non-200 response: %d", resp.StatusCode)
+			return nil, nil, nil, fmt.Errorf("received non-200 response: %d", resp.StatusCode)
 		}
 
 		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error reading response body: %w", err)
+			return nil, nil, nil, fmt.Errorf("error reading response body: %w", err)
 		}
 		content = string(bodyBytes)
 
@@ -205,8 +212,32 @@ func (g *GoogleScholar) Scrape(url string, fetchedPublicationTitles []string) (n
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(content))
 	if err != nil {
-		return nil, nil, fmt.Errorf("error parsing HTML: %w", err)
+		return nil, nil, nil, fmt.Errorf("error parsing HTML: %w", err)
 	}
+
+	// Parse citation statistics
+	stats = &CitationStats{}
+	doc.Find("#gsc_rsb_st tbody tr").Each(func(i int, s *goquery.Selection) {
+		cells := s.Find("td")
+		if cells.Length() >= 3 {
+			switch i {
+			case 0: // Citations row
+				if total, err := strconv.Atoi(strings.TrimSpace(cells.Eq(1).Text())); err == nil {
+					stats.TotalCitations = total
+				}
+				if recent, err := strconv.Atoi(strings.TrimSpace(cells.Eq(2).Text())); err == nil {
+					stats.RecentCitations = recent
+				}
+			case 1: // h-index row
+				if hIndex, err := strconv.Atoi(strings.TrimSpace(cells.Eq(1).Text())); err == nil {
+					stats.HIndex = hIndex
+				}
+				if recent, err := strconv.Atoi(strings.TrimSpace(cells.Eq(2).Text())); err == nil {
+					stats.RecentHIndex = recent
+				}
+			}
+		}
+	})
 
 	var processingErrors []error
 	requestCount := 0
@@ -235,8 +266,8 @@ func (g *GoogleScholar) Scrape(url string, fetchedPublicationTitles []string) (n
 		}
 
 		if pub != nil {
+			pub.CitationsCount = citationCount
 			publicationsToUpdate = append(publicationsToUpdate, *pub)
-
 			return
 		}
 
@@ -262,14 +293,17 @@ func (g *GoogleScholar) Scrape(url string, fetchedPublicationTitles []string) (n
 
 	if len(newPublications) > 0 {
 		log.Printf("Fetched %d publications from Google Scholar (made %d requests)", len(newPublications), requestCount)
-		return newPublications, nil, nil
+		return newPublications, publicationsToUpdate, stats, nil
 	}
 
 	if len(processingErrors) > 0 {
-		return nil, nil, fmt.Errorf("failed to fetch any publications: %w", processingErrors[0])
+		log.Printf("Encountered %d errors while processing publications", len(processingErrors))
+		for _, err := range processingErrors {
+			log.Println(err)
+		}
 	}
 
-	return []models.Publication{}, []models.Publication{}, nil
+	return newPublications, publicationsToUpdate, stats, nil
 }
 
 func (g *GoogleScholar) fetchPublicationDetails(url, title string) (*models.Publication, error) {

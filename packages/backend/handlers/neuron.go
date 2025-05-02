@@ -8,9 +8,9 @@ import (
 
 const (
 	// Simulation constants
-	DefaultSimTime     = 0.03    // 30ms
-	DefaultTimeStep    = 5.0e-8  // 50ns
-	DefaultCapacitance = 22.0e-9 // 22nF
+	DefaultSimTime     = 0.03   // 30ms
+	DefaultTimeStep    = 0.5e-7 // 50ns (from MATLAB)
+	DefaultCapacitance = 200e-9 // 200nF (from MATLAB)
 )
 
 // Model types
@@ -343,22 +343,6 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 		}
 	}
 
-	// Get tunnel diode characteristics based on model
-	var vaPairs [][]float64
-	switch req.DiodeModel {
-	case DiodeGI401A:
-		vaPairs = gi401ACurrentVoltageCharacteristic()
-	case DiodeGI403A:
-		vaPairs = gi403ACurrentVoltageCharacteristic()
-	case DiodeBD4:
-		vaPairs = bd4CurrentVoltageCharacteristic()
-	case DiodeBD5:
-		vaPairs = bd5CurrentVoltageCharacteristic()
-	default:
-		// Default to GI401A if model not recognized
-		vaPairs = gi401ACurrentVoltageCharacteristic()
-	}
-
 	// Prepare for the simulation
 	totalSteps := int(req.SimTime / req.TimeStep)
 	// Limit data points for large simulations (downsample)
@@ -381,7 +365,6 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 	t := 0.0
 
 	// Memristor parameters
-	a := 0.1    // Determines switching speed
 	xMin := 0.0 // Minimum memristor state
 	xMax := 1.0 // Maximum memristor state
 
@@ -401,10 +384,10 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 		}
 
 		// Fourth-order Runge-Kutta method for solving the ODE
-		k1v, k1x := h.derivatives(v, x, t, req, inputSignal, vaPairs, a, xMin, xMax)
-		k2v, k2x := h.derivatives(v+0.5*req.TimeStep*k1v, x+0.5*req.TimeStep*k1x, t+0.5*req.TimeStep, req, inputSignal, vaPairs, a, xMin, xMax)
-		k3v, k3x := h.derivatives(v+0.5*req.TimeStep*k2v, x+0.5*req.TimeStep*k2x, t+0.5*req.TimeStep, req, inputSignal, vaPairs, a, xMin, xMax)
-		k4v, k4x := h.derivatives(v+req.TimeStep*k3v, x+req.TimeStep*k3x, t+req.TimeStep, req, inputSignal, vaPairs, a, xMin, xMax)
+		k1v, k1x := h.derivatives(v, x, t, req, inputSignal)
+		k2v, k2x := h.derivatives(v+0.5*req.TimeStep*k1v, x+0.5*req.TimeStep*k1x, t+0.5*req.TimeStep, req, inputSignal)
+		k3v, k3x := h.derivatives(v+0.5*req.TimeStep*k2v, x+0.5*req.TimeStep*k2x, t+0.5*req.TimeStep, req, inputSignal)
+		k4v, k4x := h.derivatives(v+req.TimeStep*k3v, x+req.TimeStep*k3x, t+req.TimeStep, req, inputSignal)
 
 		// Update v and x
 		v += req.TimeStep * (k1v + 2*k2v + 2*k3v + k4v) / 6
@@ -434,89 +417,173 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 
 // derivatives calculates the derivatives of voltage and memristor state
 func (h *NeuronSimulationHandler) derivatives(v, x, t float64, req SimulationRequest,
-	inputSignal func(float64) float64, vaPairs [][]float64, a float64, xMin, xMax float64) (float64, float64) {
+	inputSignal func(float64) float64) (float64, float64) {
 
-	// Calculate tunnel diode current using interpolation
-	iTunnelDiode := interpolateTDCurrent(v-req.ModVoltage, vaPairs)
+	// Calculate voltages
+	vd := v + 0.0 // U1 = 0
+	vm := v + 0.1 // U2 = 0.1
 
-	// Memristor conductivity based on state (simple linear model)
-	gMemristor := x // Normalized conductivity 0 to 1
-
-	// Calculate memristor current
-	vMemristor := req.TuningVoltage - v // Voltage across memristor
-	if req.InvertMemristor {
-		vMemristor = -vMemristor // Invert connection direction
+	// Calculate tunnel diode current based on model
+	var id float64
+	switch req.DiodeModel {
+	case DiodeGI401A:
+		id = gi401Model(vd)
+	case DiodeGI403A:
+		id = gi403Model(vd)
+	case DiodeBD4:
+		id = bd4Model(vd)
+	case DiodeBD5:
+		id = bd5Model(vd)
+	default:
+		id = gi401Model(vd) // Default to GI401A
 	}
-	iMemristor := gMemristor * vMemristor
+
+	// Calculate memristor current and state derivative
+	im, ix := andTSModel(vm, x)
 
 	// Input current
-	iInput := inputSignal(t)
-
-	// Sum of currents (Kirchhoff's law)
-	iTotal := iInput - iTunnelDiode - iMemristor
-
-	// Protect against division by zero
-	capacitance := req.Capacitance
-	if capacitance < 1e-12 {
-		capacitance = 1e-12
+	iin := inputSignal(t)
+	if iin == 0 {
+		iin = 66e-6 // Default from MATLAB
 	}
 
-	// Voltage derivative: dv/dt = i/C
-	dvdt := iTotal / capacitance
-
-	// Check for invalid values and limit them
-	if math.IsInf(dvdt, 0) || math.IsNaN(dvdt) {
-		if dvdt > 0 {
-			dvdt = 1e6 // Limit to a large positive value
-		} else {
-			dvdt = -1e6 // Limit to a large negative value
-		}
-	}
-
-	// Memristor state derivative: dx/dt = a*f(v,x)
-	// Simple model: state changes based on voltage polarity and current value
-	dxdt := 0.0
-	if vMemristor > 0 && x < xMax {
-		// Increase conductivity when positive voltage
-		dxdt = a * (1.0 - x) * math.Abs(vMemristor)
-	} else if vMemristor < 0 && x > xMin {
-		// Decrease conductivity when negative voltage
-		dxdt = -a * x * math.Abs(vMemristor)
-	}
-
-	// Check for invalid values
-	if math.IsInf(dxdt, 0) || math.IsNaN(dxdt) {
-		dxdt = 0.0
-	}
+	// Derivatives
+	dvdt := (iin - im - id) / req.Capacitance
+	dxdt := ix
 
 	return dvdt, dxdt
 }
 
-// interpolateTDCurrent interpolates tunnel diode current from voltage-current pairs
-func interpolateTDCurrent(v float64, vaPairs [][]float64) float64 {
-	n := len(vaPairs)
+func andTSModel(v1, v2 float64) (float64, float64) {
+	const (
+		Ron     = 1434
+		Roff    = 1e6
+		Von1    = 0.28
+		Voff1   = 0.14
+		Von2    = -0.12
+		Voff2   = -0.006
+		TAU     = 0.0000001
+		T       = 0.5
+		boltz   = 1.380649e-23
+		echarge = 1.602176634e-19
+	)
 
-	// Check boundary cases
-	if v <= vaPairs[0][0] {
-		return vaPairs[0][1]
+	// Calculate Ix
+	term1 := 1 / (1 + math.Exp(-1/(T*boltz/echarge)*(v1-Von1)*(v1-Von2)))
+	term2 := 1 - (1 / (1 + math.Exp(-1/(T*boltz/echarge)*(v1-Voff2)*(v1-Voff1))))
+	ix := (1 / TAU) * (term1*(1-v2) - term2*v2)
+
+	// Calculate Imem
+	g := func(v float64) float64 {
+		return v/Ron + (1-v)/Roff
 	}
-	if v >= vaPairs[n-1][0] {
-		return vaPairs[n-1][1]
+	imem := v1 * g(v2)
+
+	return imem, ix
+}
+
+func gi401Model(e float64) float64 {
+	const (
+		Is = 1.1e-7
+		Vt = 1.0 / 17.0
+		Vp = 0.037
+		Ip = 6.4e-5
+		Iv = 6e-6
+		D  = 20
+		E  = 0.09
+	)
+
+	idiode := func(e float64) float64 {
+		return Is * (math.Exp(e/Vt) - math.Exp(-e/Vt))
 	}
 
-	// Find the interval containing v
-	for i := 0; i < n-1; i++ {
-		if v >= vaPairs[i][0] && v <= vaPairs[i+1][0] {
-			// Linear interpolation
-			v1, i1 := vaPairs[i][0], vaPairs[i][1]
-			v2, i2 := vaPairs[i+1][0], vaPairs[i+1][1]
-			t := (v - v1) / (v2 - v1)
-			return i1 + t*(i2-i1)
-		}
+	itunnel := func(e float64) float64 {
+		return Ip / Vp * e * math.Exp(-(e-Vp)/Vp)
 	}
 
-	// Should not reach here
-	return 0.0
+	iex := func(e float64) float64 {
+		return Iv * (math.Atan(D*(e-E)) + math.Atan(D*(e+E)))
+	}
+
+	return idiode(e) + itunnel(e) + iex(e)
+}
+
+func gi403Model(e float64) float64 {
+	const (
+		Is = 1.1e-7
+		Vt = 1.0 / 17.0
+		Vp = 0.039
+		Ip = 6.2e-5
+		Iv = 6e-6
+		D  = 20
+		E  = 0.09
+	)
+
+	idiode := func(e float64) float64 {
+		return Is * (math.Exp(e/Vt) - math.Exp(-e/Vt))
+	}
+
+	itunnel := func(e float64) float64 {
+		return Ip / Vp * e * math.Exp(-(e-Vp)/Vp)
+	}
+
+	iex := func(e float64) float64 {
+		return Iv * (math.Atan(D*(e-E)) + math.Atan(D*(e+E)))
+	}
+
+	return idiode(e) + itunnel(e) + iex(e)
+}
+
+func bd4Model(e float64) float64 {
+	const (
+		Is = 1.1e-7
+		Vt = 1.0 / 17.0
+		Vp = 0.035
+		Ip = 6.0e-5
+		Iv = 6e-6
+		D  = 20
+		E  = 0.09
+	)
+
+	idiode := func(e float64) float64 {
+		return Is * (math.Exp(e/Vt) - math.Exp(-e/Vt))
+	}
+
+	itunnel := func(e float64) float64 {
+		return Ip / Vp * e * math.Exp(-(e-Vp)/Vp)
+	}
+
+	iex := func(e float64) float64 {
+		return Iv * (math.Atan(D*(e-E)) + math.Atan(D*(e+E)))
+	}
+
+	return idiode(e) + itunnel(e) + iex(e)
+}
+
+func bd5Model(e float64) float64 {
+	const (
+		Is = 1.1e-7
+		Vt = 1.0 / 17.0
+		Vp = 0.033
+		Ip = 5.8e-5
+		Iv = 6e-6
+		D  = 20
+		E  = 0.09
+	)
+
+	idiode := func(e float64) float64 {
+		return Is * (math.Exp(e/Vt) - math.Exp(-e/Vt))
+	}
+
+	itunnel := func(e float64) float64 {
+		return Ip / Vp * e * math.Exp(-(e-Vp)/Vp)
+	}
+
+	iex := func(e float64) float64 {
+		return Iv * (math.Atan(D*(e-E)) + math.Atan(D*(e+E)))
+	}
+
+	return idiode(e) + itunnel(e) + iex(e)
 }
 
 // Current-voltage characteristics for different tunnel diode models

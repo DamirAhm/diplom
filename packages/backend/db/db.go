@@ -44,6 +44,14 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
+	if err = migrateAddProjectImages(); err != nil {
+		return err
+	}
+
+	if err = migrateAddCitationStats(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -85,6 +93,13 @@ func createTables() error {
 			FOREIGN KEY (title_id) REFERENCES localized_strings(id),
 			FOREIGN KEY (project_id) REFERENCES projects(id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS project_images (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			project_id INTEGER NOT NULL,
+			url TEXT NOT NULL,
+			image_order INTEGER NOT NULL,
+			FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+		)`,
 		`CREATE TABLE IF NOT EXISTS publications (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title_id INTEGER NOT NULL,
@@ -106,6 +121,10 @@ func createTables() error {
 			scopus TEXT,
 			publons TEXT,
 			orcid TEXT,
+			total_citations INTEGER DEFAULT 0,
+			h_index INTEGER DEFAULT 0,
+			recent_citations INTEGER DEFAULT 0,
+			recent_h_index INTEGER DEFAULT 0,
 			FOREIGN KEY (name_id) REFERENCES localized_strings(id),
 			FOREIGN KEY (last_name_id) REFERENCES localized_strings(id),
 			FOREIGN KEY (position_id) REFERENCES localized_strings(id),
@@ -614,6 +633,63 @@ func migrateAddVisibleToPublications() error {
 
 	if count == 0 {
 		_, err = DB.Exec(`ALTER TABLE publications ADD COLUMN visible BOOLEAN DEFAULT 0`)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func migrateAddProjectImages() error {
+	var count int
+	err := DB.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='project_images'`).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count == 0 {
+		tx, err := DB.Begin()
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.Exec(`
+			CREATE TABLE project_images (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				project_id INTEGER NOT NULL,
+				url TEXT NOT NULL,
+				image_order INTEGER NOT NULL,
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+			)
+		`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func migrateAddCitationStats() error {
+	var count int
+	err := DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('researchers') WHERE name='total_citations'`).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count == 0 {
+		_, err = DB.Exec(`
+			ALTER TABLE researchers ADD COLUMN total_citations INTEGER DEFAULT 0;
+			ALTER TABLE researchers ADD COLUMN h_index INTEGER DEFAULT 0;
+			ALTER TABLE researchers ADD COLUMN recent_citations INTEGER DEFAULT 0;
+			ALTER TABLE researchers ADD COLUMN recent_h_index INTEGER DEFAULT 0
+		`)
 		if err != nil {
 			return err
 		}

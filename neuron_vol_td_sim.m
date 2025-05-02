@@ -13,7 +13,7 @@ h = 0.5e-7;
 
 Y0 = [0; 0];
 
-solver = rk_solver_expilcit('RK2'); 
+solver = rk_solver_expilcit('RK8'); 
 % internal signal
 [T,Y] = solver.solve(@nvt, Tmax, Y0, h);
 figure;
@@ -97,13 +97,13 @@ G = @(V) (V/Ron+(1-V)/Roff);
 Imem =  V1*G(V2);
 end
 function I = GI403(e)
-Is = 1.1E-7;
-Vt = 1/17;
-Vp = 0.039;%0.037;
-Ip = 6.2e-5;%6.4e-5;
-Iv = 6e-6;
-D = 20;
-E = 0.09;
+Is = 1.16E-7;
+Vt = 0.066;
+Vp = 0.09;%0.037;
+Ip = 2.17e-5;%6.4e-5;
+Iv = -3.22e-6;
+D = 26;
+E = 0.14;
 Idiode = @(e)Is * (exp(e./Vt) - exp(-e./Vt));
 Itunnel = @(e)Ip/Vp* e.*exp(-(e - Vp)./Vp);
 Iex = @(e)Iv * (atan(D*(e - E)) + atan(D * (e + E)));

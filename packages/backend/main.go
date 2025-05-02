@@ -180,9 +180,9 @@ func main() {
 		server: &http.Server{
 			Addr:         ":" + cfg.Server.Port,
 			Handler:      c.Handler(router),
-			IdleTimeout:  time.Minute,
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 30 * time.Second,
+			IdleTimeout:  time.Minute * 2,
+			ReadTimeout:  30 * time.Second,
+			WriteTimeout: time.Minute,
 		},
 		db:                 db.DB,
 		config:             cfg,

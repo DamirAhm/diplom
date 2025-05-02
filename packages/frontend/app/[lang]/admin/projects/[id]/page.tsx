@@ -3,18 +3,35 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getDictionary } from "@/app/dictionaries";
-import type { Locale, Project, Publication, Video } from "@/app/types";
+import type {
+  Locale,
+  Project,
+  Publication,
+  Video,
+  ProjectImage,
+  ProjectVideo,
+  ProjectPublication,
+} from "@/app/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
-import { api } from "../../../../../lib/api";
+import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react";
+import { api, uploadFile } from "../../../../../lib/api";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { TextField, LocalizedTextField } from "@/components/ui/form-fields";
 import * as z from "zod";
 import { AutoComplete } from "@/components/ui/autocomplete";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import Image from "next/image";
+import { ImageWithFallback } from "../../../../components/ImageWithFallback";
 
 const projectSchema = z.object({
   title: z.object({
@@ -46,8 +63,12 @@ export default function ProjectFormPage({
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(id !== "new");
   const [publications, setPublications] = useState<Publication[]>([]);
-  const [projectPublications, setProjectPublications] = useState<Publication[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [projectPublications, setProjectPublications] = useState<
+    ProjectPublication[]
+  >([]);
+  const [videos, setVideos] = useState<ProjectVideo[]>([]);
+  const [images, setImages] = useState<ProjectImage[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -71,6 +92,7 @@ export default function ProjectFormPage({
       });
       setVideos(data.videos);
       setProjectPublications(data.publications);
+      setImages(data.images || []);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -91,6 +113,41 @@ export default function ProjectFormPage({
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+
+    setIsUploading(true);
+    try {
+      const filesRes = await Promise.allSettled(
+        Array.from(e.target.files).map(async (file, index) => {
+          const response = await uploadFile(file);
+
+          return {
+            id: Date.now() + index,
+            url: response.url,
+            order: images.length + index,
+          };
+        })
+      ).then((res) => res.filter((r) => r.status === "fulfilled"));
+
+      const files = filesRes.map((res) => res.value);
+
+      setImages((prev) => [...prev, ...files]);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: dictionary.common.error,
+        description: dictionary.admin.uploadError,
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveImage = (imageId: number) => {
+    setImages((prev) => prev.filter((img) => img.id !== imageId));
+  };
+
   const onSubmit = async (formData: ProjectFormData) => {
     try {
       const projectData: Omit<Project, "id"> = {
@@ -99,6 +156,7 @@ export default function ProjectFormPage({
         githubLink: formData.githubLink || "",
         videos: videos,
         publications: projectPublications,
+        images: images,
       };
 
       if (id !== "new") {
@@ -128,10 +186,10 @@ export default function ProjectFormPage({
     const url = prompt(dictionary.admin.videoUrl);
     if (!url) return;
 
-    const newVideo: Video = {
+    const newVideo: ProjectVideo = {
       id: Date.now(),
       title: { en: title, ru: title },
-      url,
+      embedUrl: url,
     };
 
     setVideos((prev) => [...prev, newVideo]);
@@ -142,20 +200,17 @@ export default function ProjectFormPage({
   };
 
   const handleAddPublication = (publicationId: number) => {
-    const publication = publications.find(
-      (p) => p.id === publicationId
-    );
-    if (
-      !publication ||
-      projectPublications.some((p) => p.id === publicationId)
-    )
+    const publication = publications.find((p) => p.id === publicationId);
+    if (!publication || projectPublications.some((p) => p.id === publicationId))
       return;
 
     setProjectPublications((prev) => [...prev, publication]);
   };
 
   const handleRemovePublication = (publicationId: number) => {
-    setProjectPublications((prev) => prev.filter((p) => p.id !== publicationId));
+    setProjectPublications((prev) =>
+      prev.filter((p) => p.id !== publicationId)
+    );
   };
 
   if (isLoading) {
@@ -210,6 +265,67 @@ export default function ProjectFormPage({
 
             <div>
               <div className="mb-4">
+                <Label>{dictionary.admin.images}</Label>
+                <div className="mt-2">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      document.getElementById("image-upload")?.click()
+                    }
+                    disabled={isUploading}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {isUploading
+                      ? dictionary.common.saving
+                      : dictionary.admin.uploadImages}
+                  </Button>
+                </div>
+                {images.length > 0 && (
+                  <div className="mt-4">
+                    <Carousel>
+                      <CarouselContent>
+                        {images.map((image) => (
+                          <CarouselItem key={image.id}>
+                            <div className="relative">
+                              <ImageWithFallback
+                                width={300}
+                                height={300}
+                                src={image.url}
+                                alt="Project image"
+                                className="object-cover rounded-lg"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-2 right-2"
+                                onClick={() => handleRemoveImage(image.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      <CarouselPrevious />
+                      <CarouselNext />
+                    </Carousel>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-4">
                 <Label>{dictionary.admin.publications}</Label>
                 <div className="mt-2 space-y-2">
                   {projectPublications.map((pub) => (
@@ -232,7 +348,10 @@ export default function ProjectFormPage({
                 <div className="mt-2">
                   <AutoComplete
                     options={publications
-                      .filter((p) => !projectPublications.some((proj) => proj.id === p.id))
+                      .filter(
+                        (p) =>
+                          !projectPublications.some((proj) => proj.id === p.id)
+                      )
                       .map((p) => ({
                         value: p.id.toString(),
                         label: p.title[lang],
@@ -250,7 +369,11 @@ export default function ProjectFormPage({
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <Label>{dictionary.admin.videos}</Label>
-                <Button type="button" variant="outline" onClick={handleAddVideo}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddVideo}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   {dictionary.admin.addVideo}
                 </Button>
@@ -264,7 +387,7 @@ export default function ProjectFormPage({
                     <div>
                       <div className="font-medium">{video.title[lang]}</div>
                       <div className="text-sm text-muted-foreground">
-                        {video.url}
+                        {video.embedUrl}
                       </div>
                     </div>
                     <Button
@@ -282,7 +405,9 @@ export default function ProjectFormPage({
           </div>
 
           <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? dictionary.common.saving : dictionary.common.save}
+            {form.formState.isSubmitting
+              ? dictionary.common.saving
+              : dictionary.common.save}
           </Button>
         </form>
       </Form>

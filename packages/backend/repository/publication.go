@@ -329,76 +329,78 @@ func (r *SQLitePublicationRepo) Update(pub models.Publication) error {
 		return err
 	}
 
-	_, err = tx.Exec(
-		"DELETE FROM publication_authors WHERE publication_id = ?",
-		pub.ID,
-	)
-	if err != nil {
-		return err
-	}
-
-	rows, err := tx.Query(
-		"SELECT name_id FROM publication_external_authors WHERE publication_id = ?",
-		pub.ID,
-	)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var nameIDs []int64
-	for rows.Next() {
-		var nameID int64
-		if err := rows.Scan(&nameID); err != nil {
-			return err
-		}
-		nameIDs = append(nameIDs, nameID)
-	}
-
-	_, err = tx.Exec(
-		"DELETE FROM publication_external_authors WHERE publication_id = ?",
-		pub.ID,
-	)
-	if err != nil {
-		return err
-	}
-
-	for _, nameID := range nameIDs {
-		_, err = tx.Exec("DELETE FROM localized_strings WHERE id = ?", nameID)
+	if pub.Authors != nil {
+		_, err = tx.Exec(
+			"DELETE FROM publication_authors WHERE publication_id = ?",
+			pub.ID,
+		)
 		if err != nil {
 			return err
 		}
-	}
 
-	for _, author := range pub.Authors {
-		if author.ID != nil {
-			_, err = tx.Exec(
-				"INSERT INTO publication_authors (publication_id, researcher_id) VALUES (?, ?)",
-				pub.ID, *author.ID,
-			)
+		rows, err := tx.Query(
+			"SELECT name_id FROM publication_external_authors WHERE publication_id = ?",
+			pub.ID,
+		)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		var nameIDs []int64
+		for rows.Next() {
+			var nameID int64
+			if err := rows.Scan(&nameID); err != nil {
+				return err
+			}
+			nameIDs = append(nameIDs, nameID)
+		}
+
+		_, err = tx.Exec(
+			"DELETE FROM publication_external_authors WHERE publication_id = ?",
+			pub.ID,
+		)
+		if err != nil {
+			return err
+		}
+
+		for _, nameID := range nameIDs {
+			_, err = tx.Exec("DELETE FROM localized_strings WHERE id = ?", nameID)
 			if err != nil {
 				return err
 			}
-		} else {
-			result, err := tx.Exec(
-				"INSERT INTO localized_strings (en, ru) VALUES (?, ?)",
-				author.Name.En, author.Name.Ru,
-			)
-			if err != nil {
-				return err
-			}
+		}
 
-			nameID, err := result.LastInsertId()
-			if err != nil {
-				return err
-			}
+		for _, author := range pub.Authors {
+			if author.ID != nil {
+				_, err = tx.Exec(
+					"INSERT INTO publication_authors (publication_id, researcher_id) VALUES (?, ?)",
+					pub.ID, *author.ID,
+				)
+				if err != nil {
+					return err
+				}
+			} else {
+				result, err := tx.Exec(
+					"INSERT INTO localized_strings (en, ru) VALUES (?, ?)",
+					author.Name.En, author.Name.Ru,
+				)
+				if err != nil {
+					return err
+				}
 
-			_, err = tx.Exec(
-				"INSERT INTO publication_external_authors (publication_id, name_id) VALUES (?, ?)",
-				pub.ID, nameID,
-			)
-			if err != nil {
-				return err
+				nameID, err := result.LastInsertId()
+				if err != nil {
+					return err
+				}
+
+				_, err = tx.Exec(
+					"INSERT INTO publication_external_authors (publication_id, name_id) VALUES (?, ?)",
+					pub.ID, nameID,
+				)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

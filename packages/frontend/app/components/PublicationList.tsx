@@ -1,13 +1,16 @@
-import type React from "react"
-import type { Locale, Publication } from "../types"
-import { ExternalLink } from "lucide-react"
+import type React from "react";
+import type { Locale, ProjectPublication, Publication } from "../types";
+import { ExternalLink } from "lucide-react";
 
 interface PublicationListProps {
-  publications: Publication[]
-  lang: Locale
+  publications: ProjectPublication[];
+  lang: Locale;
 }
 
-const PublicationList: React.FC<PublicationListProps> = ({ publications, lang }) => {
+const PublicationList: React.FC<PublicationListProps> = ({
+  publications,
+  lang,
+}) => {
   return (
     <ul className="space-y-4">
       {publications.map((publication) => (
@@ -19,14 +22,15 @@ const PublicationList: React.FC<PublicationListProps> = ({ publications, lang })
             rel="noopener noreferrer"
             className="text-blue-600 dark:text-blue-400 hover:underline flex items-center"
           >
-            {typeof publication.title === 'object' ? publication.title[lang] : publication.title}
+            {typeof publication.title === "object"
+              ? publication.title[lang]
+              : publication.title}
             <ExternalLink size={14} className="ml-1 inline" />
           </a>
         </li>
       ))}
     </ul>
-  )
-}
+  );
+};
 
-export default PublicationList
-
+export default PublicationList;

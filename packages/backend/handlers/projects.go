@@ -93,10 +93,16 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to create project", err)
 		return
 	}
-	project.ID = int(id)
+
+	// Fetch the created project to get all related data
+	createdProject, err := h.projectRepo.GetByID(int(id))
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch created project", err)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(project)
+	json.NewEncoder(w).Encode(createdProject)
 }
 
 // UpdateProject godoc
@@ -137,7 +143,14 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(project)
+	// Fetch the updated project to get all related data
+	updatedProject, err := h.projectRepo.GetByID(id)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Failed to fetch updated project", err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(updatedProject)
 }
 
 // DeleteProject godoc

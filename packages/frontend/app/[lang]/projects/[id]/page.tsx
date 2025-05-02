@@ -4,6 +4,14 @@ import VideoEmbed from "../../../components/VideoEmbed";
 import type { Locale, Project } from "@/app/types";
 import { getDictionary } from "@/app/dictionaries";
 import { Github } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { ImageWithFallback } from "../../../components/ImageWithFallback";
 
 const fetchProject = async (id: string): Promise<Project | null> => {
   const response = await fetch(`http://localhost:8080/api/projects/${id}`);
@@ -11,7 +19,7 @@ const fetchProject = async (id: string): Promise<Project | null> => {
     if (response.status === 404) {
       return null;
     }
-    throw new Error('Failed to fetch project');
+    throw new Error("Failed to fetch project");
   }
   return response.json();
 };
@@ -34,7 +42,7 @@ const ProjectPage = async ({
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="bg-white dark:bg-primary rounded-lg shadow-lg overflow-hidden">
+      <div className="bg-white dark:bg-primary rounded-lg shadow-lg">
         <div className="p-6">
           <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
             {project.title[lang]}
@@ -53,32 +61,58 @@ const ProjectPage = async ({
               {dictionary.projects.viewOnGitHub}
             </a>
           )}
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-              {dictionary.projects.significantPublications}
-            </h2>
-            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
-              <PublicationList
-                lang={lang}
-                publications={project.publications}
-              />
+          {project.images && project.images.length > 0 && (
+            <div className="mb-8">
+              <Carousel className="w-full" opts={{ loop: true }}>
+                <CarouselContent>
+                  {project.images.map((image) => (
+                    <CarouselItem key={image.id}>
+                      <div className="relative aspect-video">
+                        <ImageWithFallback
+                          src={image.url}
+                          alt={project.title[lang]}
+                          fill
+                          className="object-cover rounded-lg"
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
             </div>
-          </div>
-          <div>
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-              {dictionary.projects.projectVideos}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {project.videos.map((video) => (
-                <div
-                  key={video.id}
-                  className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4"
-                >
-                  <VideoEmbed lang={lang} video={video} />
-                </div>
-              ))}
+          )}
+          {project.publications.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                {dictionary.projects.significantPublications}
+              </h2>
+              <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                <PublicationList
+                  lang={lang}
+                  publications={project.publications}
+                />
+              </div>
             </div>
-          </div>
+          )}
+          {project.videos.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                {dictionary.projects.projectVideos}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {project.videos.map((video) => (
+                  <div
+                    key={video.id}
+                    className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4"
+                  >
+                    <VideoEmbed lang={lang} video={video} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -44,6 +44,9 @@ type Researcher struct {
 	Profiles       ResearcherProfiles `json:"profiles"`
 	Publications   []Publication      `json:"publications"`
 	TotalCitations int                `json:"totalCitations"`
+	HIndex         int                `json:"hIndex"`
+	RecentCitations int               `json:"recentCitations"`
+	RecentHIndex    int               `json:"recentHIndex"`
 }
 
 type ResearcherProfiles struct {
@@ -66,6 +69,12 @@ type ProjectVideo struct {
 	EmbedURL string          `json:"embedUrl"`
 }
 
+type ProjectImage struct {
+	ID    int    `json:"id"`
+	URL   string `json:"url"`
+	Order int    `json:"order"`
+}
+
 type Project struct {
 	ID           int                  `json:"id"`
 	Title        LocalizedString      `json:"title"`
@@ -73,6 +82,7 @@ type Project struct {
 	GithubLink   string               `json:"githubLink"`
 	Publications []ProjectPublication `json:"publications"`
 	Videos       []ProjectVideo       `json:"videos"`
+	Images       []ProjectImage       `json:"images"`
 }
 
 type TrainingMaterial struct {
@@ -123,10 +133,15 @@ func NewProjectVideo() ProjectVideo {
 	return ProjectVideo{}
 }
 
+func NewProjectImage() ProjectImage {
+	return ProjectImage{}
+}
+
 func NewProject() Project {
 	return Project{
 		Publications: []ProjectPublication{},
 		Videos:       []ProjectVideo{},
+		Images:       []ProjectImage{},
 	}
 }
 

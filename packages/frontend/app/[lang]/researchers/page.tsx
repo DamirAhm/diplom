@@ -13,7 +13,9 @@ export default function ResearchersPage({
   params: { lang: Locale };
 }) {
   const [researchers, setResearchers] = useState<Researcher[]>([]);
-  const [filteredResearchers, setFilteredResearchers] = useState<Researcher[]>([]);
+  const [filteredResearchers, setFilteredResearchers] = useState<Researcher[]>(
+    []
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const { lang } = params || {};
@@ -35,42 +37,45 @@ export default function ResearchersPage({
     fetchResearchers();
   }, []);
 
-  const handleSearch = useCallback((query: string) => {
-    setSearchQuery(query);
+  const handleSearch = useCallback(
+    (query: string) => {
+      setSearchQuery(query);
 
-    if (!query.trim()) {
-      setFilteredResearchers(researchers);
-      return;
-    }
+      if (!query.trim()) {
+        setFilteredResearchers(researchers);
+        return;
+      }
 
-    const normalizedQuery = query.toLowerCase().trim();
+      const normalizedQuery = query.toLowerCase().trim();
 
-    const filtered = researchers.filter(researcher => {
-      // Search in name (both languages)
-      const nameMatch =
-        researcher.name.en.toLowerCase().includes(normalizedQuery) ||
-        researcher.name.ru.toLowerCase().includes(normalizedQuery);
+      const filtered = researchers.filter((researcher) => {
+        // Search in name (both languages)
+        const nameMatch =
+          researcher.name.en.toLowerCase().includes(normalizedQuery) ||
+          researcher.name.ru.toLowerCase().includes(normalizedQuery);
 
-      // Search in lastName (both languages)
-      const lastNameMatch =
-        researcher.lastName.en.toLowerCase().includes(normalizedQuery) ||
-        researcher.lastName.ru.toLowerCase().includes(normalizedQuery);
+        // Search in lastName (both languages)
+        const lastNameMatch =
+          researcher.lastName.en.toLowerCase().includes(normalizedQuery) ||
+          researcher.lastName.ru.toLowerCase().includes(normalizedQuery);
 
-      // Search in position (both languages)
-      const positionMatch =
-        researcher.position.en.toLowerCase().includes(normalizedQuery) ||
-        researcher.position.ru.toLowerCase().includes(normalizedQuery);
+        // Search in position (both languages)
+        const positionMatch =
+          researcher.position.en.toLowerCase().includes(normalizedQuery) ||
+          researcher.position.ru.toLowerCase().includes(normalizedQuery);
 
-      // Search in bio (both languages)
-      const bioMatch =
-        researcher.bio?.en.toLowerCase().includes(normalizedQuery) ||
-        researcher.bio?.ru.toLowerCase().includes(normalizedQuery);
+        // Search in bio (both languages)
+        const bioMatch =
+          researcher.bio?.en.toLowerCase().includes(normalizedQuery) ||
+          researcher.bio?.ru.toLowerCase().includes(normalizedQuery);
 
-      return nameMatch || lastNameMatch || positionMatch || bioMatch;
-    });
+        return nameMatch || lastNameMatch || positionMatch || bioMatch;
+      });
 
-    setFilteredResearchers(filtered);
-  }, [researchers]);
+      setFilteredResearchers(filtered);
+    },
+    [researchers]
+  );
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -88,24 +93,51 @@ export default function ResearchersPage({
 
       {/* Stats Summary */}
       <div className="max-w-5xl mx-auto mb-10 bg-card dark:bg-card border border-border/50 dark:border-indigo-400/20 rounded-lg p-6 shadow-sm">
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
-            <div className="text-2xl font-bold dark:text-indigo-400">{researchers.length}</div>
-            <div className="text-sm text-foreground/70">{lang === "en" ? "Researchers" : "Исследователи"}</div>
+            <div className="text-2xl font-bold dark:text-indigo-400">
+              {researchers.length}
+            </div>
+            <div className="text-sm text-foreground/70">
+              {lang === "en" ? "Researchers" : "Исследователи"}
+            </div>
           </div>
           <div>
             <div className="text-2xl font-bold dark:text-indigo-400">
               {researchers.length > 0
-                ? Math.round(researchers.reduce((acc, r) => acc + r.totalCitations, 0) / researchers.length)
+                ? Math.round(
+                    researchers.reduce((acc, r) => acc + r.totalCitations, 0) /
+                      researchers.length
+                  )
                 : 0}
             </div>
-            <div className="text-sm text-foreground/70">{lang === "en" ? "Avg. Citations" : "Средн. цитируемость"}</div>
+            <div className="text-sm text-foreground/70">
+              {lang === "en" ? "Avg. Citations" : "Средн. цитируемость"}
+            </div>
           </div>
           <div>
             <div className="text-2xl font-bold dark:text-indigo-400">
-              {researchers.reduce((acc, r) => acc + (r.publications?.length || 0), 0)}
+              {researchers.length > 0
+                ? Math.round(
+                    researchers.reduce((acc, r) => acc + r.hIndex, 0) /
+                      researchers.length
+                  )
+                : 0}
             </div>
-            <div className="text-sm text-foreground/70">{lang === "en" ? "Publications" : "Публикации"}</div>
+            <div className="text-sm text-foreground/70">
+              {lang === "en" ? "Avg. h-index" : "Средн. h-индекс"}
+            </div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold dark:text-indigo-400">
+              {researchers.reduce(
+                (acc, r) => acc + (r.publications?.length || 0),
+                0
+              )}
+            </div>
+            <div className="text-sm text-foreground/70">
+              {lang === "en" ? "Publications" : "Публикации"}
+            </div>
           </div>
         </div>
       </div>
@@ -119,7 +151,11 @@ export default function ResearchersPage({
           <input
             type="text"
             className="w-full pl-10 pr-4 py-2 border border-border/50 dark:border-indigo-400/30 rounded-md bg-background dark:bg-muted/30 focus:outline-none focus:ring-1 focus:ring-primary/30 dark:focus:ring-indigo-400/30"
-            placeholder={lang === "en" ? "Search researchers..." : "Поиск исследователей..."}
+            placeholder={
+              lang === "en"
+                ? "Search researchers..."
+                : "Поиск исследователей..."
+            }
             value={searchQuery}
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -139,21 +175,26 @@ export default function ResearchersPage({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
         {isLoading ? (
           // Loading skeleton
-          Array(6).fill(0).map((_, index) => (
-            <div key={index} className="bg-card rounded-xl overflow-hidden shadow-sm border border-border/50 dark:border-indigo-400/20 animate-pulse">
-              <div className="aspect-[4/3] bg-muted/50"></div>
-              <div className="p-6">
-                <div className="h-6 bg-muted/50 rounded w-3/4 mb-3"></div>
-                <div className="h-4 bg-muted/50 rounded w-1/2 mb-4"></div>
-                <div className="h-3 bg-muted/50 rounded w-1/4 mb-6"></div>
-                <div className="flex gap-2 mb-4">
-                  <div className="h-6 bg-muted/50 rounded w-16"></div>
-                  <div className="h-6 bg-muted/50 rounded w-16"></div>
+          Array(6)
+            .fill(0)
+            .map((_, index) => (
+              <div
+                key={index}
+                className="bg-card rounded-xl overflow-hidden shadow-sm border border-border/50 dark:border-indigo-400/20 animate-pulse"
+              >
+                <div className="aspect-[4/3] bg-muted/50"></div>
+                <div className="p-6">
+                  <div className="h-6 bg-muted/50 rounded w-3/4 mb-3"></div>
+                  <div className="h-4 bg-muted/50 rounded w-1/2 mb-4"></div>
+                  <div className="h-3 bg-muted/50 rounded w-1/4 mb-6"></div>
+                  <div className="flex gap-2 mb-4">
+                    <div className="h-6 bg-muted/50 rounded w-16"></div>
+                    <div className="h-6 bg-muted/50 rounded w-16"></div>
+                  </div>
+                  <div className="h-4 bg-muted/50 rounded w-1/3"></div>
                 </div>
-                <div className="h-4 bg-muted/50 rounded w-1/3"></div>
               </div>
-            </div>
-          ))
+            ))
         ) : filteredResearchers.length > 0 ? (
           filteredResearchers.map((researcher) => (
             <ResearcherCard

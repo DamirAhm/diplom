@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import PublicationList from "../../../components/PublicationList";
 import type { Locale, Researcher } from "@/app/types";
 import { getDictionary } from "@/app/dictionaries";
-import { Award, BookOpen, ExternalLink } from "lucide-react";
+import { Award, ExternalLink, MessageSquareQuote } from "lucide-react";
 import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 import { api } from "@/lib/api";
 import { useForm } from "react-hook-form";
@@ -34,6 +34,9 @@ const researcherSchema = z.object({
     ru: z.string(),
   }),
   totalCitations: z.number(),
+  recentCitations: z.number(),
+  hIndex: z.number(),
+  recentHIndex: z.number(),
 });
 
 type ResearcherData = z.infer<typeof researcherSchema>;
@@ -50,7 +53,7 @@ export default function ResearcherPage({
   const {
     setValue,
     watch,
-    formState: { isValid }
+    formState: { isValid },
   } = useForm<ResearcherData>({
     resolver: zodResolver(researcherSchema),
     defaultValues: {
@@ -63,6 +66,9 @@ export default function ResearcherPage({
       publications: [],
       position: { en: "", ru: "" },
       totalCitations: 0,
+      recentCitations: 0,
+      hIndex: 0,
+      recentHIndex: 0,
     },
   });
 
@@ -111,8 +117,17 @@ export default function ResearcherPage({
         <nav className="flex" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-3">
             <li className="inline-flex items-center">
-              <Link href={`/${lang}`} className="inline-flex items-center text-sm font-medium text-foreground/70 hover:text-primary">
-                <svg className="w-3 h-3 mr-2.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+              <Link
+                href={`/${lang}`}
+                className="inline-flex items-center text-sm font-medium text-foreground/70 hover:text-primary"
+              >
+                <svg
+                  className="w-3 h-3 mr-2.5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z" />
                 </svg>
                 {lang === "en" ? "Home" : "Главная"}
@@ -120,18 +135,45 @@ export default function ResearcherPage({
             </li>
             <li>
               <div className="flex items-center">
-                <svg className="w-3 h-3 text-foreground/70 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4" />
+                <svg
+                  className="w-3 h-3 text-foreground/70 mx-1"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 9 4-4-4-4"
+                  />
                 </svg>
-                <Link href={`/${lang}/researchers`} className="ml-1 text-sm font-medium text-foreground/70 hover:text-primary md:ml-2">
+                <Link
+                  href={`/${lang}/researchers`}
+                  className="ml-1 text-sm font-medium text-foreground/70 hover:text-primary md:ml-2"
+                >
                   {dictionary.researchers.title}
                 </Link>
               </div>
             </li>
             <li aria-current="page">
               <div className="flex items-center">
-                <svg className="w-3 h-3 text-foreground/70 mx-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 6 10">
-                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4" />
+                <svg
+                  className="w-3 h-3 text-foreground/70 mx-1"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 9 4-4-4-4"
+                  />
                 </svg>
                 <span className="ml-1 text-sm font-medium text-primary md:ml-2">
                   {researcher.name[lang]} {researcher.lastName[lang]}
@@ -176,22 +218,28 @@ export default function ResearcherPage({
                           <ExternalLink size={14} />
                           {key}
                         </a>
-                      ),
+                      )
                   )}
                 </div>
               </div>
 
               <div className="mt-6 space-y-2">
                 <div className="flex items-center gap-2 py-1">
-                  <Award className="h-4 w-4 text-primary" />
+                  <MessageSquareQuote className="h-4 w-4 text-primary" />
                   <span className="text-sm">
-                    <span className="font-medium">{dictionary.publications.citations}:</span> {researcher.totalCitations}
+                    <span className="font-medium">
+                      {dictionary.publications.citations}:
+                    </span>{" "}
+                    {researcher.totalCitations}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 py-1">
-                  <BookOpen className="h-4 w-4 text-primary" />
+                  <Award className="h-4 w-4 text-primary" />
                   <span className="text-sm">
-                    <span className="font-medium">{lang === "en" ? "Publications" : "Публикации"}:</span> {researcher.publications.length}
+                    <span className="font-medium">
+                      {lang === "en" ? "h-index" : "h-индекс"}:
+                    </span>{" "}
+                    {researcher.hIndex}
                   </span>
                 </div>
               </div>
@@ -208,10 +256,12 @@ export default function ResearcherPage({
 
               <div className="mt-4">
                 <h2 className="text-xl font-semibold mb-3">
-                  {lang === "en" ? "Biography" : "Биография"}
+                  {lang === "en" ? "About" : "Информация"}
                 </h2>
                 <div className="prose prose-md max-w-none dark:prose-invert">
-                  <div dangerouslySetInnerHTML={{ __html: researcher.bio[lang] }} />
+                  <div
+                    dangerouslySetInnerHTML={{ __html: researcher.bio[lang] }}
+                  />
                 </div>
               </div>
 
@@ -219,7 +269,10 @@ export default function ResearcherPage({
                 <h2 className="text-xl font-semibold mb-4">
                   {dictionary.researchers.significantPublications}
                 </h2>
-                <PublicationList lang={lang} publications={researcher.publications} />
+                <PublicationList
+                  lang={lang}
+                  publications={researcher.publications}
+                />
               </div>
             </div>
           </div>

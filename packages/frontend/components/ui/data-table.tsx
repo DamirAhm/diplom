@@ -88,10 +88,7 @@ export function DataTable<T>({
     if (!state.sortColumn) return items;
 
     return [...items].sort((a, b) => {
-      const column = columns.find(
-        (col) =>
-          col.header === state.sortColumn
-      );
+      const column = columns.find((col) => col.header === state.sortColumn);
 
       if (!column) return 0;
 
@@ -104,8 +101,10 @@ export function DataTable<T>({
           ? column.accessorKey(b)
           : b[column.accessorKey];
 
-      if (typeof valueA === 'number' && typeof valueB === 'number') {
-        return state.sortDirection === "asc" ? valueA - valueB : valueB - valueA;
+      if (typeof valueA === "number" && typeof valueB === "number") {
+        return state.sortDirection === "asc"
+          ? valueA - valueB
+          : valueB - valueA;
       }
 
       valueA = String(valueA);
@@ -149,7 +148,7 @@ export function DataTable<T>({
 
   const isSorted = (column: Column<T>) => {
     return state.sortColumn === column.header;
-  }
+  };
 
   return (
     <SelectionProvider identifier={identifier}>
@@ -161,7 +160,9 @@ export function DataTable<T>({
               ref={searchInputRef}
               defaultValue={state.search}
               onChange={(e) => updateState({ search: e.target.value, page: 1 })}
-              placeholder={searchPlaceholder || dictionary.common.searchPlaceholder}
+              placeholder={
+                searchPlaceholder || dictionary.common.searchPlaceholder
+              }
               className="pl-8"
             />
           </div>
@@ -183,7 +184,8 @@ export function DataTable<T>({
                     key={index}
                     className={cn(
                       column.className,
-                      column.sortable && "cursor-pointer select-none hover:bg-primary hover:text-primary-foreground"
+                      column.sortable &&
+                        "cursor-pointer select-none hover:bg-primary hover:text-white"
                     )}
                     onClick={() => column.sortable && handleSort(column)}
                   >
@@ -191,20 +193,14 @@ export function DataTable<T>({
                       <span>{column.header}</span>
                       {column.sortable && (
                         <div className="flex flex-col">
-                          {isSorted(column) && state.sortDirection === "asc" && (
-                            <ChevronUp
-                              className={cn(
-                                "h-3 w-3",
-                              )}
-                            />
-                          )}
-                          {isSorted(column) && state.sortDirection === "desc" && (
-                            <ChevronDown
-                              className={cn(
-                                "h-3 w-3",
-                              )}
-                            />
-                          )}
+                          {isSorted(column) &&
+                            state.sortDirection === "asc" && (
+                              <ChevronUp className={cn("h-3 w-3")} />
+                            )}
+                          {isSorted(column) &&
+                            state.sortDirection === "desc" && (
+                              <ChevronDown className={cn("h-3 w-3")} />
+                            )}
                         </div>
                       )}
                     </div>
@@ -233,7 +229,10 @@ export function DataTable<T>({
                 </TableRow>
               ) : (
                 paginatedData.map((item) => (
-                  <TableRow key={identifier(item)} className="group transition-colors">
+                  <TableRow
+                    key={identifier(item)}
+                    className="group transition-colors"
+                  >
                     {onDelete && (
                       <TableCell className="w-10">
                         <SelectionCheckbox item={item} />
@@ -244,8 +243,8 @@ export function DataTable<T>({
                         {column.cell
                           ? column.cell(item)
                           : typeof column.accessorKey === "function"
-                            ? column.accessorKey(item)
-                            : String(item[column.accessorKey])}
+                          ? column.accessorKey(item)
+                          : String(item[column.accessorKey])}
                       </TableCell>
                     ))}
                     {editPath && (

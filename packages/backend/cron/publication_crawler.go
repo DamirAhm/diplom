@@ -22,7 +22,7 @@ type PublicationCrawler struct {
 
 type PublicationSource interface {
 	Name() string
-	FetchPublications(researcher models.Researcher) ([]models.Publication, []models.Publication, error)
+	FetchPublications(researcher models.Researcher) ([]models.Publication, []models.Publication, *models.Researcher, error)
 }
 
 func NewPublicationCrawler(
@@ -100,10 +100,9 @@ func (pc *PublicationCrawler) CrawlResearcher(researcher models.Researcher) erro
 	totalNewPubs := 0
 
 	for _, source := range pc.sources {
-		publications, publicationsToUpdate, err := source.FetchPublications(researcher)
+		publications, publicationsToUpdate, updatedResearcher, err := source.FetchPublications(researcher)
 		if err != nil {
 			fmt.Println(err)
-
 			continue
 		}
 
@@ -131,6 +130,10 @@ func (pc *PublicationCrawler) CrawlResearcher(researcher models.Researcher) erro
 		}
 
 		totalNewPubs += newPubCount
+
+		if err := pc.researcherRepo.Update(*updatedResearcher); err != nil {
+			return fmt.Errorf("failed to update researcher citation stats: %w", err)
+		}
 	}
 
 	return nil
