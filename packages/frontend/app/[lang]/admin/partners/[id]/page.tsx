@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api } from "../../../../../lib/api";
+import { api, uploadFile } from "../../../../../lib/api";
 import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 import { FormError } from "@/components/ui/form-error";
 import { useFormValidation, ValidationSchema } from "@/lib/form-validation";
@@ -50,13 +50,8 @@ export default function PartnerFormPage({
 
   const fetchPartner = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/api/partners/${id}`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPartner(data);
-      }
+      const data = await api.partners.getOne(id);
+      setPartner(data);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -78,7 +73,8 @@ export default function PartnerFormPage({
       url: {
         value: partner.url,
         rules: { required: true, url: true },
-        errorMessage: dictionary.validation?.invalidUrl || "Valid URL is required",
+        errorMessage:
+          dictionary.validation?.invalidUrl || "Valid URL is required",
       },
     };
   };
@@ -90,7 +86,9 @@ export default function PartnerFormPage({
       toast({
         variant: "destructive",
         title: dictionary.common.error,
-        description: dictionary.validation?.formErrors || "Please correct the errors in the form",
+        description:
+          dictionary.validation?.formErrors ||
+          "Please correct the errors in the form",
       });
       return;
     }
@@ -124,25 +122,12 @@ export default function PartnerFormPage({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const response = await fetch("http://localhost:8080/api/upload", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPartner((prev) => ({
-          ...prev,
-          logo: data.url,
-        }));
-      } else {
-        throw new Error();
-      }
+      const { url } = await api.uploadFile(file);
+      setPartner((prev) => ({
+        ...prev,
+        logo: url,
+      }));
     } catch (error) {
       toast({
         variant: "destructive",

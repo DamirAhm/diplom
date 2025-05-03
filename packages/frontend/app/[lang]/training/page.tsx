@@ -1,13 +1,10 @@
 import TrainingMaterialCard from "../../components/TrainingMaterialCard/TrainingMaterialCard";
 import { Locale, TrainingMaterial } from "../../types";
 import { getDictionary } from "../../dictionaries";
+import { api } from "../../lib/api";
 
 const fetchTrainingMaterials = async (): Promise<TrainingMaterial[]> => {
-  const response = await fetch('http://localhost:8080/api/training');
-  if (!response.ok) {
-    throw new Error('Failed to fetch training materials');
-  }
-  return response.json();
+  return api.training.getAll();
 };
 
 const TrainingMaterialsPage = async ({

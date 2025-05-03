@@ -12,16 +12,17 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { ImageWithFallback } from "../../../components/ImageWithFallback";
+import { api } from "@/lib/api";
 
 const fetchProject = async (id: string): Promise<Project | null> => {
-  const response = await fetch(`http://localhost:8080/api/projects/${id}`);
-  if (!response.ok) {
-    if (response.status === 404) {
+  try {
+    return await api.projects.getOne(id);
+  } catch (error) {
+    if ((error as any)?.status === 404) {
       return null;
     }
-    throw new Error("Failed to fetch project");
+    throw error;
   }
-  return response.json();
 };
 
 const ProjectPage = async ({
