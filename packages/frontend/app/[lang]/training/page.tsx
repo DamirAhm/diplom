@@ -1,7 +1,7 @@
 import TrainingMaterialCard from "../../components/TrainingMaterialCard/TrainingMaterialCard";
 import { Locale, TrainingMaterial } from "../../types";
 import { getDictionary } from "../../dictionaries";
-import { api } from "../../lib/api";
+import { api } from "../../../lib/api";
 
 const fetchTrainingMaterials = async (): Promise<TrainingMaterial[]> => {
   return api.training.getAll();

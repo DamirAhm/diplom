@@ -123,7 +123,7 @@ export default function PartnerFormPage({
     if (!file) return;
 
     try {
-      const { url } = await api.uploadFile(file);
+      const { url } = await uploadFile(file);
       setPartner((prev) => ({
         ...prev,
         logo: url,

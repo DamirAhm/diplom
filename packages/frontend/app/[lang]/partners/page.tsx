@@ -1,7 +1,7 @@
 import PartnerLogo from "../../components/PartnerLogo/PartnerLogo";
 import { Locale, PartnersData, Partner } from "../../types";
 import { getDictionary } from "../../dictionaries";
-import { api } from "../../lib/api";
+import { api } from "../../../lib/api";
 
 const fetchPartners = async (): Promise<PartnersData> => {
   return api.partners.getAll();
