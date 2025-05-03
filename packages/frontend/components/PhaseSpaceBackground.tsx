@@ -65,7 +65,9 @@ const PhaseSpaceBackground: React.FC<PhaseSpaceBackgroundProps> = ({
     return baseSettings;
   };
 
-  const settings = getResponsiveSettings(window.innerWidth);
+  const settings = getResponsiveSettings(
+    typeof window !== "undefined" ? window.innerWidth : 0
+  );
 
   const colorSchemes = {
     primary: [

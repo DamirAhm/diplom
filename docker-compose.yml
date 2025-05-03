@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:80"
+    environment:
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - BACKEND_PORT=${BACKEND_PORT}
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./packages/frontend
+      dockerfile: Dockerfile
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - API_URL=${API_URL}
+      - PORT=${FRONTEND_PORT}
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./packages/backend
+      dockerfile: Dockerfile
+    environment:
+      - PORT=${BACKEND_PORT}
+      - DB_PATH=${DB_PATH}
+      - UPLOAD_DIR=${UPLOAD_DIR}
+      - CACHE_DIR=${CACHE_DIR}
+    volumes:
+      - ./packages/backend/data:/app/data
+      - ./packages/backend/uploads:/app/uploads
+      - ./packages/backend/cache:/app/cache
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

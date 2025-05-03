@@ -47,3 +47,5 @@ coverage
 *.db
 
 cache/
+
+password.txt

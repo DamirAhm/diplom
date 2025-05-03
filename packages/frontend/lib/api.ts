@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
 
 if (!API_URL) {
   throw new Error("API_URL environment variable is not defined");
@@ -48,6 +48,8 @@ async function request<T>(
     config.body = JSON.stringify(data);
   }
 
+  console.log(`${API_URL}${endpoint}`, config);
+
   try {
     const response = await fetch(`${API_URL}${endpoint}`, config);
     if (!response.ok) {
@@ -57,9 +59,9 @@ async function request<T>(
     }
 
     try {
-      return await response.clone().json() as T;
+      return (await response.clone().json()) as T;
     } catch (error) {
-      return await response.clone().text() as T;
+      return (await response.clone().text()) as T;
     }
   } catch (error) {
     if (error instanceof Error) {
@@ -144,14 +146,17 @@ export interface ParameterMapResponse {
   ranges: number[][];
 }
 
-export async function processSuperpixelImage(imageFile: File, params: SuperpixelParams): Promise<SuperpixelResponse> {
+export async function processSuperpixelImage(
+  imageFile: File,
+  params: SuperpixelParams
+): Promise<SuperpixelResponse> {
   const formData = new FormData();
-  formData.append('image', imageFile);
-  formData.append('params', JSON.stringify(params));
+  formData.append("image", imageFile);
+  formData.append("params", JSON.stringify(params));
 
   const response = await fetch(`${API_URL}/image/superpixels`, {
-    method: 'POST',
-    body: formData
+    method: "POST",
+    body: formData,
   });
 
   if (!response.ok) {
@@ -193,8 +198,9 @@ export const api = {
   researchers: {
     getAll: () => request<Researcher[]>("/researchers"),
     getOne: (id: string) => request<Researcher>(`/researchers/${id}`),
-    create: (data: Omit<Researcher, "id" | "publications" | "totalCitations">) =>
-      request<Researcher>("/researchers", { method: "POST", data }),
+    create: (
+      data: Omit<Researcher, "id" | "publications" | "totalCitations">
+    ) => request<Researcher>("/researchers", { method: "POST", data }),
     update: (id: string, data: Partial<Omit<Researcher, "publications">>) =>
       request<Researcher>(`/researchers/${id}`, { method: "PUT", data }),
     delete: (id: string) =>
@@ -215,10 +221,13 @@ export const api = {
     getPublic: () => api.get<Publication[]>("/publications/public"),
     getById: (id: number) => api.get<Publication>(`/publications/${id}`),
     create: (data: Publication) => api.post<Publication>("/publications", data),
-    update: (id: number, data: Publication) => api.put<Publication>(`/publications/${id}`, data),
+    update: (id: number, data: Publication) =>
+      api.put<Publication>(`/publications/${id}`, data),
     delete: (id: number) => api.delete(`/publications/${id}`),
-    toggleVisibility: (id: number) => api.put<Publication>(`/publications/${id}/toggle-visibility`, {}),
-    getAuthors: (id: number) => api.get<Researcher[]>(`/publications/${id}/authors`),
+    toggleVisibility: (id: number) =>
+      api.put<Publication>(`/publications/${id}/toggle-visibility`, {}),
+    getAuthors: (id: number) =>
+      api.get<Researcher[]>(`/publications/${id}/authors`),
   },
   partners: {
     getAll: () =>
