@@ -37,6 +37,12 @@ services:
       - DB_PATH=${DB_PATH}
       - UPLOAD_DIR=${UPLOAD_DIR}
       - CACHE_DIR=${CACHE_DIR}
+      - HOST=${HOST}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - CRON_ENABLED=${CRON_ENABLED}
+      - CRON_INTERVAL_HOURS=${CRON_INTERVAL_HOURS}
+      - GOOGLE_SCHOLAR_REQUEST_LIMITS=${GOOGLE_SCHOLAR_REQUEST_LIMITS}
     volumes:
       - ./packages/backend/data:/app/data
       - ./packages/backend/uploads:/app/uploads

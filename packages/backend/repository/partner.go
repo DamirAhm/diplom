@@ -2,6 +2,8 @@ package repository
 
 import (
 	"database/sql"
+	"os"
+	"path/filepath"
 
 	"github.com/damirahm/diplom/backend/models"
 )
@@ -70,7 +72,18 @@ func (r *SQLitePartnerRepo) Update(partner models.Partner) error {
 }
 
 func (r *SQLitePartnerRepo) Delete(id int) error {
-	_, err := r.db.Exec("DELETE FROM partners WHERE id = ?", id)
+	partner, err := r.GetByID(id)
+	if err != nil {
+		return err
+	}
 
+	if partner.Logo != "" {
+		filePath := filepath.Join("../", partner.Logo)
+		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	_, err = r.db.Exec("DELETE FROM partners WHERE id = ?", id)
 	return err
 }

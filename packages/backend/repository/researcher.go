@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/damirahm/diplom/backend/models"
@@ -379,6 +381,14 @@ func (r *SQLiteResearcherRepo) Delete(id int) error {
 	if err := r.localizedStringRepo.DeleteTx(tx, lastNameID); err != nil {
 		tx.Rollback()
 		return err
+	}
+
+	if researcher.Photo != "" {
+		filePath := filepath.Join("../", researcher.Photo)
+		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+			tx.Rollback()
+			return err
+		}
 	}
 
 	_, err = tx.Exec("DELETE FROM researchers WHERE id = ?", id)

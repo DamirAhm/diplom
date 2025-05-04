@@ -2,6 +2,8 @@ package repository
 
 import (
 	"database/sql"
+	"os"
+	"path/filepath"
 
 	"github.com/damirahm/diplom/backend/models"
 )
@@ -27,8 +29,8 @@ func (r *SQLiteTrainingMaterialRepo) Create(material models.TrainingMaterial) (i
 	}
 
 	res, err := r.db.Exec(
-		"INSERT INTO training_materials (title_id, description_id, image, url) VALUES (?, ?, ?, ?)",
-		titleID, descriptionID, material.Image, material.URL,
+		"INSERT INTO training_materials (title_id, description_id, url, image) VALUES (?, ?, ?, ?)",
+		titleID, descriptionID, material.URL, material.Image,
 	)
 	if err != nil {
 		return 0, err
@@ -41,11 +43,10 @@ func (r *SQLiteTrainingMaterialRepo) Create(material models.TrainingMaterial) (i
 func (r *SQLiteTrainingMaterialRepo) GetByID(id int) (*models.TrainingMaterial, error) {
 	var material models.TrainingMaterial
 	var titleID, descriptionID int64
-
 	err := r.db.QueryRow(
-		"SELECT id, title_id, description_id, image, url FROM training_materials WHERE id = ?",
+		"SELECT id, title_id, description_id, url, image FROM training_materials WHERE id = ?",
 		id,
-	).Scan(&material.ID, &titleID, &descriptionID, &material.Image, &material.URL)
+	).Scan(&material.ID, &titleID, &descriptionID, &material.URL, &material.Image)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +67,9 @@ func (r *SQLiteTrainingMaterialRepo) GetByID(id int) (*models.TrainingMaterial, 
 }
 
 func (r *SQLiteTrainingMaterialRepo) GetAll() ([]models.TrainingMaterial, error) {
-	rows, err := r.db.Query("SELECT id, title_id, description_id, image, url FROM training_materials")
+	rows, err := r.db.Query(
+		"SELECT id, title_id, description_id, url, image FROM training_materials",
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +79,7 @@ func (r *SQLiteTrainingMaterialRepo) GetAll() ([]models.TrainingMaterial, error)
 	for rows.Next() {
 		var material models.TrainingMaterial
 		var titleID, descriptionID int64
-		if err := rows.Scan(&material.ID, &titleID, &descriptionID, &material.Image, &material.URL); err != nil {
+		if err := rows.Scan(&material.ID, &titleID, &descriptionID, &material.URL, &material.Image); err != nil {
 			return nil, err
 		}
 
@@ -116,20 +119,28 @@ func (r *SQLiteTrainingMaterialRepo) Update(material models.TrainingMaterial) er
 	}
 
 	_, err = r.db.Exec(
-		"UPDATE training_materials SET image = ?, url = ? WHERE id = ?",
-		material.Image, material.URL, material.ID,
+		"UPDATE training_materials SET url = ?, image = ? WHERE id = ?",
+		material.URL, material.Image, material.ID,
 	)
 	return err
 }
 
 func (r *SQLiteTrainingMaterialRepo) Delete(id int) error {
 	var titleID, descriptionID int64
+	var image string
 	err := r.db.QueryRow(
-		"SELECT title_id, description_id FROM training_materials WHERE id = ?",
+		"SELECT title_id, description_id, image FROM training_materials WHERE id = ?",
 		id,
-	).Scan(&titleID, &descriptionID)
+	).Scan(&titleID, &descriptionID, &image)
 	if err != nil {
 		return err
+	}
+
+	if image != "" {
+		filePath := filepath.Join("../", image)
+		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
 
 	if err := r.localizedStringRepo.Delete(titleID); err != nil {

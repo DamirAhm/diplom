@@ -2,6 +2,8 @@ package repository
 
 import (
 	"database/sql"
+	"os"
+	"path/filepath"
 
 	"github.com/damirahm/diplom/backend/models"
 )
@@ -223,6 +225,20 @@ func (r *SQLiteProjectRepo) Delete(id int) error {
 	).Scan(&titleID, &descriptionID)
 	if err != nil {
 		return err
+	}
+
+	images, err := r.getProjectImages(id)
+	if err != nil {
+		return err
+	}
+
+	for _, image := range images {
+		if image.URL != "" {
+			filePath := filepath.Join("../", image.URL)
+			if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
 	}
 
 	if err := r.localizedStringRepo.Delete(titleID); err != nil {
