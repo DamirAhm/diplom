@@ -1,5 +1,7 @@
-if (!API_URL) {
-  throw new Error("API_URL environment variable is not defined");
+if (typeof window === "undefined") {
+  if (!API_URL) {
+    throw new Error("API_URL environment variable is not defined");
+  }
 }
 
 import {
