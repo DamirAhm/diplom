@@ -2,8 +2,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-ENV NEXT_PUBLIC_API_URL='/api'
-ENV API_URL='http://backend:8080/api'
+ARG NEXT_PUBLIC_API_URL
+ARG API_URL
 
 COPY . .
 
