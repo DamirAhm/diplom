@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { User } from "lucide-react";
-import { API_URL } from "../../constants/ApiUrl";
+import { STATIC_URL } from "../../constants/ApiUrl";
 
 interface ImageWithFallbackProps {
   src: string;
@@ -69,7 +69,7 @@ export function ImageWithFallback({
 
   const imageUrl = src.startsWith("http")
     ? src
-    : new URL(src, API_URL).toString();
+    : new URL(src, STATIC_URL).toString();
 
   if (fill) {
     return (

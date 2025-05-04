@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { ImagePreview } from "@/app/components/ImagePreview";
+import { ImageWithFallback } from "../../../components/ImageWithFallback";
 
 export default function TrainingAdminPage({
   params: { lang },
@@ -115,11 +116,11 @@ export default function TrainingAdminPage({
     },
     {
       header: dictionary.admin.image,
-      accessorKey: (material: TrainingMaterial) => (
+      accessorKey: (material: TrainingMaterial) =>
         material.image ? (
           <div className="flex items-center justify-center relative w-12 h-12 flex-shrink-0 overflow-hidden">
-            <ImagePreview
-              src={new URL(material.image, process.env.NEXT_PUBLIC_API_URL).toString()}
+            <ImageWithFallback
+              src={material.image}
               alt={material.title[lang]}
               width={48}
               height={48}
@@ -128,8 +129,7 @@ export default function TrainingAdminPage({
           </div>
         ) : (
           <span className="text-muted-foreground">No image</span>
-        )
-      ),
+        ),
       sortable: true,
       className: "w-[100px]",
     },
