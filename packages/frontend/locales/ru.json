@@ -194,7 +194,7 @@
     "simulationStep": "Шаг симуляции",
     "neuronDynamics": "Динамика нейронов",
     "tunnelDiodeNeuron": "Нейрон с туннельным диодом",
-    "superpixelImageProcessing": "Обработка изображений Superpixel",
+    "superpixelImageProcessing": "Преобразование изображений в мазки",
     "modelConfiguration": "Конфигурация модели",
     "modelType": "Тип модели",
     "testType": "Тип теста",
@@ -213,7 +213,7 @@
     "noData": "Нет данных для симуляции",
     "analysisNotAvailable": "Анализ пока недоступен",
     "superpixel": {
-      "title": "Обработка изображений Superpixel",
+      "title": "Преобразование изображений в мазки",
       "description": "Демонстрация алгоритма разбиения изображения на мазки",
       "originalImage": "Исходное изображение",
       "strokes": "Мазки",

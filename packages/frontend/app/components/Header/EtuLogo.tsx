@@ -2,8 +2,8 @@ export const EtuLogo = () => (
   <svg
     version="1.0"
     xmlns="http://www.w3.org/2000/svg"
-    width="50px"
-    height="50px"
+    width="35px"
+    height="35px"
     viewBox="550 550 1450 1450"
     preserveAspectRatio="xMidYMid meet"
   >

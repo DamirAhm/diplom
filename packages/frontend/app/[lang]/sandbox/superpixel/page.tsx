@@ -75,7 +75,6 @@ export default function SuperpixelPage({
   const [scaleY, setScaleY] = useState(1);
 
   const handleImageChange = (file: File) => {
-    // Fill strokes canvas with red
     if (strokesCanvasRef.current) {
       const strokesCtx = strokesCanvasRef.current.getContext("2d");
       if (strokesCtx) {
@@ -411,8 +410,8 @@ export default function SuperpixelPage({
 
         {/* Visualization */}
         <div className="lg:col-span-3">
-          <Tabs defaultValue="original" className="w-full">
-            <TabsList className="mb-4 w-full bg-background border-b border-border">
+          <Tabs defaultValue="original" className="flex  flex-col w-full">
+            <TabsList className="mb-4 w-fit self-center bg-background border-b border-border">
               <TabsTrigger
                 value="original"
                 className="data-[state=active]:bg-background"

@@ -189,7 +189,7 @@
     "simulationStep": "Simulation Step",
     "neuronDynamics": "Neuron Dynamics",
     "tunnelDiodeNeuron": "Tunnel Diode Neuron",
-    "superpixelImageProcessing": "Superpixel Image Processing",
+    "superpixelImageProcessing": "Image to strokes",
     "modelConfiguration": "Model Configuration",
     "modelType": "Model Type",
     "testType": "Test Type",
@@ -208,7 +208,7 @@
     "noData": "No simulation data available",
     "analysisNotAvailable": "Analysis is not available yet",
     "superpixel": {
-      "title": "Superpixel Image Processing",
+      "title": "Image to strokes",
       "description": "Demonstration of an algorithm for image segmentation into brush strokes",
       "originalImage": "Original Image",
       "strokes": "Strokes",
