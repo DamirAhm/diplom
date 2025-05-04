@@ -26,6 +26,8 @@ import {
 } from "@/app/components/Superpixel/CanvasDrawing";
 import { computeConvexHull } from "@/app/components/Superpixel/utils";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import React from "react";
 
 interface SuperpixelParams extends ApiSuperpixelParams {}
 
@@ -549,36 +551,34 @@ export default function SuperpixelPage({
             </h3>
             <p className="text-muted-foreground mb-4">{dict.description}</p>
             <p className="text-muted-foreground mb-4">
-              {lang === "en" ? (
-                <>
-                  Instead of the standard distance metric, an elliptical metric
-                  is used: X² + (pY)² ≤ d², where p &gt; 1 is the elongation
-                  parameter.
-                </>
-              ) : (
-                <>
-                  Вместо стандартной метрики расстояния используется
-                  эллиптическая метрика: X² + (pY)² ≤ d², где p &gt; 1 -
-                  параметр вытянутости.
-                </>
-              )}
+              {dict.ellipticalMetric}
             </p>
-            <p className="text-muted-foreground">
-              {lang === "en" ? (
-                <>
-                  This allows superpixels to grow p times faster along normals
-                  to the gradient than in the orthogonal direction, creating a
-                  brush stroke effect that follows object contours in the image.
-                </>
-              ) : (
-                <>
-                  Это позволяет суперпикселям расти в p раз быстрее вдоль
-                  нормалей к градиенту, чем в ортогональном направлении,
-                  создавая эффект мазков кисти, следующих за контурами объектов
-                  на изображении.
-                </>
-              )}
+            <p className="text-muted-foreground mb-4">
+              {dict.metricExplanation}
             </p>
+
+            <h4 className="text-lg font-semibold mt-6 mb-3 text-foreground">
+              {dict.practicalApplications}
+            </h4>
+            <p className="text-muted-foreground mb-4">
+              {(() => {
+                const parts = dict.robotArtistIntro.split("$projectLink");
+                return (
+                  <>
+                    {parts[0]}
+                    <Link
+                      href={`/${lang}/projects/1`}
+                      className="text-primary hover:text-primary/80 hover:underline ml-1"
+                    >
+                      {dict.robotArtistName}
+                    </Link>
+                    {parts.length > 1 ? parts[1] : ""}
+                  </>
+                );
+              })()}
+            </p>
+
+            <p className="text-muted-foreground mb-4">{dict.algorithmRole}</p>
           </div>
 
           <div className="mt-6">
@@ -588,57 +588,12 @@ export default function SuperpixelPage({
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>
                 <a
-                  href="https://www.iro.umontreal.ca/~mignotte/IFT6150/Articles/SLIC_Superpixels.pdf"
+                  href="https://www.mdpi.com/2411-5134/6/1/19"
                   className="text-primary hover:text-primary/80 hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  SLIC Superpixels Compared to State-of-the-art Superpixel
-                  Methods
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://ieeexplore.ieee.org/document/8237702"
-                  className="text-primary hover:text-primary/80 hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Structure-Sensitive Superpixels via Geodesic Distance
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://www.sciencedirect.com/science/article/abs/pii/S1077314218300146"
-                  className="text-primary hover:text-primary/80 hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Linear Spectral Clustering Superpixel
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://ieeexplore.ieee.org/document/7025066"
-                  className="text-primary hover:text-primary/80 hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {lang === "en"
-                    ? "Similarity-Preserving Image-Image Domain Adaptation for Person Re-identification"
-                    : "Адаптация доменов изображений с сохранением сходства для повторной идентификации личности"}
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Li_Superpixel_Segmentation_Using_2015_CVPR_paper.pdf"
-                  className="text-primary hover:text-primary/80 hover:underline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {lang === "en"
-                    ? "Superpixel Segmentation Using Linear Spectral Clustering"
-                    : "Сегментация суперпикселей с использованием линейной спектральной кластеризации"}
+                  Image Preprocessing for Artistic Robotic Painting
                 </a>
               </li>
             </ul>

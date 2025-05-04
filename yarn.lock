@@ -5969,6 +5969,7 @@ __metadata:
     expo-file-system: "npm:latest"
     expo-gl: "npm:latest"
     input-otp: "npm:1.4.1"
+    js-sha256: "npm:^0.11.0"
     lucide-react: "npm:^0.454.0"
     next: "npm:14.2.16"
     next-themes: "npm:^0.4.4"
@@ -6809,6 +6810,13 @@ __metadata:
   version: 1.1.0
   resolution: "join-component@npm:1.1.0"
   checksum: 10c0/7319cb1ca6ffc514d82ac1b965c4e6cd6bf852adec1e7833bd8613e17f4965e78e2653c8de75a1fe51d9a2cae36af3298008df4079cfd903ef3ecbd231fe11c1
+  languageName: node
+  linkType: hard
+
+"js-sha256@npm:^0.11.0":
+  version: 0.11.0
+  resolution: "js-sha256@npm:0.11.0"
+  checksum: 10c0/90980fe01ca01fbd166751fb16c4caa09c1ab997e8bf77c0764cc05c772c6044946f4c1b3bad266ce78357280d2131d3dc0cf2dd7646e78272996bd4d590aa4f
   languageName: node
   linkType: hard
 

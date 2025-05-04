@@ -84,6 +84,7 @@ export default function Neuron({
   params: { lang: Locale };
 }) {
   const dictionary = getDictionary(lang);
+  const dict = dictionary.sandbox.neuron;
   const searchParams = useSearchParams();
 
   // Chart refs
@@ -1323,37 +1324,36 @@ export default function Neuron({
 
           <div className="mt-6">
             <h3 className="text-xl font-semibold mb-4 text-foreground">
-              About Tunnel Diode Neurons
+              {dict.title}
             </h3>
+            <p className="text-muted-foreground mb-4">{dict.description}</p>
+
+            <h4 className="text-lg font-semibold mt-6 mb-3 text-foreground">
+              {dict.practicalApplications}
+            </h4>
             <p className="text-muted-foreground mb-4">
-              Tunnel diode neurons are electronic circuits that mimic the
-              behavior of biological neurons using tunnel diodes and memristors.
-              They exhibit various excitability classes similar to those
-              observed in real neurons, making them useful for neuromorphic
-              computing.
+              {dict.practicalDescription}
             </p>
             <p className="text-muted-foreground mb-4">
-              The excitability classes correspond to different dynamic
-              behaviors:
+              {dict.advancedComputing}
             </p>
-            <ul className="list-disc pl-6 space-y-2 text-muted-foreground mb-4">
+
+            <h3 className="text-xl font-semibold mb-4 mt-6 text-foreground">
+              {dict.relatedPapers}
+            </h3>
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>
-                <strong>Class 1:</strong> Neurons that can fire at arbitrarily
-                low frequencies
-              </li>
-              <li>
-                <strong>Class 2:</strong> Neurons that fire in a limited
-                frequency band
-              </li>
-              <li>
-                <strong>Class 3:</strong> Neurons that fire only once at the
-                onset of stimulation
+                <a
+                  href="https://www.sciencedirect.com/science/article/abs/pii/S0925231225001262"
+                  className="text-primary hover:text-primary/80 hover:underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Bio-inspired neuron based on threshold selector and tunnel
+                  diode capable of excitability modulation
+                </a>
               </li>
             </ul>
-            <p className="text-muted-foreground">
-              This sandbox allows you to explore how different parameters affect
-              the neuron's dynamics and response to various input signals.
-            </p>
           </div>
         </div>
       </div>

@@ -229,7 +229,17 @@
       "showBorders": "Show Borders",
       "gradientSensitivity": "Gradient Sensitivity",
       "algorithmDescription": "Algorithm Description",
-      "relatedPapers": "Related Papers"
+      "relatedPapers": "Related Papers",
+      "ellipticalMetric": "Instead of the standard distance metric, an elliptical metric is used: X² + (pY)² ≤ d², where p > 1 is the elongation parameter.",
+      "metricExplanation": "This allows superpixels to grow p times faster along normals to the gradient than in the orthogonal direction, creating a brush stroke effect that follows object contours in the image.",
+      "practicalApplications": "Practical Applications",
+      "robotArtistIntro": "A similar algorithm is used in one of our laboratory's key projects - $projectLink. This project combines computer vision, robotics, and artistic expression to create a system capable of transforming photographs into paintings.",
+      "robotArtistName": "the Robot Artist",
+      "algorithmRole": "The image to strokes algorithm serves as the foundational step in the artistic rendering process. By decomposing an image into brush-like strokes that respect the natural contours and edges of objects, it creates a structural blueprint for the robot's painting actions.",
+      "papers": {
+        "paper4": "Similarity-Preserving Image-Image Domain Adaptation for Person Re-identification",
+        "paper5": "Superpixel Segmentation Using Linear Spectral Clustering"
+      }
     },
     "chart": {
       "time": "Time (ms)",
@@ -238,6 +248,21 @@
         "hh": "Hodgkin-Huxley Model",
         "fhn": "FitzHugh-Nagumo Model",
         "hr": "Hindmarsh-Rose Model"
+      }
+    },
+    "neuron": {
+      "title": "Tunnel Diode Neuron Visualization",
+      "description": "Tunnel diode neurons are electronic circuits that mimic the behavior of biological neurons using tunnel diodes and memristors. They exhibit various excitability properties similar to those observed in real neurons, making them useful for neuromorphic computing.",
+      "practicalApplications": "Practical Applications",
+      "practicalDescription": "Tunnel diode neuron circuits have numerous potential applications in the field of neuromorphic computing and artificial intelligence. These circuits can be used to create energy-efficient neural network hardware implementations, with significantly lower power consumption compared to traditional digital approaches.",
+      "advancedComputing": "By mimicking biological neural dynamics with minimal components, tunnel diode neurons offer an alternative approach to conventional AI chip designs. Their nonlinear responses and adaptive properties make them particularly suited for edge computing devices where power efficiency is critical.",
+      "relatedPapers": "Related Papers",
+      "papers": {
+        "paper1": "Neuromorphic computing with memristor crossbars",
+        "paper2": "Tunnel diode-based volatile memories with controllable state retention time",
+        "paper3": "Electronic neurons based on tunnel diodes: Design and dynamics",
+        "paper4": "Memristive devices and systems",
+        "paper5": "Energy-efficient neuromorphic computing with memristive tunnel diode neurons"
       }
     }
   },
