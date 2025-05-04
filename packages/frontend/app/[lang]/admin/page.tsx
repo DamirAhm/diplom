@@ -26,9 +26,9 @@ export default function AdminLoginPage({
   params: { lang: Locale };
 }) {
   const dictionary = getDictionary(lang);
-  
+
   const { toast } = useToast();
-  
+
   const {
     register,
     handleSubmit,
@@ -45,9 +45,10 @@ export default function AdminLoginPage({
       toast({
         variant: "destructive",
         title: dictionary.admin.loginError,
-        description: error.status === 401 
-          ? dictionary.admin.invalidCredentials 
-          : dictionary.admin.serverError,
+        description:
+          error.status === 401
+            ? dictionary.admin.invalidCredentials
+            : dictionary.admin.serverError,
       });
     }
   };
@@ -59,56 +60,56 @@ export default function AdminLoginPage({
           <div className="mb-4 flex justify-center">
             <Lock className="h-12 w-12 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold">
-            {dictionary.admin.signIn}
-          </h2>
+          <h2 className="text-2xl font-bold">{dictionary.admin.signIn}</h2>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-4">
             <div>
-              <Label htmlFor="username">
-                {dictionary.admin.username}
-              </Label>
+              <Label htmlFor="username">{dictionary.admin.username}</Label>
               <Input
                 id="username"
                 {...register("username")}
                 autoComplete="username"
                 aria-invalid={Boolean(errors.username)}
-                aria-describedby={errors.username ? "username-error" : undefined}
+                aria-describedby={
+                  errors.username ? "username-error" : undefined
+                }
               />
               {errors.username && (
-                <p id="username-error" className="mt-1 text-sm text-destructive">
+                <p
+                  id="username-error"
+                  className="mt-1 text-sm text-destructive"
+                >
                   {errors.username.message}
                 </p>
               )}
             </div>
 
             <div>
-              <Label htmlFor="password">
-                {dictionary.admin.password}
-              </Label>
+              <Label htmlFor="password">{dictionary.admin.password}</Label>
               <Input
                 id="password"
                 type="password"
                 {...register("password")}
                 autoComplete="current-password"
                 aria-invalid={Boolean(errors.password)}
-                aria-describedby={errors.password ? "password-error" : undefined}
+                aria-describedby={
+                  errors.password ? "password-error" : undefined
+                }
               />
               {errors.password && (
-                <p id="password-error" className="mt-1 text-sm text-destructive">
+                <p
+                  id="password-error"
+                  className="mt-1 text-sm text-destructive"
+                >
                   {errors.password.message}
                 </p>
               )}
             </div>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? dictionary.common.loading : dictionary.admin.signIn}
           </Button>
         </form>
