@@ -1,5 +1,3 @@
-const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
-
 if (!API_URL) {
   throw new Error("API_URL environment variable is not defined");
 }
@@ -11,6 +9,7 @@ import {
   Publication,
   TrainingMaterial,
 } from "../app/types";
+import { API_URL } from "../constants/ApiUrl";
 import { hashPassword } from "./password";
 
 interface ApiError extends Error {
