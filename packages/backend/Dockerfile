@@ -3,11 +3,10 @@ FROM golang:alpine
 WORKDIR /app
 
 # Install SQLite development libraries
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     gcc \
-    g++ \
-    libsqlite3-dev \
-    && rm -rf /var/lib/apt/lists/*
+    musl-dev \
+    sqlite-dev
 
 COPY go.* ./
 RUN go mod download
