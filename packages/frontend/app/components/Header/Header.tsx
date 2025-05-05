@@ -48,7 +48,7 @@ export default function Header({ lang }: HeaderProps) {
 
   return (
     <header
-      className={`sticky top-0 z-40 w-full transition-all duration-200 ${
+      className={`sticky bg-white dark:bg-card bg-opacity-50 top-0 z-40 w-full transition-all duration-200 ${
         scrolled
           ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm"
           : "bg-transparent"
@@ -56,22 +56,31 @@ export default function Header({ lang }: HeaderProps) {
     >
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-2 sm:gap-4 items-center">
             <a
               href="https://etu.ru"
-              className="fill-primary dark:fill-[#818cf8]"
+              className="fill-primary dark:fill-[#818cf8] scale-75 sm:scale-100"
             >
               <EtuLogo />
             </a>
             <Link
               href={`/${lang}`}
-              className="font-heading text-2xl font-bold text-primary dark:text-indigo-400 transition-colors hover:text-primary/80 dark:hover:text-indigo-300"
+              className="flex font-heading text-lg sm:text-2xl font-bold text-primary dark:text-indigo-400 transition-colors hover:text-primary/80 dark:hover:text-indigo-300"
             >
-              {dictionary.common.laboratoryName}
+              <span>
+                {dictionary.common.laboratoryName
+                  .split(" ")
+                  .slice(0, -1)
+                  .join(" ")}
+                &nbsp;
+              </span>
+              <span className="hidden sm:block">
+                {dictionary.common.laboratoryName.split(" ").slice(-1).at(-1)}
+              </span>
             </Link>
           </div>
 
-          <div className="flex items-center gap-4 md:hidden">
+          <div className="flex items-center gap-4 lg:hidden">
             <ThemeToggle />
             <LanguageSelector currentLang={lang} />
             <button
@@ -83,8 +92,8 @@ export default function Header({ lang }: HeaderProps) {
             </button>
           </div>
 
-          <nav className="hidden md:block">
-            <ul className="flex items-center gap-1">
+          <nav className="hidden lg:block">
+            <ul className="flex items-between">
               {menuItems.map((item) => {
                 const isActive =
                   pathname === `/${lang}/${item.key}` ||
@@ -107,7 +116,7 @@ export default function Header({ lang }: HeaderProps) {
             </ul>
           </nav>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <ThemeToggle />
             <div className="h-4 w-px bg-border mx-1"></div>
             <LanguageSelector currentLang={lang} />
@@ -117,7 +126,7 @@ export default function Header({ lang }: HeaderProps) {
 
       {/* Mobile menu */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-x-0 top-[65px] z-40 transition-all duration-200 ease-in-out bg-white dark:bg-gray-900 border-t border-border dark:border-indigo-900/30 shadow-lg">
+        <div className="lg:hidden fixed inset-x-0 top-[59px] z-40 transition-all duration-200 ease-in-out bg-white dark:bg-gray-900 border-t border-border dark:border-indigo-900/30 shadow-lg">
           <nav className="container mx-auto px-4 py-4">
             <ul className="space-y-2">
               {menuItems.map((item) => {

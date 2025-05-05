@@ -41,7 +41,6 @@ export default async function HomePage(args: HomePageProps) {
     },
   ];
 
-  const description = dictionary.home.description || "";
   const laboratories = dictionary.home.laboratories || [];
   const workshops = dictionary.home.workshops || [];
   const researchFields = dictionary.home.researchFields || [];
@@ -55,27 +54,22 @@ export default async function HomePage(args: HomePageProps) {
           opacity={0.15}
         />
 
-        <div className="container flex-col relative mx-auto px-4 py-32 md:py-36 lg:py-36  min-h-[652px] flex items-center">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
+        <div className="container flex-col relative mx-auto py-32 md:py-36 lg:py-36  min-h-[652px] flex items-center">
+          <div className="max-w-4xl mx-auto text-center mb-0 md:mb-12">
             <h1 className="font-heading text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight">
-              <span className="text-foreground">
-                {dictionary.home.title.split(" ").slice(0, -1).join(" ")}{" "}
-              </span>
-              <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent dark:from-indigo-400 dark:via-indigo-300 dark:to-blue-400">
-                {dictionary.home.title.split(" ").slice(-1)[0]}
-              </span>
+              <span className="text-foreground">{dictionary.home.title}</span>
             </h1>
           </div>
-          <section className="pt-20">
-            <div className="container mx-auto px-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          <section className="w-full pt-20 px-6">
+            <div className="container mx-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 xl:gap-x-16 gap-y-4 mx-auto">
                 {gridItems.map((item) => (
                   <Link
                     key={item.key}
                     href={`/${lang}/${item.key}`}
-                    className="group"
+                    className="group f-wull"
                   >
-                    <div className="h-full bg-card rounded-xl overflow-hidden shadow-sm border border-border/50 hover:border-primary/30 transition-all p-6 flex flex-col items-center text-center">
+                    <div className="h-full w-full bg-card rounded-xl overflow-hidden shadow-sm border border-border/50 hover:border-primary/30 transition-all p-6 flex flex-col items-center text-center">
                       <div className="w-12 h-12 rounded-lg mb-5 bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                         {item.icon}
                       </div>
@@ -94,11 +88,11 @@ export default async function HomePage(args: HomePageProps) {
         </div>
       </section>
 
-      <section className="relative py-16 overflow-hidden">
+      <section className="w-full relative py-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-secondary/5 to-accent/5 dark:from-primary/10 dark:via-secondary/10 dark:to-accent/10"></div>
         <div className="container relative mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="grid md:grid-cols-2 gap-8 items-start">
+          <div className="mx-auto">
+            <div className="grid md:grid-cols-2 gap-y-12 gap-x-24 items-start">
               <div className="space-y-6">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -182,7 +176,7 @@ export default async function HomePage(args: HomePageProps) {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-muted/30 dark:bg-gray-800/20 border-y border-border/40">
+      <section className="w-full py-16 bg-muted/30 dark:bg-gray-800/20 border-y border-border/40">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8">
             <div className="text-center">
@@ -211,7 +205,7 @@ export default async function HomePage(args: HomePageProps) {
             </div>
             <div className="text-center">
               <p className="text-4xl font-heading font-bold text-primary dark:text-indigo-400">
-                50+
+                200+
               </p>
               <p className="text-foreground/70 text-sm mt-1">
                 {dictionary.home.publications}
@@ -222,7 +216,7 @@ export default async function HomePage(args: HomePageProps) {
       </section>
 
       {/* Research Fields Section */}
-      <section className="py-20">
+      <section className="w-full py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="font-heading text-3xl md:text-4xl font-bold mb-4 dark:text-indigo-400">
@@ -233,7 +227,7 @@ export default async function HomePage(args: HomePageProps) {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {researchFields.map((field, index) => (
               <div
                 key={index}
@@ -283,7 +277,7 @@ export default async function HomePage(args: HomePageProps) {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+          <div className="w-full grid md:grid-cols-2 gap-8">
             <div className="bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
               <div className="h-3 bg-gradient-to-r from-primary to-secondary"></div>
               <div className="p-8">
@@ -354,7 +348,7 @@ export default async function HomePage(args: HomePageProps) {
             {dictionary.home.collaborationDescription}
           </p>
           <Link
-            href={`/${lang}/partners`}
+            href={`mailto:mnii@etu.ru`}
             className="btn-primary text-white px-6 py-3 h-auto"
           >
             {dictionary.home.contactUs}
