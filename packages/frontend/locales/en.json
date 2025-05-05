@@ -49,7 +49,8 @@
       "signal processing and communication systems"
     ],
     "scientificInnovations": "Scientific Innovations",
-    "publications": "Publications",
+    "researchers": "Researchers",
+    "publications": "Significant publications",
     "researchFieldsDescription": "Our laboratory focuses on cutting-edge research across multiple disciplines",
     "researchFieldDescription": "Cutting-edge research in this exciting field with international recognition.",
     "ourInfrastructure": "Our Infrastructure",
@@ -94,7 +95,7 @@
     "tryAgain": "Try Again",
     "notFound": "Not Found",
     "resourceNotFound": "The requested resource was not found",
-    "backToDashboard": "Back to Dashboard",
+    "backToDashboard": "Back to Home page",
     "search": "Search",
     "searchPlaceholder": "Search...",
     "filter": "Filter",

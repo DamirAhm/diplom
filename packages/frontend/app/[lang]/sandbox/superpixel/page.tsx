@@ -374,6 +374,7 @@ export default function SuperpixelPage({
             <CardContent className="p-4 sm:p-6">
               <SuperpixelControls
                 params={params}
+                isImageSelected={imageFile !== null}
                 onParamChange={handleParamChange}
                 onImageSelect={handleImageChange}
                 onProcess={processImage}

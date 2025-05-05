@@ -49,7 +49,8 @@
       "обработка сигналов и системы связи"
     ],
     "scientificInnovations": "Научные инновации",
-    "publications": "Публикации",
+    "researchers": "Исследователей",
+    "publications": "Значимых публикаций",
     "researchFieldsDescription": "Наша лаборатория фокусируется на передовых исследованиях в различных дисциплинах",
     "researchFieldDescription": "Передовые исследования в этой захватывающей области с международным признанием.",
     "ourInfrastructure": "Наша инфраструктура",
@@ -94,7 +95,7 @@
     "tryAgain": "Попробовать снова",
     "notFound": "Не найдено",
     "resourceNotFound": "Запрашиваемый ресурс не найден",
-    "backToDashboard": "Вернуться к панели управления",
+    "backToDashboard": "Вернуться на главную",
     "search": "Поиск",
     "searchPlaceholder": "Поиск...",
     "filter": "Фильтр",

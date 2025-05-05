@@ -3,6 +3,7 @@ import { getDictionary } from "../dictionaries";
 import type { Locale } from "../types";
 import PhaseSpaceBackground from "@/components/PhaseSpaceBackground";
 import { Users, LibraryBig, Wrench, TestTubeDiagonal } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface HomePageProps {
   params: {
@@ -13,6 +14,9 @@ interface HomePageProps {
 export default async function HomePage(args: HomePageProps) {
   const { lang } = (await args.params) || {};
   const dictionary = getDictionary(lang);
+
+  const researchers = await api.researchers.getAll();
+  const publicationsData = await api.publications.getPublic();
 
   const gridItems = [
     {
@@ -197,15 +201,15 @@ export default async function HomePage(args: HomePageProps) {
             </div>
             <div className="text-center">
               <p className="text-4xl font-heading font-bold text-accent dark:text-indigo-400">
-                {researchFields.length}
+                {researchers.length}
               </p>
               <p className="text-foreground/70 text-sm mt-1">
-                {dictionary.home.researchFieldsTitleN}
+                {dictionary.home.researchers}
               </p>
             </div>
             <div className="text-center">
               <p className="text-4xl font-heading font-bold text-primary dark:text-indigo-400">
-                200+
+                {publicationsData.length}
               </p>
               <p className="text-foreground/70 text-sm mt-1">
                 {dictionary.home.publications}

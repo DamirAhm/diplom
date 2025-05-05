@@ -12,6 +12,7 @@ interface SuperpixelControlsProps {
   onProcess: () => void;
   isProcessing: boolean;
   strokeData: StrokeData | null;
+  isImageSelected: boolean;
   drawOptions: {
     drawCenters: boolean;
     drawBorders: boolean;
@@ -39,6 +40,7 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
   strokeData,
   drawOptions,
   setDrawOptions,
+  isImageSelected,
 }) => {
   const dict = useDictionary();
   const pathname = usePathname();
@@ -84,7 +86,7 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
           </Button>
           <Button
             onClick={onProcess}
-            disabled={isProcessing}
+            disabled={isProcessing || !isImageSelected}
             variant={"default"}
             className="w-full"
           >

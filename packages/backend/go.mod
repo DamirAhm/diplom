@@ -30,6 +30,7 @@ require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/swaggo/files v1.0.1 // indirect
+	golang.org/x/image v0.27.0 // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
 )
