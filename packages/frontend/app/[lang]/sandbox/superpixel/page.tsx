@@ -50,9 +50,9 @@ export default function SuperpixelPage({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [params, setParams] = useState<SuperpixelParams>({
     numberOfSuperpixels: 1000,
-    compactnessFactor: 3,
+    compactnessFactor: 2,
     elongation: 2.0,
-    iterations: 10,
+    iterations: 5,
     gridSize: 20,
     adaptiveFactor: 0.5,
   });

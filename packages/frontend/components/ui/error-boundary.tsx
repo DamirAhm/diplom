@@ -36,15 +36,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     if (this.state.hasError) {
       return (
-        <div className="flex h-[50vh] items-center justify-center">
+        <div className="flex h-[50vh] items-center justify-center bg-background">
           <Alert className="max-w-lg" variant="destructive">
-            <AlertTitle>{dictionary.common.errorBoundary.title}</AlertTitle>
-            <AlertDescription>
+            <AlertTitle className="text-destructive-foreground">
+              {dictionary.common.errorBoundary.title}
+            </AlertTitle>
+            <AlertDescription className="text-destructive-foreground">
               <p className="mb-4">
                 {dictionary.common.errorBoundary.description}
               </p>
               {this.state.error && (
-                <pre className="mb-4 max-h-32 overflow-auto rounded bg-secondary/10 p-2 text-xs">
+                <pre className="mb-4 max-h-32 overflow-auto rounded bg-destructive/10 p-2 text-xs text-destructive-foreground">
                   {this.state.error.message}
                 </pre>
               )}
@@ -53,6 +55,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                   this.setState({ hasError: false });
                   window.location.reload();
                 }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 {dictionary.common.errorBoundary.retry}

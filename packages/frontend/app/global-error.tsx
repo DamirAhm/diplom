@@ -21,14 +21,14 @@ export default function GlobalError({
   // Simple styling without component imports for global error
   return (
     <html lang="ru">
-      <body>
+      <body className="bg-background text-foreground">
         <div
           style={{
             display: "flex",
             minHeight: "100vh",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#f9fafb",
+            backgroundColor: "hsl(var(--background))",
             padding: "1.5rem",
           }}
         >
@@ -36,7 +36,7 @@ export default function GlobalError({
             style={{
               width: "100%",
               maxWidth: "28rem",
-              backgroundColor: "white",
+              backgroundColor: "hsl(var(--card))",
               borderRadius: "0.5rem",
               padding: "2rem",
               boxShadow:
@@ -52,7 +52,7 @@ export default function GlobalError({
             >
               <div
                 style={{
-                  backgroundColor: "#fee2e2",
+                  backgroundColor: "hsl(var(--destructive) / 0.1)",
                   padding: "0.75rem",
                   borderRadius: "9999px",
                 }}
@@ -63,7 +63,7 @@ export default function GlobalError({
                   height="40"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#dc2626"
+                  stroke="hsl(var(--destructive))"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -79,7 +79,7 @@ export default function GlobalError({
               style={{
                 fontSize: "1.875rem",
                 fontWeight: "bold",
-                color: "#1f2937",
+                color: "hsl(var(--card-foreground))",
                 textAlign: "center",
                 marginBottom: "0.5rem",
               }}
@@ -89,7 +89,7 @@ export default function GlobalError({
 
             <p
               style={{
-                color: "#4b5563",
+                color: "hsl(var(--muted-foreground))",
                 textAlign: "center",
                 marginBottom: "1.5rem",
               }}
@@ -101,14 +101,19 @@ export default function GlobalError({
             {error.digest && (
               <div
                 style={{
-                  backgroundColor: "#f3f4f6",
+                  backgroundColor: "hsl(var(--muted))",
                   borderRadius: "0.25rem",
                   padding: "0.75rem",
                   marginBottom: "1.5rem",
                   overflow: "auto",
                 }}
               >
-                <code style={{ fontSize: "0.75rem", color: "#1f2937" }}>
+                <code
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "hsl(var(--muted-foreground))",
+                  }}
+                >
                   {dictionary.common.errorBoundary.details}: {error.digest}
                 </code>
               </div>
@@ -124,8 +129,8 @@ export default function GlobalError({
               <button
                 onClick={reset}
                 style={{
-                  backgroundColor: "#1d4ed8",
-                  color: "white",
+                  backgroundColor: "hsl(var(--primary))",
+                  color: "hsl(var(--primary-foreground))",
                   padding: "0.75rem",
                   borderRadius: "0.375rem",
                   fontWeight: "500",
@@ -157,13 +162,13 @@ export default function GlobalError({
               <a
                 href="/"
                 style={{
-                  backgroundColor: "white",
-                  color: "#111827",
+                  backgroundColor: "hsl(var(--card))",
+                  color: "hsl(var(--card-foreground))",
                   padding: "0.75rem",
                   borderRadius: "0.375rem",
                   fontWeight: "500",
                   cursor: "pointer",
-                  border: "1px solid #d1d5db",
+                  border: "1px solid hsl(var(--border))",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

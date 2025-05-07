@@ -53,7 +53,7 @@ const PartnersPage = async ({ params }: { params: { lang: Locale } }) => {
               {partners.universities.map((university: Partner) => (
                 <div
                   key={university.id}
-                  className="group hover:-translate-y-1 transition-transform duration-300"
+                  className="group h-full flex items-center justify-center hover:-translate-y-1 transition-transform duration-300"
                 >
                   <PartnerLogo {...university} />
                 </div>
@@ -87,7 +87,7 @@ const PartnersPage = async ({ params }: { params: { lang: Locale } }) => {
               {partners.enterprises.map((enterprise: Partner) => (
                 <div
                   key={enterprise.id}
-                  className="group hover:-translate-y-1 transition-transform duration-300"
+                  className="group h-full flex items-center justify-center hover:-translate-y-1 transition-transform duration-300"
                 >
                   <PartnerLogo {...enterprise} />
                 </div>

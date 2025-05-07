@@ -47,5 +47,6 @@ coverage
 *.db
 
 cache/
+uploads/
 
 password.txt

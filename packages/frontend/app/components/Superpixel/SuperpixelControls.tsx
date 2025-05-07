@@ -160,7 +160,7 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
           <Slider
             value={[params.iterations]}
             min={1}
-            max={50}
+            max={10}
             step={1}
             onValueChange={(value) => handleParamChange("iterations")(value[0])}
             className="cursor-pointer"
