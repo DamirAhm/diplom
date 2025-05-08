@@ -290,8 +290,8 @@ export default function ProjectFormPage({
                   </Button>
                 </div>
                 {images.length > 0 && (
-                  <div className="mt-4">
-                    <Carousel>
+                  <div className="mt-4 w-[300px]">
+                    <Carousel opts={{ loop: true }}>
                       <CarouselContent>
                         {images.map((image) => (
                           <CarouselItem key={image.id}>
@@ -316,8 +316,8 @@ export default function ProjectFormPage({
                           </CarouselItem>
                         ))}
                       </CarouselContent>
-                      <CarouselPrevious />
-                      <CarouselNext />
+                      <CarouselPrevious type="button" />
+                      <CarouselNext type="button" />
                     </Carousel>
                   </div>
                 )}
@@ -327,24 +327,6 @@ export default function ProjectFormPage({
             <div>
               <div className="mb-4">
                 <Label>{dictionary.admin.publications}</Label>
-                <div className="mt-2 space-y-2">
-                  {projectPublications.map((pub) => (
-                    <div
-                      key={pub.id}
-                      className="flex items-center justify-between border p-2 rounded"
-                    >
-                      <span>{pub.title[lang]}</span>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleRemovePublication(pub.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
                 <div className="mt-2">
                   <AutoComplete
                     options={publications
@@ -362,6 +344,25 @@ export default function ProjectFormPage({
                       handleAddPublication(parseInt(option.value));
                     }}
                   />
+                </div>
+                <div className="mt-2 space-y-2">
+                  {projectPublications.map((pub) => (
+                    <div
+                      key={pub.id}
+                      className="flex items-center justify-between border p-2 rounded"
+                    >
+                      <span>{pub.title[lang]}</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleRemovePublication(pub.id)}
+                        className="hover:bg-red-500 hover:text-white"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

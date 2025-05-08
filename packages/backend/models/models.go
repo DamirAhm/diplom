@@ -35,18 +35,18 @@ type Publication struct {
 }
 
 type Researcher struct {
-	ID             int                `json:"id"`
-	Name           LocalizedString    `json:"name"`
-	LastName       LocalizedString    `json:"lastName"`
-	Position       LocalizedString    `json:"position"`
-	Photo          string             `json:"photo"`
-	Bio            LocalizedString    `json:"bio"`
-	Profiles       ResearcherProfiles `json:"profiles"`
-	Publications   []Publication      `json:"publications"`
-	TotalCitations int                `json:"totalCitations"`
-	HIndex         int                `json:"hIndex"`
-	RecentCitations int               `json:"recentCitations"`
-	RecentHIndex    int               `json:"recentHIndex"`
+	ID              int                `json:"id"`
+	Name            LocalizedString    `json:"name"`
+	LastName        LocalizedString    `json:"lastName"`
+	Position        LocalizedString    `json:"position"`
+	Photo           string             `json:"photo"`
+	Bio             LocalizedString    `json:"bio"`
+	Profiles        ResearcherProfiles `json:"profiles"`
+	Publications    []Publication      `json:"publications"`
+	TotalCitations  int                `json:"totalCitations"`
+	HIndex          int                `json:"hIndex"`
+	RecentCitations int                `json:"recentCitations"`
+	RecentHIndex    int                `json:"recentHIndex"`
 }
 
 type ResearcherProfiles struct {
@@ -86,11 +86,26 @@ type Project struct {
 }
 
 type TrainingMaterial struct {
-	ID          int             `json:"id"`
-	Title       LocalizedString `json:"title"`
-	Description LocalizedString `json:"description"`
-	URL         string          `json:"url"`
-	Image       string          `json:"image"`
+	ID          int              `json:"id"`
+	Title       LocalizedString  `json:"title"`
+	Description LocalizedString  `json:"description"`
+	URL         string           `json:"url"`
+	Image       string           `json:"image"`
+	Type        *LocalizedString `json:"type,omitempty"`
+}
+
+type DisciplineResearcher struct {
+	ID       int             `json:"id"`
+	Name     LocalizedString `json:"name"`
+	LastName LocalizedString `json:"lastName"`
+}
+
+type Discipline struct {
+	ID          int                    `json:"id"`
+	Title       LocalizedString        `json:"title"`
+	Description LocalizedString        `json:"description"`
+	Researchers []DisciplineResearcher `json:"researchers"`
+	Image       string                 `json:"image"`
 }
 
 func NewLocalizedString() LocalizedString {
@@ -147,4 +162,14 @@ func NewProject() Project {
 
 func NewTrainingMaterial() TrainingMaterial {
 	return TrainingMaterial{}
+}
+
+func NewDisciplineResearcher() DisciplineResearcher {
+	return DisciplineResearcher{}
+}
+
+func NewDiscipline() Discipline {
+	return Discipline{
+		Researchers: []DisciplineResearcher{},
+	}
 }

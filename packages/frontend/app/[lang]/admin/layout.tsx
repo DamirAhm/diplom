@@ -18,7 +18,7 @@ export default function AdminLayout({
   const isAuthorized = c.get("admin_session") !== undefined;
 
   return (
-    <div className="min-h-screen bg-background admin-layout">
+    <div className="bg-background admin-layout">
       <AdminHeader lang={lang} isAuthorized={isAuthorized} />
       <main className="container mx-auto px-4 py-8">
         <div className="admin-content-panel bg-card border border-border/50 rounded-lg shadow-lg p-6">

@@ -55,6 +55,27 @@ export interface Researcher {
   hIndex: number;
 }
 
+export type Discipline = {
+  id: number;
+  title: LocalizedString;
+  description: LocalizedString;
+  researchers: {
+    id: number;
+    name: LocalizedString;
+    lastName: LocalizedString;
+  }[];
+  image: string;
+};
+
+export type TrainingMaterial = {
+  id: number;
+  title: LocalizedString;
+  description: LocalizedString;
+  url: string;
+  image?: string;
+  type?: LocalizedString;
+};
+
 export interface ProjectPublication {
   id: number;
   title: LocalizedString;
@@ -87,14 +108,6 @@ export interface Video {
   id: number;
   title: LocalizedString;
   url: string;
-}
-
-export interface TrainingMaterial {
-  id: number;
-  title: LocalizedString;
-  description: LocalizedString;
-  url: string;
-  image: string;
 }
 
 export interface APIError {

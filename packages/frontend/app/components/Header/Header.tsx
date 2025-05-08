@@ -48,11 +48,10 @@ export default function Header({ lang }: HeaderProps) {
 
   return (
     <header
-      className={`sticky bg-white dark:bg-card bg-opacity-50 top-0 z-40 w-full transition-all duration-200 ${
-        scrolled
-          ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm"
-          : "bg-transparent"
-      }`}
+      className={`sticky bg-white dark:bg-card bg-opacity-50 top-0 z-40 w-full transition-all duration-200 ${scrolled
+        ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm"
+        : "bg-transparent"
+        }`}
     >
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
@@ -102,11 +101,10 @@ export default function Header({ lang }: HeaderProps) {
                   <li key={item.key}>
                     <Link
                       href={`/${lang}/${item.key}`}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        isActive
-                          ? "text-primary dark:text-indigo-400 font-semibold"
-                          : "text-foreground/70 hover:text-primary dark:hover:text-indigo-400"
-                      }`}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
+                        ? "text-primary dark:text-indigo-400 font-semibold"
+                        : "text-foreground/70 hover:text-primary dark:hover:text-indigo-400"
+                        }`}
                     >
                       {item.label}
                     </Link>
@@ -140,11 +138,10 @@ export default function Header({ lang }: HeaderProps) {
                   >
                     <Link
                       href={`/${lang}/${item.key}`}
-                      className={`block py-3 transition-colors ${
-                        isActive
-                          ? "text-primary dark:text-indigo-400 font-semibold"
-                          : "text-foreground/70 hover:text-primary dark:hover:text-indigo-400"
-                      }`}
+                      className={`block py-3 transition-colors ${isActive
+                        ? "text-primary dark:text-indigo-400 font-semibold"
+                        : "text-foreground/70 hover:text-primary dark:hover:text-indigo-400"
+                        }`}
                       onClick={toggleMenu}
                     >
                       {item.label}

@@ -103,7 +103,7 @@ const AlertDialogAction = React.forwardRef<
   React.ButtonHTMLAttributes<HTMLButtonElement> & Pick<ButtonProps, "variant">
 >(({ className, variant, ...props }, ref) => (
   <button
-    className={cn(buttonVariants({ variant: variant || "default" }), className)}
+    className={cn(buttonVariants({ variant: variant || "destructive" }), className)}
     ref={ref}
     {...props}
   />

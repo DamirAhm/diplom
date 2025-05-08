@@ -46,7 +46,7 @@ export default function TrainingFormPage({
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(id !== "new");
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [imagePreview, setImagePreview] = useState<string | undefined>(undefined);
 
   const form = useForm<TrainingFormData>({
     resolver: zodResolver(trainingSchema),
@@ -81,25 +81,12 @@ export default function TrainingFormPage({
 
   const onSubmit = async (formData: TrainingFormData) => {
     try {
-      const materialData = {
-        title: formData.name,
-        description: formData.description,
-        url: formData.url,
-        image: imagePreview,
-      };
-
-      let materialId = id;
-      if (id !== "new") {
-        await api.training.update(id, materialData);
-      } else {
-        const newMaterial = await api.training.create(materialData);
-        materialId = newMaterial.id.toString();
-      }
+      let imageUrl: string | undefined;
 
       if (imageFile) {
         try {
           const { url } = await uploadFile(imageFile);
-          await api.training.update(materialId, { image: url });
+          imageUrl = url;
         } catch (error) {
           console.error("Failed to upload image:", error);
           toast({
@@ -109,6 +96,20 @@ export default function TrainingFormPage({
           });
         }
       }
+
+      const materialData = {
+        title: formData.name,
+        description: formData.description,
+        url: formData.url,
+        image: imageUrl,
+      };
+
+      if (id !== "new") {
+        await api.training.update(id, materialData);
+      } else {
+        await api.training.create(materialData);
+      }
+
 
       toast({
         title: dictionary.admin.success,
