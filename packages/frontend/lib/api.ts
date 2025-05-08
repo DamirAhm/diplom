@@ -10,6 +10,7 @@ import {
   Project,
   Publication,
   TrainingMaterial,
+  Discipline,
 } from "../app/types";
 import { API_URL } from "../constants/ApiUrl";
 import { hashPassword } from "./password";
@@ -253,6 +254,16 @@ export const api = {
       request<TrainingMaterial>(`/training/${id}`, { method: "PUT", data }),
     delete: (id: string) =>
       request<void>(`/training/${id}`, { method: "DELETE" }),
+  },
+  disciplines: {
+    getAll: () => request<Discipline[]>("/disciplines"),
+    getOne: (id: string) => request<Discipline>(`/disciplines/${id}`),
+    create: (data: Omit<Discipline, "id">) =>
+      request<Discipline>("/disciplines", { method: "POST", data }),
+    update: (id: string, data: Partial<Discipline>) =>
+      request<Discipline>(`/disciplines/${id}`, { method: "PUT", data }),
+    delete: (id: string) =>
+      request<void>(`/disciplines/${id}`, { method: "DELETE" }),
   },
   neuron: {
     simulate: (data: NeuronSimulationRequest) =>

@@ -64,3 +64,11 @@ type TrainingMaterialRepo interface {
 	Update(material models.TrainingMaterial) error
 	Delete(id int) error
 }
+
+type DisciplineRepo interface {
+	Create(discipline models.Discipline) (int64, error)
+	GetByID(id int) (*models.Discipline, error)
+	GetAll() ([]models.Discipline, error)
+	Update(discipline models.Discipline) error
+	Delete(id int) error
+}

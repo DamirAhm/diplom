@@ -26,6 +26,7 @@ export default function AdminLoginPage({
   params: { lang: Locale };
 }) {
   const dictionary = getDictionary(lang);
+  const router = useRouter();
 
   const { toast } = useToast();
 
@@ -40,7 +41,7 @@ export default function AdminLoginPage({
   const onSubmit = async (data: LoginFormData) => {
     try {
       await api.auth.login(data.username, data.password);
-      window.location.href = `/${lang}/admin/researchers`;
+      router.push(`/${lang}/admin/researchers`);
     } catch (error: any) {
       toast({
         variant: "destructive",

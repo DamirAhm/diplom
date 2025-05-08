@@ -318,6 +318,13 @@
     "training": "Training Materials",
     "addTraining": "Add Training Material",
     "editTraining": "Edit Training Material",
+    "disciplines": "Disciplines",
+    "addDiscipline": "Add Discipline",
+    "editDiscipline": "Edit Discipline",
+    "level": "Academic Level",
+    "searchDisciplines": "Search disciplines...",
+    "image": "Image",
+    "uploadImage": "Upload Image",
     "actions": "Actions",
     "type": "Type",
     "url": "URL",
@@ -333,7 +340,8 @@
       "project": "Project",
       "publication": "Publication",
       "partner": "Partner",
-      "training": "Training Material"
+      "training": "Training Material",
+      "discipline": "Discipline"
     },
     "activityActions": {
       "created": "was created",
@@ -356,7 +364,6 @@
     "tutorial": "Tutorial",
     "documentation": "Documentation",
     "video": "Video",
-    "image": "Image",
     "images": "Images",
     "uploadImages": "Upload images",
     "urlPlaceholder": "Enter URL (e.g., https://example.com)",

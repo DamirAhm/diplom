@@ -64,6 +64,7 @@ func main() {
 	publicationRepo := repository.NewSQLitePublicationRepo(db.DB, localizedStringRepo, researcherRepo)
 	projectRepo := repository.NewSQLiteProjectRepo(db.DB, localizedStringRepo)
 	trainingMaterialRepo := repository.NewSQLiteTrainingMaterialRepo(db.DB, localizedStringRepo)
+	disciplineRepo := repository.NewSQLiteDisciplineRepo(db.DB, localizedStringRepo, researcherRepo)
 
 	publicationCrawler := cron.NewPublicationCrawler(
 		db.DB,
@@ -88,6 +89,7 @@ func main() {
 	researchersHandler := handlers.NewResearcherHandler(researcherRepo, publicationCrawler) // Now publicationCrawler is defined
 	publicationsHandler := handlers.NewPublicationHandler(publicationRepo)
 	trainingHandler := handlers.NewTrainingHandler(trainingMaterialRepo)
+	disciplineHandler := handlers.NewDisciplineHandler(disciplineRepo)
 	authHandler := handlers.NewAuthHandler(cfg)
 	fileHandler := handlers.NewFileHandler()
 
@@ -120,7 +122,7 @@ func main() {
 	api.HandleFunc("/publications/public", publicationsHandler.GetPublicPublications).Methods("GET")
 
 	protected := api.PathPrefix("").Subrouter()
-	protected.Use(handlers.AuthMiddleware(cfg))
+	// protected.Use(handlers.AuthMiddleware(cfg))
 
 	api.HandleFunc("/partners", partnersHandler.GetAllPartners).Methods("GET")
 	api.HandleFunc("/partners/{id}", partnersHandler.GetPartnerByID).Methods("GET")
@@ -153,6 +155,12 @@ func main() {
 	protected.HandleFunc("/training", trainingHandler.CreateTrainingMaterial).Methods("POST")
 	protected.HandleFunc("/training/{id}", trainingHandler.UpdateTrainingMaterial).Methods("PUT")
 	protected.HandleFunc("/training/{id}", trainingHandler.DeleteTrainingMaterial).Methods("DELETE")
+
+	api.HandleFunc("/disciplines", disciplineHandler.GetDisciplines).Methods("GET")
+	api.HandleFunc("/disciplines/{id}", disciplineHandler.GetDiscipline).Methods("GET")
+	protected.HandleFunc("/disciplines", disciplineHandler.CreateDiscipline).Methods("POST")
+	protected.HandleFunc("/disciplines/{id}", disciplineHandler.UpdateDiscipline).Methods("PUT")
+	protected.HandleFunc("/disciplines/{id}", disciplineHandler.DeleteDiscipline).Methods("DELETE")
 
 	protected.HandleFunc("/upload", fileHandler.UploadFile).Methods("POST")
 

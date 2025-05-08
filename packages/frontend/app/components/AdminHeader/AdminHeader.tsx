@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Locale } from "../../types";
 import { getDictionary } from "../../dictionaries";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import {
   Building2,
   LibraryBig,
   LogOut,
+  Bookmark,
 } from "lucide-react";
 import { api } from "../../../lib/api";
 import { cn } from "../../../lib/utils";
@@ -38,6 +39,11 @@ const navigation = [
     icon: Building2,
   },
   {
+    title: "disciplines",
+    href: "/admin/disciplines",
+    icon: Bookmark,
+  },
+  {
     title: "training",
     href: "/admin/training",
     icon: LibraryBig,
@@ -53,10 +59,11 @@ export const AdminHeader = ({
 }) => {
   const pathname = usePathname();
   const dictionary = getDictionary(lang);
+  const router = useRouter();
 
   const handleLogout = async () => {
     await api.auth.logout();
-    window.location.href = `/${lang}/admin`;
+    router.push(`/${lang}/admin`);
   };
 
   return (

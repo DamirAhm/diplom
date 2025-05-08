@@ -52,6 +52,14 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
+	if err = migrateAddDisciplines(); err != nil {
+		return err
+	}
+
+	if err = migrateRemoveLevelFromDisciplines(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -691,6 +699,158 @@ func migrateAddCitationStats() error {
 			ALTER TABLE researchers ADD COLUMN recent_h_index INTEGER DEFAULT 0
 		`)
 		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func migrateAddDisciplines() error {
+	var count int
+	err := DB.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='disciplines'`).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count == 0 {
+		tx, err := DB.Begin()
+		if err != nil {
+			return err
+		}
+
+		// Create disciplines table
+		_, err = tx.Exec(`
+			CREATE TABLE disciplines (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				title_id INTEGER NOT NULL,
+				description_id INTEGER NOT NULL,
+				image TEXT NOT NULL,
+				FOREIGN KEY (title_id) REFERENCES localized_strings(id),
+				FOREIGN KEY (description_id) REFERENCES localized_strings(id)
+			)
+		`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		// Create discipline_researchers table for many-to-many relationship
+		_, err = tx.Exec(`
+			CREATE TABLE discipline_researchers (
+				discipline_id INTEGER NOT NULL,
+				researcher_id INTEGER NOT NULL,
+				PRIMARY KEY (discipline_id, researcher_id),
+				FOREIGN KEY (discipline_id) REFERENCES disciplines(id) ON DELETE CASCADE,
+				FOREIGN KEY (researcher_id) REFERENCES researchers(id) ON DELETE CASCADE
+			)
+		`)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func migrateRemoveLevelFromDisciplines() error {
+	// Check if the table exists first
+	var tableExists int
+	err := DB.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='disciplines'`).Scan(&tableExists)
+	if err != nil {
+		return err
+	}
+
+	if tableExists == 0 {
+		// Table doesn't exist yet, nothing to migrate
+		return nil
+	}
+
+	// Check if the level_id column exists
+	var levelIdExists int
+	err = DB.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('disciplines') WHERE name='level_id'`).Scan(&levelIdExists)
+	if err != nil {
+		return err
+	}
+
+	if levelIdExists > 0 {
+		// Level column exists, need to migrate
+		tx, err := DB.Begin()
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err != nil {
+				tx.Rollback()
+			}
+		}()
+
+		// Create a new table without the level_id field
+		_, err = tx.Exec(`
+			CREATE TABLE disciplines_new (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				title_id INTEGER NOT NULL,
+				description_id INTEGER NOT NULL,
+				image TEXT NOT NULL,
+				FOREIGN KEY (title_id) REFERENCES localized_strings(id),
+				FOREIGN KEY (description_id) REFERENCES localized_strings(id)
+			)
+		`)
+		if err != nil {
+			return err
+		}
+
+		// Copy data to the new table
+		_, err = tx.Exec(`
+			INSERT INTO disciplines_new (id, title_id, description_id, image)
+			SELECT id, title_id, description_id, image FROM disciplines
+		`)
+		if err != nil {
+			return err
+		}
+
+		// Get all level_id values to delete them from localized_strings later
+		rows, err := tx.Query(`SELECT level_id FROM disciplines`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		var levelIds []int64
+		for rows.Next() {
+			var levelId int64
+			if err := rows.Scan(&levelId); err != nil {
+				return err
+			}
+			levelIds = append(levelIds, levelId)
+		}
+
+		// Drop the old table
+		_, err = tx.Exec(`DROP TABLE disciplines`)
+		if err != nil {
+			return err
+		}
+
+		// Rename the new table
+		_, err = tx.Exec(`ALTER TABLE disciplines_new RENAME TO disciplines`)
+		if err != nil {
+			return err
+		}
+
+		// Delete the localized strings used for level
+		for _, levelId := range levelIds {
+			_, err = tx.Exec(`DELETE FROM localized_strings WHERE id = ?`, levelId)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
 			return err
 		}
 	}

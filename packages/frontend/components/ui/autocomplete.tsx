@@ -75,8 +75,6 @@ export const AutoComplete = ({
 
     const handleSelectOption = useCallback(
         (selectedOption: Option) => {
-            setInputValue('')
-
             setSelected(selectedOption)
             onValueChange?.(selectedOption)
 
@@ -90,7 +88,13 @@ export const AutoComplete = ({
     )
 
     return (
-        <CommandPrimitive onKeyDown={handleKeyDown}>
+        <CommandPrimitive
+            filter={(value, search) => {
+                if (value.toLowerCase().includes(search.toLowerCase())) return 1
+                return 0
+            }}
+            onKeyDown={handleKeyDown}
+        >
             <div>
                 <CommandInput
                     ref={inputRef}

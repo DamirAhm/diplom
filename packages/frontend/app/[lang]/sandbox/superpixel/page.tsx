@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import React from "react";
 
-interface SuperpixelParams extends ApiSuperpixelParams {}
+interface SuperpixelParams extends ApiSuperpixelParams { }
 
 export default function SuperpixelPage({
   params: { lang },
@@ -414,16 +414,14 @@ export default function SuperpixelPage({
         {/* Visualization */}
         <div className="lg:col-span-3">
           <Tabs defaultValue="original" className="flex  flex-col w-full">
-            <TabsList className="mb-4 w-fit self-center bg-background border-b border-border">
+            <TabsList className="mb-4 w-fit self-center border-b border-border">
               <TabsTrigger
                 value="original"
-                className="data-[state=active]:bg-background"
               >
                 {dict.originalImage}
               </TabsTrigger>
               <TabsTrigger
                 value="strokes"
-                className="data-[state=active]:bg-background"
               >
                 {dict.strokes}
               </TabsTrigger>
