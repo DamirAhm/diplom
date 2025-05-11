@@ -97,8 +97,8 @@ func (r *SQLiteResearcherRepo) CalculateTotalCitations(researcherID int) (int, e
 	return totalCitations, nil
 }
 
-func (r *SQLiteResearcherRepo) GetByID(id int) (*models.Researcher, error) {
-	researcher := models.NewResearcher()
+func (r *SQLiteResearcherRepo) GetByID(id int) (*models.ResearcherWithPublicationsCount, error) {
+	researcher := models.ResearcherWithPublicationsCount{}
 	var bioID, positionID, nameID, lastNameID int64
 
 	err := r.db.QueryRow(
@@ -146,6 +146,11 @@ func (r *SQLiteResearcherRepo) GetByID(id int) (*models.Researcher, error) {
 	}
 	if publications != nil {
 		researcher.Publications = publications
+	}
+
+	researcher.PublicationsCount, err = r.GetResearcherPublicationsCount(id)
+	if err != nil {
+		return nil, err
 	}
 
 	return &researcher, nil
@@ -225,7 +230,7 @@ func (r *SQLiteResearcherRepo) GetByIDs(ids []int) ([]models.Researcher, error) 
 	return researchers, nil
 }
 
-func (r *SQLiteResearcherRepo) GetAll() ([]models.Researcher, error) {
+func (r *SQLiteResearcherRepo) GetAll() ([]models.ResearcherWithPublicationsCount, error) {
 	rows, err := r.db.Query(
 		`SELECT id, name_id, last_name_id, photo, bio_id, position_id, google_scholar, research_gate, 
 			publons, orcid, scopus, total_citations, h_index FROM researchers`,
@@ -235,9 +240,9 @@ func (r *SQLiteResearcherRepo) GetAll() ([]models.Researcher, error) {
 	}
 	defer rows.Close()
 
-	researchers := []models.Researcher{}
+	researchers := []models.ResearcherWithPublicationsCount{}
 	for rows.Next() {
-		var researcher models.Researcher
+		var researcher models.ResearcherWithPublicationsCount
 		var bioID, positionID, nameID, lastNameID int64
 		err := rows.Scan(
 			&researcher.ID, &nameID, &lastNameID, &researcher.Photo, &bioID, &positionID,
@@ -273,11 +278,12 @@ func (r *SQLiteResearcherRepo) GetAll() ([]models.Researcher, error) {
 		}
 		researcher.Position = *position
 
-		publications, err := r.GetResearcherPublications(researcher.ID)
+		publicationsCount, err := r.GetResearcherPublicationsCount(researcher.ID)
 		if err != nil {
 			return nil, err
 		}
-		researcher.Publications = publications
+
+		researcher.PublicationsCount = publicationsCount
 
 		researchers = append(researchers, researcher)
 	}
@@ -461,6 +467,17 @@ func (r *SQLiteResearcherRepo) RemovePublication(researcherID int, publicationID
 	return err
 }
 
+func (r *SQLiteResearcherRepo) GetResearcherPublicationsCount(researcherID int) (int, error) {
+	var count int
+	err := r.db.QueryRow(`
+		SELECT COUNT(*) FROM researcher_publications WHERE researcher_id = ?
+	`, researcherID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (r *SQLiteResearcherRepo) GetResearcherPublications(researcherID int) ([]models.Publication, error) {
 	rows, err := r.db.Query(`
 		SELECT p.id, p.title_id, p.link, p.journal, p.published_at, p.citations_count
@@ -552,7 +569,7 @@ func (r *SQLiteResearcherRepo) GetResearcherPublications(researcherID int) ([]mo
 	return publications, nil
 }
 
-func (r *SQLiteResearcherRepo) FindByFullName(fullName string) (*models.Researcher, error) {
+func (r *SQLiteResearcherRepo) FindByFullName(fullName string) (*models.ResearcherWithPublicationsCount, error) {
 	nameParts := strings.Split(fullName, " ")
 	if len(nameParts) != 2 {
 		return nil, fmt.Errorf("invalid full name format: %s", fullName)

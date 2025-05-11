@@ -11,6 +11,8 @@ import {
   Publication,
   TrainingMaterial,
   Discipline,
+  ResearcherWithCount,
+  CreateDiscipline,
 } from "../app/types";
 import { API_URL } from "../constants/ApiUrl";
 import { hashPassword } from "./password";
@@ -91,6 +93,7 @@ export interface SuperpixelParams {
   iterations: number;
   gridSize: number;
   adaptiveFactor: number;
+  mode?: "strokes" | "pixels";
 }
 
 export interface SuperpixelResponse {
@@ -198,10 +201,10 @@ export const api = {
     logout: () => request<void>("/auth/logout", { method: "POST" }),
   },
   researchers: {
-    getAll: () => request<Researcher[]>("/researchers"),
-    getOne: (id: string) => request<Researcher>(`/researchers/${id}`),
+    getAll: () => request<ResearcherWithCount[]>("/researchers"),
+    getOne: (id: string) => request<ResearcherWithCount>(`/researchers/${id}`),
     create: (
-      data: Omit<Researcher, "id" | "publications" | "totalCitations">
+      data: Omit<Researcher, "id" | "publications" | "totalCitations" | 'hIndex'>
     ) => request<Researcher>("/researchers", { method: "POST", data }),
     update: (id: string, data: Partial<Omit<Researcher, "publications">>) =>
       request<Researcher>(`/researchers/${id}`, { method: "PUT", data }),
@@ -258,9 +261,9 @@ export const api = {
   disciplines: {
     getAll: () => request<Discipline[]>("/disciplines"),
     getOne: (id: string) => request<Discipline>(`/disciplines/${id}`),
-    create: (data: Omit<Discipline, "id">) =>
+    create: (data: CreateDiscipline) =>
       request<Discipline>("/disciplines", { method: "POST", data }),
-    update: (id: string, data: Partial<Discipline>) =>
+    update: (id: string, data: CreateDiscipline) =>
       request<Discipline>(`/disciplines/${id}`, { method: "PUT", data }),
     delete: (id: string) =>
       request<void>(`/disciplines/${id}`, { method: "DELETE" }),

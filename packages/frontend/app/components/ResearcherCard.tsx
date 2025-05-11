@@ -1,12 +1,12 @@
 import type React from "react";
 import Link from "next/link";
 import { getDictionary } from "../dictionaries";
-import type { Locale, Researcher } from "../types";
+import type { Locale, Researcher, ResearcherWithCount } from "../types";
 import { ImageWithFallback } from "./ImageWithFallback";
-import { ExternalLink, Award, MessageSquareQuote } from "lucide-react";
+import { ExternalLink, Award, MessageSquareQuote, ScrollText } from "lucide-react";
 
 interface ResearcherCardProps {
-  researcher: Researcher;
+  researcher: ResearcherWithCount;
   lang: Locale;
   isCompact?: boolean;
 }
@@ -109,6 +109,15 @@ const ResearcherCard: React.FC<ResearcherCardProps> = ({
                   {lang === "en" ? "h-index" : "h-индекс"}:
                 </span>{" "}
                 {researcher.hIndex}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 py-1">
+              <ScrollText className="h-4 w-4 text-primary" />
+              <span className="text-sm">
+                <span className="font-medium">
+                  {lang === "en" ? "Publications" : "Публикации"}:
+                </span>{" "}
+                {researcher.publicationsCount}
               </span>
             </div>
           </div>

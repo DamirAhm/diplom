@@ -55,6 +55,10 @@ export interface Researcher {
   hIndex: number;
 }
 
+export interface ResearcherWithCount extends Researcher {
+  publicationsCount: number;
+}
+
 export type Discipline = {
   id: number;
   title: LocalizedString;
@@ -65,6 +69,14 @@ export type Discipline = {
     lastName: LocalizedString;
   }[];
   image: string;
+};
+
+export type CreateDiscipline = {
+  title: LocalizedString;
+  description: LocalizedString;
+  researchers: {
+    id: number;
+  }[];
 };
 
 export type TrainingMaterial = {

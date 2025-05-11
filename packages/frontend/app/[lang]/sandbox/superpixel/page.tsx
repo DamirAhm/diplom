@@ -6,7 +6,6 @@ import type { Locale } from "@/app/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { ImageIcon, Upload } from "lucide-react";
@@ -18,13 +17,12 @@ import { SuperpixelControls } from "@/app/components/Superpixel/SuperpixelContro
 import { SuperpixelCanvas } from "@/app/components/Superpixel/SuperpixelCanvas";
 import {
   drawAllStrokes,
+  drawAllStrokesPixelMode,
   updateGradientsView,
   drawGradientVectors,
   drawClusterCenters,
-  drawColorGradient,
   drawBorders,
 } from "@/app/components/Superpixel/CanvasDrawing";
-import { computeConvexHull } from "@/app/components/Superpixel/utils";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import React from "react";
@@ -55,6 +53,7 @@ export default function SuperpixelPage({
     iterations: 5,
     gridSize: 20,
     adaptiveFactor: 0.5,
+    mode: "strokes"
   });
   const [strokeData, setStrokeData] = useState<any>(null);
   const [highlightedStrokeId, setHighlightedStrokeId] = useState<number | null>(
@@ -198,6 +197,7 @@ export default function SuperpixelPage({
 
     try {
       const data = await processSuperpixelImage(imageFile, params);
+
       setStrokeData(data);
 
       if (strokesCanvasRef.current) {
@@ -205,14 +205,23 @@ export default function SuperpixelPage({
           strokesCanvasRef.current.style.visibility = "hidden";
         }
 
-        setStrokesRendered(true);
-        await drawAllStrokes(
-          strokesCanvasRef.current,
-          data.strokes,
-          scaleX,
-          scaleY
-        );
+        if (params.mode === "pixels") {
+          await drawAllStrokesPixelMode(
+            strokesCanvasRef.current,
+            data.strokes,
+            scaleX,
+            scaleY
+          );
+        } else {
+          await drawAllStrokes(
+            strokesCanvasRef.current,
+            data.strokes,
+            scaleX,
+            scaleY
+          );
+        }
 
+        setStrokesRendered(true);
         if (drawOptions.showStrokes && strokesCanvasRef.current.parentElement) {
           strokesCanvasRef.current.style.visibility = "visible";
         }
@@ -228,7 +237,6 @@ export default function SuperpixelPage({
           data.strokes,
           scaleX,
           scaleY,
-          computeConvexHull
         );
         setBordersRendered(true);
 
@@ -258,6 +266,7 @@ export default function SuperpixelPage({
 
         updateGradientsView(
           data,
+          originalCanvasRef,
           gradientsCanvasRef,
           drawOptions.showGradients,
           drawOptions.drawCenters,
@@ -265,7 +274,6 @@ export default function SuperpixelPage({
           gradientSensitivity,
           drawGradientVectorsWithScale,
           drawClusterCentersWithScale,
-          drawColorGradient
         );
       }
     } catch (error) {
@@ -285,7 +293,7 @@ export default function SuperpixelPage({
 
   const handleParamChange = (
     paramName: keyof SuperpixelParams,
-    value: number
+    value: number | string
   ) => {
     setParams((prev) => ({
       ...prev,
@@ -332,6 +340,7 @@ export default function SuperpixelPage({
 
         updateGradientsView(
           strokeData,
+          originalCanvasRef,
           gradientsCanvasRef,
           drawOptions.showGradients,
           drawOptions.drawCenters,
@@ -339,7 +348,6 @@ export default function SuperpixelPage({
           gradientSensitivity,
           drawGradientVectorsWithScale,
           drawClusterCentersWithScale,
-          drawColorGradient
         );
       } else {
         if (gradientsCanvasRef.current) {
@@ -362,6 +370,26 @@ export default function SuperpixelPage({
     gradientSensitivity,
     strokeData,
   ]);
+
+  useEffect(() => {
+    if (strokeData && strokesCanvasRef.current && strokesRendered) {
+      if (params.mode === "pixels") {
+        drawAllStrokesPixelMode(
+          strokesCanvasRef.current,
+          strokeData.strokes,
+          scaleX,
+          scaleY
+        );
+      } else {
+        drawAllStrokes(
+          strokesCanvasRef.current,
+          strokeData.strokes,
+          scaleX,
+          scaleY
+        );
+      }
+    }
+  }, [params.mode, strokeData, strokesRendered]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -523,6 +551,7 @@ export default function SuperpixelPage({
                         gradientSensitivity={gradientSensitivity}
                         setHighlightedStrokeId={setHighlightedStrokeId}
                         highlightedStrokeId={highlightedStrokeId}
+                        processingMode={params.mode as "strokes" | "pixels"}
                       />
                     </div>
                     <div

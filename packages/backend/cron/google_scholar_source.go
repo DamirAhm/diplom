@@ -37,7 +37,7 @@ func (gs *GoogleScholarSource) Name() string {
 	return "Google Scholar"
 }
 
-func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) ([]models.Publication, []models.Publication, *models.Researcher, error) {
+func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher, withCitations bool) ([]models.Publication, []models.Publication, *models.Researcher, error) {
 	if researcher.Profiles.GoogleScholar == nil || *researcher.Profiles.GoogleScholar == "" {
 		return nil, nil, nil, nil
 	}
@@ -49,22 +49,27 @@ func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) (
 
 	url := constructURL(scholarID, "pubdate")
 
-	publications, publicationsToUpdateByDate, _, err := gs.googleScholar.Scrape(url, []string{})
+	publications, publicationsToUpdateByDate, stats, err := gs.googleScholar.Scrape(url, []string{})
 	if err != nil {
 		log.Printf("error scraping Google Scholar: %w", err)
 	}
 
-	url = constructURL(scholarID, "citations")
+	publicationsByCitations := make([]models.Publication, 0)
+	publicationsToUpdateByCitations := make([]models.Publication, 0)
 
-	fetchedPublicationTitles := make([]string, 0, len(publications))
+	if withCitations {
+		url = constructURL(scholarID, "citations")
 
-	for _, publication := range publications {
-		fetchedPublicationTitles = append(fetchedPublicationTitles, publication.Title.En)
-	}
+		fetchedPublicationTitles := make([]string, 0, len(publications))
 
-	publications, publicationsToUpdateByCitations, stats, err := gs.googleScholar.Scrape(url, fetchedPublicationTitles)
-	if err != nil {
-		log.Printf("error scraping Google Scholar: %w", err)
+		for _, publication := range publications {
+			fetchedPublicationTitles = append(fetchedPublicationTitles, publication.Title.En)
+		}
+
+		publicationsByCitations, publicationsToUpdateByCitations, _, err = gs.googleScholar.Scrape(url, fetchedPublicationTitles)
+		if err != nil {
+			log.Printf("error scraping Google Scholar: %w", err)
+		}
 	}
 
 	// Update researcher with citation statistics
@@ -75,7 +80,7 @@ func (gs *GoogleScholarSource) FetchPublications(researcher models.Researcher) (
 		researcher.RecentHIndex = stats.RecentHIndex
 	}
 
-	return publications, append(publicationsToUpdateByCitations, publicationsToUpdateByDate...), &researcher, nil
+	return append(publications, publicationsByCitations...), append(publicationsToUpdateByCitations, publicationsToUpdateByDate...), &researcher, nil
 }
 
 func extractScholarID(url string) string {

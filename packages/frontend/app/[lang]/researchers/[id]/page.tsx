@@ -1,14 +1,9 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import PublicationList from "../../../components/PublicationList";
-import type { Locale, Researcher } from "@/app/types";
+import type { Locale } from "@/app/types";
 import { getDictionary } from "@/app/dictionaries";
-import { Award, ExternalLink, MessageSquareQuote } from "lucide-react";
+import { Award, ExternalLink, Home, MessageSquareQuote, ScrollText } from "lucide-react";
 import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 import { api } from "@/lib/api";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 
@@ -39,76 +34,13 @@ const researcherSchema = z.object({
   recentHIndex: z.number(),
 });
 
-type ResearcherData = z.infer<typeof researcherSchema>;
-
-export default function ResearcherPage({
+export default async function ResearcherPage({
   params: { id, lang },
 }: {
   params: { id: string; lang: Locale };
 }) {
   const dictionary = getDictionary(lang);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const {
-    setValue,
-    watch,
-    formState: { isValid },
-  } = useForm<ResearcherData>({
-    resolver: zodResolver(researcherSchema),
-    defaultValues: {
-      id: 0,
-      name: { en: "", ru: "" },
-      lastName: { en: "", ru: "" },
-      bio: { en: "", ru: "" },
-      photo: "",
-      profiles: {},
-      publications: [],
-      position: { en: "", ru: "" },
-      totalCitations: 0,
-      recentCitations: 0,
-      hIndex: 0,
-      recentHIndex: 0,
-    },
-  });
-
-  const researcher = watch();
-
-  useEffect(() => {
-    fetchResearcher();
-  }, [id]);
-
-  const fetchResearcher = async () => {
-    try {
-      setIsLoading(true);
-      const data = await api.researchers.getOne(id);
-
-      Object.entries(data).forEach(([key, value]) => {
-        setValue(key as keyof ResearcherData, value);
-      });
-    } catch (error) {
-      console.error("Failed to fetch researcher:", error);
-      setError(dictionary.researchers.notFound);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (error || !isValid) {
-    return (
-      <div className="text-center mt-8 text-xl">
-        {error || dictionary.researchers.notFound}
-      </div>
-    );
-  }
+  const researcher = await api.researchers.getOne(id);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -119,17 +51,9 @@ export default function ResearcherPage({
             <li className="inline-flex items-center">
               <Link
                 href={`/${lang}`}
-                className="inline-flex items-center text-sm font-medium text-foreground/70 hover:text-primary"
+                className="flex items-center text-sm font-medium text-foreground/70 hover:text-primary"
               >
-                <svg
-                  className="w-3 h-3 mr-2.5"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="m19.707 9.293-2-2-7-7a1 1 0 0 0-1.414 0l-7 7-2 2a1 1 0 0 0 1.414 1.414L2 10.414V18a2 2 0 0 0 2 2h3a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a2 2 0 0 0 2-2v-7.586l.293.293a1 1 0 0 0 1.414-1.414Z" />
-                </svg>
+                <Home size={16} className="mr-1 mb-0.5" />
                 {lang === "en" ? "Home" : "Главная"}
               </Link>
             </li>
@@ -240,6 +164,15 @@ export default function ResearcherPage({
                       {lang === "en" ? "h-index" : "h-индекс"}:
                     </span>{" "}
                     {researcher.hIndex}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 py-1">
+                  <ScrollText className="h-4 w-4 text-primary" />
+                  <span className="text-sm">
+                    <span className="font-medium">
+                      {lang === "en" ? "Publications" : "Публикации"}:
+                    </span>{" "}
+                    {researcher.publicationsCount}
                   </span>
                 </div>
               </div>

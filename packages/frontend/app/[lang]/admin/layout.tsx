@@ -22,7 +22,7 @@ export default function AdminLayout({
       <AdminHeader lang={lang} isAuthorized={isAuthorized} />
       <main className="container mx-auto px-4 py-8">
         <div className="admin-content-panel bg-card border border-border/50 rounded-lg shadow-lg p-6">
-          <ErrorBoundary lang={lang}>{children}</ErrorBoundary>
+          {children}
         </div>
       </main>
       <Toaster />

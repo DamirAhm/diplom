@@ -100,7 +100,7 @@ func (h *ResearcherHandler) CreateResearcher(w http.ResponseWriter, r *http.Requ
 	researcher.ID = int(id)
 
 	if researcher.Profiles.GoogleScholar != nil && *researcher.Profiles.GoogleScholar != "" {
-		go h.publicationCrawler.CrawlResearcher(researcher)
+		go h.publicationCrawler.CrawlResearcher(researcher, true)
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -146,7 +146,7 @@ func (h *ResearcherHandler) UpdateResearcher(w http.ResponseWriter, r *http.Requ
 	}
 
 	if researcher.Profiles.GoogleScholar != nil && *researcher.Profiles.GoogleScholar != "" {
-		go h.publicationCrawler.CrawlResearcher(researcher)
+		go h.publicationCrawler.CrawlResearcher(researcher, false)
 	}
 
 	json.NewEncoder(w).Encode(researcher)

@@ -49,6 +49,11 @@ type Researcher struct {
 	RecentHIndex    int                `json:"recentHIndex"`
 }
 
+type ResearcherWithPublicationsCount struct {
+	Researcher
+	PublicationsCount int `json:"publicationsCount"`
+}
+
 type ResearcherProfiles struct {
 	ResearchGate  *string `json:"researchgate,omitempty"`
 	GoogleScholar *string `json:"googleScholar,omitempty"`

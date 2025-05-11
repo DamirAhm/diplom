@@ -6,7 +6,7 @@ import { getDictionary } from "@/app/dictionaries";
 import type { Locale, Researcher } from "@/app/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check, Plus, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { PublicationFormData, publicationFormSchema } from "../schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,9 +15,14 @@ import { Form } from "@/components/ui/form";
 import {
   TextField,
   LocalizedTextField,
-  MultiSelectField,
   ExternalAuthorsField
 } from "@/components/ui/form-fields";
+import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ImageWithFallback } from "@/app/components/ImageWithFallback";
+import { ResearcherSelector } from "@/components/ui/researcher-selector";
 
 const emptyPublication: PublicationFormData = {
   title: { en: "", ru: "" },
@@ -39,11 +44,16 @@ export default function PublicationFormPage({
   const [isLoading, setIsLoading] = useState(id !== "new");
   const [researchers, setResearchers] = useState<Researcher[]>([]);
   const [researchersLoading, setResearchersLoading] = useState(true);
+  const [selectedResearchers, setSelectedResearchers] = useState<Set<number>>(new Set());
+  const [showResearcherSelector, setShowResearcherSelector] = useState(false);
 
   const form = useForm<PublicationFormData>({
     resolver: zodResolver(publicationFormSchema),
     defaultValues: emptyPublication,
   });
+
+  const { setValue, watch } = form;
+  const formAuthors = watch("authors");
 
   useEffect(() => {
     if (id !== "new") {
@@ -54,7 +64,7 @@ export default function PublicationFormPage({
 
   const fetchPublication = async () => {
     try {
-      const data = await api.publications.getOne(id);
+      const data = await api.publications.getById(Number(id));
 
       const internalAuthors = data.authors
         .filter(author => author.id !== undefined)
@@ -72,6 +82,9 @@ export default function PublicationFormPage({
         journal: data.journal,
         link: data.link
       });
+
+      // Initialize selectedResearchers with internal authors
+      setSelectedResearchers(new Set(internalAuthors));
     } catch (error) {
       toast({
         variant: "destructive",
@@ -108,7 +121,7 @@ export default function PublicationFormPage({
       delete (apiData as any).externalAuthors;
 
       if (id !== "new") {
-        await api.publications.update(id, apiData as any);
+        await api.publications.update(Number(id), apiData as any);
       } else {
         await api.publications.create(apiData as any);
       }
@@ -127,10 +140,19 @@ export default function PublicationFormPage({
     }
   };
 
-  const getResearcherName = (id: number): string => {
-    const researcher = researchers.find(r => r.id === id);
-    if (!researcher) return "";
-    return `${researcher.name[lang]} ${researcher.lastName[lang]}`;
+  const toggleResearcher = (researcher: Researcher) => {
+    const newSelectedResearchers = new Set(selectedResearchers);
+    const researcherExists = formAuthors.includes(researcher.id);
+
+    if (researcherExists) {
+      newSelectedResearchers.delete(researcher.id);
+      setValue("authors", formAuthors.filter(id => id !== researcher.id));
+    } else {
+      newSelectedResearchers.add(researcher.id);
+      setValue("authors", [...formAuthors, researcher.id]);
+    }
+
+    setSelectedResearchers(newSelectedResearchers);
   };
 
   if (isLoading || researchersLoading) {
@@ -140,11 +162,6 @@ export default function PublicationFormPage({
       </div>
     );
   }
-
-  const researcherOptions = researchers.map(researcher => ({
-    value: researcher.id.toString(),
-    label: `${researcher.name[lang]} ${researcher.lastName[lang]}`
-  }));
 
   return (
     <div>
@@ -174,11 +191,29 @@ export default function PublicationFormPage({
               lang={lang}
             />
 
-            <MultiSelectField
-              name="authors"
-              label={dictionary.publications.authors}
-              options={researcherOptions}
-            />
+            <div className="space-y-2">
+              <FormLabel>
+                {dictionary.publications.authors}
+                <span className="text-destructive ml-1">*</span>
+              </FormLabel>
+
+              <ResearcherSelector
+                researchers={researchers}
+                selectedIds={formAuthors}
+                onChange={(ids) => setValue("authors", ids)}
+                lang={lang}
+              />
+
+              <FormField
+                control={form.control}
+                name="authors"
+                render={() => (
+                  <FormItem>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <ExternalAuthorsField
               name="externalAuthors"

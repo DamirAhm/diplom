@@ -37,10 +37,10 @@ type PublicationRepo interface {
 
 type ResearcherRepo interface {
 	Create(researcher models.Researcher) (int64, error)
-	GetByID(id int) (*models.Researcher, error)
+	GetByID(id int) (*models.ResearcherWithPublicationsCount, error)
 	GetByIDs(ids []int) ([]models.Researcher, error)
-	GetAll() ([]models.Researcher, error)
-	FindByFullName(fullName string) (*models.Researcher, error)
+	GetAll() ([]models.ResearcherWithPublicationsCount, error)
+	FindByFullName(fullName string) (*models.ResearcherWithPublicationsCount, error)
 	Update(researcher models.Researcher) error
 	Delete(id int) error
 	AddPublication(researcherID int, publicationID int) error

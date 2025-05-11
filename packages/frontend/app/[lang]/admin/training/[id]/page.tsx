@@ -6,14 +6,14 @@ import { getDictionary } from "@/app/dictionaries";
 import type { Locale } from "@/app/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload } from "lucide-react";
-import { api, uploadFile } from "../../../../../lib/api";
+import { ArrowLeft } from "lucide-react";
+import { api } from "../../../../../lib/api";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { TextField, LocalizedTextField } from "@/components/ui/form-fields";
 import * as z from "zod";
-import { ImageWithFallback } from "@/app/components/ImageWithFallback";
+import { PhotoUpload } from "@/components/ui/photo-upload";
 
 const trainingSchema = z.object({
   name: z.object({
@@ -25,6 +25,7 @@ const trainingSchema = z.object({
     ru: z.string().min(1, { message: "Russian description is required" }),
   }),
   url: z.string().url({ message: "Must be a valid URL" }),
+  image: z.string().optional(),
 });
 
 type TrainingFormData = z.infer<typeof trainingSchema>;
@@ -45,13 +46,14 @@ export default function TrainingFormPage({
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(id !== "new");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | undefined>(undefined);
 
   const form = useForm<TrainingFormData>({
     resolver: zodResolver(trainingSchema),
     defaultValues: emptyMaterial,
   });
+
+  const { setValue, watch } = form;
+  const imageUrl = watch("image");
 
   useEffect(() => {
     if (id !== "new") {
@@ -66,8 +68,8 @@ export default function TrainingFormPage({
         name: data.title,
         description: data.description,
         url: data.url,
+        image: data.image,
       });
-      setImagePreview(data.image);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -81,27 +83,11 @@ export default function TrainingFormPage({
 
   const onSubmit = async (formData: TrainingFormData) => {
     try {
-      let imageUrl: string | undefined;
-
-      if (imageFile) {
-        try {
-          const { url } = await uploadFile(imageFile);
-          imageUrl = url;
-        } catch (error) {
-          console.error("Failed to upload image:", error);
-          toast({
-            variant: "destructive",
-            title: dictionary.common.error,
-            description: dictionary.admin.uploadError,
-          });
-        }
-      }
-
       const materialData = {
         title: formData.name,
         description: formData.description,
         url: formData.url,
-        image: imageUrl,
+        image: formData.image,
       };
 
       if (id !== "new") {
@@ -109,7 +95,6 @@ export default function TrainingFormPage({
       } else {
         await api.training.create(materialData);
       }
-
 
       toast({
         title: dictionary.admin.success,
@@ -125,16 +110,8 @@ export default function TrainingFormPage({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+  const handlePhotoChange = (url: string) => {
+    setValue("image", url);
   };
 
   const handleDelete = async () => {
@@ -212,34 +189,14 @@ export default function TrainingFormPage({
             />
 
             <div className="space-y-2 mt-4">
-              <div className="flex flex-col justify-center gap-4">
-                <div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById("image-upload")?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {dictionary.admin.uploadPhoto}
-                  </Button>
-                  <input
-                    id="image-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                </div>
-                {imagePreview && (
-                  <div className="relative h-24 w-24 overflow-hidden rounded border">
-                    <ImageWithFallback
-                      src={imagePreview}
-                      alt="Preview"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                )}
-              </div>
+              <div className="text-sm font-medium">{dictionary.admin.photo}</div>
+              <PhotoUpload
+                photoUrl={imageUrl}
+                onPhotoChange={handlePhotoChange}
+                buttonLabel={dictionary.admin.uploadPhoto || "Upload photo"}
+                errorMessage={dictionary.admin.uploadError}
+                multiple={false}
+              />
             </div>
           </div>
 
@@ -247,18 +204,6 @@ export default function TrainingFormPage({
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? dictionary.common.saving : dictionary.common.save}
             </Button>
-            <Button type="button" variant="outline" onClick={handleCancel}>
-              {dictionary.common.cancel}
-            </Button>
-            {id !== "new" && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-              >
-                {dictionary.common.delete}
-              </Button>
-            )}
           </div>
         </form>
       </Form>

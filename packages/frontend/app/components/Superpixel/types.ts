@@ -5,6 +5,7 @@ export interface SuperpixelParams {
     iterations: number;
     gridSize: number;
     adaptiveFactor: number;
+    mode?: "strokes" | "pixels";
 }
 
 export interface SuperpixelResponse {

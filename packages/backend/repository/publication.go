@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/damirahm/diplom/backend/models"
 )
@@ -17,6 +18,24 @@ func NewSQLitePublicationRepo(db *sql.DB, lsRepo LocalizedStringRepo, researcher
 }
 
 func (r *SQLitePublicationRepo) Create(pub models.Publication) (int64, error) {
+	// Check if publication with this title already exists
+	query := `
+		SELECT COUNT(*) 
+		FROM publications p
+		JOIN localized_strings ls ON p.title_id = ls.id
+		WHERE LOWER(ls.en) = LOWER(?) OR LOWER(ls.ru) = LOWER(?)
+	`
+
+	var count int
+	err := r.db.QueryRow(query, pub.Title.En, pub.Title.Ru).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	if count > 0 {
+		return 0, fmt.Errorf("publication with title '%s' or '%s' already exists", pub.Title.En, pub.Title.Ru)
+	}
+
 	tx, err := r.db.Begin()
 	if err != nil {
 		return 0, err
@@ -294,6 +313,25 @@ func (r *SQLitePublicationRepo) GetAll() ([]models.Publication, error) {
 }
 
 func (r *SQLitePublicationRepo) Update(pub models.Publication) error {
+	// Check if another publication with this title already exists
+	query := `
+		SELECT COUNT(*) 
+		FROM publications p
+		JOIN localized_strings ls ON p.title_id = ls.id
+		WHERE (LOWER(ls.en) = LOWER(?) OR LOWER(ls.ru) = LOWER(?))
+		AND p.id != ?
+	`
+
+	var count int
+	err := r.db.QueryRow(query, pub.Title.En, pub.Title.Ru, pub.ID).Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count > 0 {
+		return fmt.Errorf("another publication with title '%s' or '%s' already exists", pub.Title.En, pub.Title.Ru)
+	}
+
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -667,7 +705,7 @@ func (r *SQLitePublicationRepo) GetByTitle(title string) (*models.Publication, e
 		SELECT p.id, ls.en, ls.ru, p.link, p.journal, p.published_at, p.citations_count, p.visible
 		FROM publications p
 		JOIN localized_strings ls ON p.title_id = ls.id
-		WHERE ls.en = ? OR ls.ru = ?
+		WHERE LOWER(ls.en) = LOWER(?) OR LOWER(ls.ru) = LOWER(?)
 	`
 
 	var pubID int

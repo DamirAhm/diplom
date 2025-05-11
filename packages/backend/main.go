@@ -122,7 +122,7 @@ func main() {
 	api.HandleFunc("/publications/public", publicationsHandler.GetPublicPublications).Methods("GET")
 
 	protected := api.PathPrefix("").Subrouter()
-	// protected.Use(handlers.AuthMiddleware(cfg))
+	protected.Use(handlers.AuthMiddleware(cfg))
 
 	api.HandleFunc("/partners", partnersHandler.GetAllPartners).Methods("GET")
 	api.HandleFunc("/partners/{id}", partnersHandler.GetPartnerByID).Methods("GET")
@@ -189,8 +189,8 @@ func main() {
 			Addr:         ":" + cfg.Server.Port,
 			Handler:      c.Handler(router),
 			IdleTimeout:  time.Minute * 2,
-			ReadTimeout:  30 * time.Second,
-			WriteTimeout: time.Minute,
+			ReadTimeout:  time.Minute * 2,
+			WriteTimeout: time.Minute * 2,
 		},
 		db:                 db.DB,
 		config:             cfg,

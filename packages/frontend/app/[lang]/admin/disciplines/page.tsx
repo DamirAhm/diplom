@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getDictionary } from "@/app/dictionaries";
 import type { Locale } from "@/app/types";
-import { Discipline } from "@/types";
+import { Discipline } from "@/app/types";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,7 @@ import { Column, DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api } from "../../../../lib/api";
 import { useParams } from "next/navigation";
+import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 
 export default function DisciplinesAdminPage() {
     const { lang } = useParams<{ lang: Locale }>();
@@ -74,6 +75,20 @@ export default function DisciplinesAdminPage() {
     };
 
     const columns: Column<Discipline>[] = [
+        {
+            header: dictionary.admin.image || "Image",
+            accessorKey: "image",
+            sortable: false,
+            cell: (r) => {
+                return <ImageWithFallback
+                    src={r?.image}
+                    alt={r?.title[lang]}
+                    width={80}
+                    height={80}
+                    className="rounded-md"
+                />
+            }
+        },
         {
             header: dictionary.admin.title || "Title",
             accessorKey: (discipline) => discipline.title[lang],

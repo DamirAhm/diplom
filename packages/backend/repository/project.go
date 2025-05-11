@@ -136,16 +136,17 @@ func (r *SQLiteProjectRepo) GetAll() ([]models.Project, error) {
 			project.Publications = publications
 		}
 
-		videos, err := r.getProjectVideos(project.ID)
+		images, err := r.getProjectImages(project.ID)
 		if err != nil {
 			return nil, err
 		}
-		if videos != nil {
-			project.Videos = videos
+		if images != nil {
+			project.Images = images
 		}
 
 		projects = append(projects, project)
 	}
+
 	return projects, nil
 }
 

@@ -14,6 +14,7 @@ import { getDictionary } from "@/app/dictionaries";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
+import { useDictionary } from "@/hooks/use-dictionary";
 
 interface TextFieldProps {
     name: string;
@@ -409,7 +410,8 @@ export function ExternalAuthorsField({
     disabled,
 }: ExternalAuthorsFieldProps) {
     const { watch, setValue } = useFormContext();
-    const dictionary = getDictionary("en");
+    const dictionary = useDictionary();
+
 
     const externalAuthors = watch(name) || [];
 
@@ -420,12 +422,6 @@ export function ExternalAuthorsField({
 
     const removeAuthor = (index: number) => {
         const newAuthors = externalAuthors.filter((_: LocalizedString, i: number) => i !== index);
-        setValue(name, newAuthors);
-    };
-
-    const updateAuthor = (index: number, field: "en" | "ru", value: string) => {
-        const newAuthors = [...externalAuthors];
-        newAuthors[index] = { ...newAuthors[index], [field]: value };
         setValue(name, newAuthors);
     };
 
@@ -449,26 +445,11 @@ export function ExternalAuthorsField({
             <div className="space-y-4">
                 {externalAuthors.map((author: LocalizedString, index: number) => (
                     <div key={index} className="flex items-center gap-4">
-                        <div className="flex-1 space-y-2">
-                            <Label htmlFor={`${name}.${index}.en`}>
-                                {dictionary.common.enterEnglishText}
-                            </Label>
-                            <Input
-                                id={`${name}.${index}.en`}
-                                value={author.en}
-                                onChange={(e) => updateAuthor(index, "en", e.target.value)}
-                                disabled={disabled}
-                            />
-                        </div>
-                        <div className="flex-1 space-y-2">
-                            <Label htmlFor={`${name}.${index}.ru`}>
-                                {dictionary.common.enterRussianText}
-                            </Label>
-                            <Input
-                                id={`${name}.${index}.ru`}
-                                value={author.ru}
-                                onChange={(e) => updateAuthor(index, "ru", e.target.value)}
-                                disabled={disabled}
+                        <div className="flex-1">
+                            <LocalizedFormField
+                                name={`${name}.${index}`}
+                                required={required}
+                                lang="en"
                             />
                         </div>
                         <Button

@@ -10,12 +10,12 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { ResearcherFormData, researcherSchema } from "../schema";
-import { api, uploadFile } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Form, FormMessage } from "@/components/ui/form";
 import { LocalizedTextField } from "@/components/ui/form-fields";
 import { ProfileDialog } from "@/app/components/ui/profile-dialog";
-import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 import { FormField, FormItem } from "@/components/ui/form";
+import { PhotoUpload } from "@/components/ui/photo-upload";
 
 type ProfileKey = 'researchgate' | 'googleScholar' | 'scopus' | 'publons' | 'orcid';
 
@@ -38,7 +38,6 @@ export default function ResearcherFormPage({
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(id !== "new");
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string>("");
 
   const form = useForm<ResearcherFormData>({
     resolver: zodResolver(researcherSchema),
@@ -48,6 +47,7 @@ export default function ResearcherFormPage({
 
   const { setValue, watch } = form;
   const profiles = watch("profiles");
+  const photoUrl = watch("photo");
 
   useEffect(() => {
     if (id !== "new") {
@@ -59,7 +59,6 @@ export default function ResearcherFormPage({
     try {
       const data = await api.researchers.getOne(id);
       form.reset(data);
-      setPhotoPreview(data.photo);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -93,21 +92,8 @@ export default function ResearcherFormPage({
     }
   });
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const { url } = await uploadFile(file);
-        setValue("photo", url);
-        setPhotoPreview(url);
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: dictionary.common.error,
-          description: dictionary.admin.uploadError,
-        });
-      }
-    }
+  const handlePhotoChange = (url: string) => {
+    setValue("photo", url);
   };
 
   const handleAddProfile = () => {
@@ -190,35 +176,14 @@ export default function ResearcherFormPage({
             />
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium">{dictionary.admin.photo}</div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => document.getElementById("photo-upload")?.click()}
-                >
-                  {dictionary.admin.uploadPhoto}
-                </Button>
-                <input
-                  id="photo-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-              </div>
-              {photoPreview && (
-                <div className="mt-2">
-                  <ImageWithFallback
-                    src={photoPreview}
-                    alt="Researcher photo"
-                    width={100}
-                    height={100}
-                    className="rounded-md object-cover"
-                  />
-                </div>
-              )}
+              <div className="text-sm font-medium">{dictionary.admin.photo}</div>
+              <PhotoUpload
+                photoUrl={photoUrl}
+                onPhotoChange={handlePhotoChange}
+                buttonLabel={dictionary.admin.uploadPhoto || "Upload photo"}
+                errorMessage={dictionary.admin.uploadError}
+                multiple={false}
+              />
               <FormField
                 control={form.control}
                 name="photo"

@@ -60,6 +60,10 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
+	if err = migrateAddUniqueConstraintToPublications(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -115,7 +119,8 @@ func createTables() error {
 			published_at TEXT NOT NULL,
 			citations_count INTEGER DEFAULT 0,
 			link TEXT NOT NULL,
-			FOREIGN KEY (title_id) REFERENCES localized_strings(id)
+			FOREIGN KEY (title_id) REFERENCES localized_strings(id),
+			UNIQUE(title_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS researchers (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -845,6 +850,73 @@ func migrateRemoveLevelFromDisciplines() error {
 		// Delete the localized strings used for level
 		for _, levelId := range levelIds {
 			_, err = tx.Exec(`DELETE FROM localized_strings WHERE id = ?`, levelId)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func migrateAddUniqueConstraintToPublications() error {
+	// Find duplicate publications based on title content (not just title_id)
+	rows, err := DB.Query(`
+		SELECT p1.id, p1.title_id, ls1.en, ls1.ru
+		FROM publications p1
+		JOIN localized_strings ls1 ON p1.title_id = ls1.id
+		JOIN publications p2 ON p1.id > p2.id
+		JOIN localized_strings ls2 ON p2.title_id = ls2.id
+		WHERE (LOWER(ls1.en) = LOWER(ls2.en) OR LOWER(ls1.ru) = LOWER(ls2.ru))
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	// Collect duplicates to remove
+	var duplicatesToRemove []int
+	for rows.Next() {
+		var id int
+		var titleID int64
+		var titleEn, titleRu string
+		if err := rows.Scan(&id, &titleID, &titleEn, &titleRu); err != nil {
+			return err
+		}
+		duplicatesToRemove = append(duplicatesToRemove, id)
+	}
+
+	// Delete duplicates within a transaction
+	if len(duplicatesToRemove) > 0 {
+		tx, err := DB.Begin()
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err != nil {
+				tx.Rollback()
+			}
+		}()
+
+		for _, id := range duplicatesToRemove {
+			// Delete publication authors
+			_, err = tx.Exec("DELETE FROM publication_authors WHERE publication_id = ?", id)
+			if err != nil {
+				return err
+			}
+
+			// Delete external authors
+			_, err = tx.Exec("DELETE FROM publication_external_authors WHERE publication_id = ?", id)
+			if err != nil {
+				return err
+			}
+
+			// Delete publication
+			_, err = tx.Exec("DELETE FROM publications WHERE id = ?", id)
 			if err != nil {
 				return err
 			}

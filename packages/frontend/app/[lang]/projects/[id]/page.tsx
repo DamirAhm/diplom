@@ -3,7 +3,7 @@ import PublicationList from "../../../components/PublicationList";
 import VideoEmbed from "../../../components/VideoEmbed";
 import type { Locale, Project } from "@/app/types";
 import { getDictionary } from "@/app/dictionaries";
-import { Github } from "lucide-react";
+import { Github, Home } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/carousel";
 import { ImageWithFallback } from "../../../components/ImageWithFallback";
 import { api } from "@/lib/api";
+import Link from "next/link";
 
 const fetchProject = async (id: string): Promise<Project | null> => {
   try {
@@ -43,6 +44,70 @@ const ProjectPage = async ({
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="mb-8">
+        <nav className="flex" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1 md:space-x-3">
+            <li className="inline-flex items-center">
+              <Link
+                href={`/${lang}`}
+                className="flex items-center text-sm font-medium text-foreground/70 hover:text-primary"
+              >
+                <Home size={16} className="mr-1 mb-0.5" />
+                {lang === "en" ? "Home" : "Главная"}
+              </Link>
+            </li>
+            <li>
+              <div className="flex items-center">
+                <svg
+                  className="w-3 h-3 text-foreground/70 mx-1"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 9 4-4-4-4"
+                  />
+                </svg>
+                <Link
+                  href={`/${lang}/researchers`}
+                  className="ml-1 text-sm font-medium text-foreground/70 hover:text-primary md:ml-2"
+                >
+                  {dictionary.projects.title}
+                </Link>
+              </div>
+            </li>
+            <li aria-current="page">
+              <div className="flex items-center">
+                <svg
+                  className="w-3 h-3 text-foreground/70 mx-1"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 6 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 9 4-4-4-4"
+                  />
+                </svg>
+                <span className="ml-1 text-sm font-medium text-primary md:ml-2">
+                  {project.title[lang]}
+                </span>
+              </div>
+            </li>
+          </ol>
+        </nav>
+      </div>
+
+
       <div className="bg-card dark:bg-card rounded-lg shadow-lg">
         <div className="p-6">
           <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">
@@ -64,6 +129,9 @@ const ProjectPage = async ({
           )}
           {project.images && project.images.length > 0 && (
             <div className="mb-8">
+              <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                {dictionary.admin.images}
+              </h2>
               <Carousel className="w-full" opts={{ loop: true }}>
                 <CarouselContent>
                   {project.images.map((image) => (
@@ -84,6 +152,33 @@ const ProjectPage = async ({
               </Carousel>
             </div>
           )}
+          {project.videos.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
+                {dictionary.projects.projectVideos}
+              </h2>
+              <Carousel className="w-full" opts={{ loop: true }}>
+                <CarouselContent>
+                  {project.videos.map((video) => (
+                    <CarouselItem key={video.id}>
+                      <div
+                        key={video.id}
+                        className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4"
+                      >
+                        <VideoEmbed lang={lang} video={video} />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                {project.videos.length > 1 && (
+                  <>
+                    <CarouselPrevious />
+                    <CarouselNext />
+                  </>
+                )}
+              </Carousel>
+            </div>
+          )}
           {project.publications.length > 0 && (
             <div className="mb-8">
               <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
@@ -94,23 +189,6 @@ const ProjectPage = async ({
                   lang={lang}
                   publications={project.publications}
                 />
-              </div>
-            </div>
-          )}
-          {project.videos.length > 0 && (
-            <div>
-              <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200">
-                {dictionary.projects.projectVideos}
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {project.videos.map((video) => (
-                  <div
-                    key={video.id}
-                    className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4"
-                  >
-                    <VideoEmbed lang={lang} video={video} />
-                  </div>
-                ))}
               </div>
             </div>
           )}

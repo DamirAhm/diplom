@@ -15,8 +15,9 @@ import type {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Plus, Trash2, Upload } from "lucide-react";
-import { api, uploadFile } from "../../../../../lib/api";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { api } from "../../../../../lib/api";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
@@ -24,14 +25,13 @@ import { TextField, LocalizedTextField } from "@/components/ui/form-fields";
 import * as z from "zod";
 import { AutoComplete } from "@/components/ui/autocomplete";
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-import Image from "next/image";
-import { ImageWithFallback } from "../../../../components/ImageWithFallback";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { PhotoUpload, PhotoItem } from "@/components/ui/photo-upload";
 
 const projectSchema = z.object({
   title: z.object({
@@ -67,8 +67,10 @@ export default function ProjectFormPage({
     ProjectPublication[]
   >([]);
   const [videos, setVideos] = useState<ProjectVideo[]>([]);
-  const [images, setImages] = useState<ProjectImage[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const [images, setImages] = useState<PhotoItem[]>([]);
+  const [videoDialogOpen, setVideoDialogOpen] = useState(false);
+  const [newVideoTitle, setNewVideoTitle] = useState("");
+  const [newVideoUrl, setNewVideoUrl] = useState("");
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -85,14 +87,15 @@ export default function ProjectFormPage({
   const fetchProject = async () => {
     try {
       const data = await api.projects.getOne(id);
-      form.reset({
-        title: data.title,
-        description: data.description,
-        githubLink: data.githubLink || "",
-      });
+      form.reset(data);
       setVideos(data.videos);
       setProjectPublications(data.publications);
-      setImages(data.images || []);
+      // Преобразование ProjectImage[] в PhotoItem[]
+      setImages(data.images?.map(img => ({
+        id: img.id,
+        url: img.url,
+        order: img.order
+      })) || []);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -113,39 +116,8 @@ export default function ProjectFormPage({
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
-
-    setIsUploading(true);
-    try {
-      const filesRes = await Promise.allSettled(
-        Array.from(e.target.files).map(async (file, index) => {
-          const response = await uploadFile(file);
-
-          return {
-            id: Date.now() + index,
-            url: response.url,
-            order: images.length + index,
-          };
-        })
-      ).then((res) => res.filter((r) => r.status === "fulfilled"));
-
-      const files = filesRes.map((res) => res.value);
-
-      setImages((prev) => [...prev, ...files]);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: dictionary.common.error,
-        description: dictionary.admin.uploadError,
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleRemoveImage = (imageId: number) => {
-    setImages((prev) => prev.filter((img) => img.id !== imageId));
+  const handlePhotosChange = (newPhotos: PhotoItem[]) => {
+    setImages(newPhotos);
   };
 
   const onSubmit = async (formData: ProjectFormData) => {
@@ -180,19 +152,18 @@ export default function ProjectFormPage({
   };
 
   const handleAddVideo = () => {
-    const title = prompt(dictionary.admin.videoTitle);
-    if (!title) return;
-
-    const url = prompt(dictionary.admin.videoUrl);
-    if (!url) return;
+    if (!newVideoTitle || !newVideoUrl) return;
 
     const newVideo: ProjectVideo = {
       id: Date.now(),
-      title: { en: title, ru: title },
-      embedUrl: url,
+      title: { en: newVideoTitle, ru: newVideoTitle },
+      embedUrl: newVideoUrl,
     };
 
     setVideos((prev) => [...prev, newVideo]);
+    setNewVideoTitle("");
+    setNewVideoUrl("");
+    setVideoDialogOpen(false);
   };
 
   const handleRemoveVideo = (videoId: number) => {
@@ -263,64 +234,16 @@ export default function ProjectFormPage({
               type="url"
             />
 
-            <div>
-              <div className="mb-4">
-                <Label>{dictionary.admin.images}</Label>
-                <div className="mt-2">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      document.getElementById("image-upload")?.click()
-                    }
-                    disabled={isUploading}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isUploading
-                      ? dictionary.common.saving
-                      : dictionary.admin.uploadImages}
-                  </Button>
-                </div>
-                {images.length > 0 && (
-                  <div className="mt-4 w-[300px]">
-                    <Carousel opts={{ loop: true }}>
-                      <CarouselContent>
-                        {images.map((image) => (
-                          <CarouselItem key={image.id}>
-                            <div className="relative">
-                              <ImageWithFallback
-                                width={300}
-                                height={300}
-                                src={image.url}
-                                alt="Project image"
-                                className="object-cover rounded-lg"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                className="absolute top-2 right-2"
-                                onClick={() => handleRemoveImage(image.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </CarouselItem>
-                        ))}
-                      </CarouselContent>
-                      <CarouselPrevious type="button" />
-                      <CarouselNext type="button" />
-                    </Carousel>
-                  </div>
-                )}
+            <div className="mb-4">
+              <Label>{dictionary.admin.images}</Label>
+              <div className="mt-2">
+                <PhotoUpload
+                  photos={images}
+                  onPhotosChange={handlePhotosChange}
+                  buttonLabel={dictionary.admin.uploadImages || "Upload Images"}
+                  errorMessage={dictionary.admin.uploadError}
+                  multiple={true}
+                />
               </div>
             </div>
 
@@ -373,7 +296,7 @@ export default function ProjectFormPage({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleAddVideo}
+                  onClick={() => setVideoDialogOpen(true)}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   {dictionary.admin.addVideo}
@@ -412,6 +335,42 @@ export default function ProjectFormPage({
           </Button>
         </form>
       </Form>
+
+      <Dialog open={videoDialogOpen} onOpenChange={setVideoDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{dictionary.admin.addVideo}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="video-title">{dictionary.admin.videoTitle}</Label>
+              <Input
+                id="video-title"
+                value={newVideoTitle}
+                onChange={(e) => setNewVideoTitle(e.target.value)}
+                placeholder={dictionary.admin.videoTitle}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="video-url">{dictionary.admin.videoUrl}</Label>
+              <Input
+                id="video-url"
+                value={newVideoUrl}
+                onChange={(e) => setNewVideoUrl(e.target.value)}
+                placeholder={dictionary.admin.videoUrl}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVideoDialogOpen(false)}>
+              {dictionary.common.cancel}
+            </Button>
+            <Button onClick={handleAddVideo}>
+              {dictionary.common.save}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -16,10 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, uploadFile } from "../../../../../lib/api";
-import { ImageWithFallback } from "@/app/components/ImageWithFallback";
+import { api } from "../../../../../lib/api";
 import { FormError } from "@/components/ui/form-error";
 import { useFormValidation, ValidationSchema } from "@/lib/form-validation";
+import { PhotoUpload } from "@/components/ui/photo-upload";
 
 const emptyPartner: Omit<Partner, "id"> = {
   name: "",
@@ -118,23 +118,11 @@ export default function PartnerFormPage({
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const { url } = await uploadFile(file);
-      setPartner((prev) => ({
-        ...prev,
-        logo: url,
-      }));
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: dictionary.common.error,
-        description: dictionary.admin.uploadError,
-      });
-    }
+  const handlePhotoChange = (url: string) => {
+    setPartner((prev) => ({
+      ...prev,
+      logo: url,
+    }));
   };
 
   if (isLoading) {
@@ -207,23 +195,13 @@ export default function PartnerFormPage({
 
           <div>
             <Label htmlFor="logo">{dictionary.admin.photo}</Label>
-            <div className="flex items-center gap-4">
-              {partner.logo && (
-                <ImageWithFallback
-                  src={partner.logo}
-                  alt={partner.name}
-                  width={80}
-                  height={80}
-                  className="object-contain"
-                />
-              )}
-              <Input
-                id="logo"
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-              />
-            </div>
+            <PhotoUpload
+              photoUrl={partner.logo}
+              onPhotoChange={handlePhotoChange}
+              buttonLabel={dictionary.admin.uploadPhoto || "Upload photo"}
+              errorMessage={dictionary.admin.uploadError}
+              multiple={false}
+            />
           </div>
 
           <div>

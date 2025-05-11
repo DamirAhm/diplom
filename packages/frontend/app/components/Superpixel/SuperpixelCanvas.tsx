@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { computeConvexHull, crossProduct } from "./utils";
+import { updateGradientsView } from "./utils";
+import { drawAllStrokes, drawAllStrokesPixelMode, drawBorders, computeConvexHull, expandConvexHull } from "./CanvasDrawing";
 
 interface SuperpixelCanvasProps {
     strokeData: any;
@@ -18,6 +19,7 @@ interface SuperpixelCanvasProps {
     gradientSensitivity: number;
     setHighlightedStrokeId: (id: number | null) => void;
     highlightedStrokeId: number | null;
+    processingMode: "strokes" | "pixels";
 }
 
 export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
@@ -34,7 +36,8 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
     showColorGradient,
     gradientSensitivity,
     setHighlightedStrokeId,
-    highlightedStrokeId
+    highlightedStrokeId,
+    processingMode
 }) => {
     // Переменная для анимации пунктирной линии
     const lineDashOffsetRef = useRef(0);
@@ -99,7 +102,137 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
     // Перерисовка выделения при изменении данных о строках
     useEffect(() => {
         setHighlightedStrokeId(null);
-    }, [strokeData]);
+
+        // Отрисовка мазков с использованием выпуклых оболочек или отдельных пикселей
+        if (strokeData && strokesCanvasRef.current) {
+            if (processingMode === "pixels") {
+                drawAllStrokesPixelMode(
+                    strokesCanvasRef.current,
+                    strokeData.strokes,
+                    scaleX,
+                    scaleY
+                );
+            } else {
+                drawAllStrokes(
+                    strokesCanvasRef.current,
+                    strokeData.strokes,
+                    scaleX,
+                    scaleY
+                );
+            }
+
+            // Отрисовка границ мазков
+            if (bordersCanvasRef.current) {
+                drawBorders(
+                    bordersCanvasRef.current,
+                    strokeData.strokes,
+                    scaleX,
+                    scaleY,
+                );
+            }
+        }
+    }, [strokeData, scaleX, scaleY, processingMode]);
+
+    // Обновление градиентного вида при изменении данных или настроек отображения
+    useEffect(() => {
+        if (!strokeData || !gradientsCanvasRef.current || !originalCanvasRef.current) return;
+
+        const drawGradientVectors = (ctx: CanvasRenderingContext2D, vectors: any[], scaleX: number, scaleY: number) => {
+            // Draw each vector
+            for (const vector of vectors) {
+                // Scale coordinates
+                const x = Math.floor(vector.x * scaleX);
+                const y = Math.floor(vector.y * scaleY);
+
+                // Calculate line length based on vector magnitude
+                const lineLength = 10 + vector.length * 20;
+
+                // Calculate endpoint
+                const endX = x + Math.cos(vector.theta) * lineLength;
+                const endY = y + Math.sin(vector.theta) * lineLength;
+
+                // Draw vector line
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(endX, endY);
+                ctx.strokeStyle = "rgba(0, 100, 255, 0.7)";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Draw arrow tip
+                const arrowSize = 5;
+                const angle = vector.theta;
+
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(
+                    endX - arrowSize * Math.cos(angle - Math.PI / 6),
+                    endY - arrowSize * Math.sin(angle - Math.PI / 6)
+                );
+                ctx.lineTo(
+                    endX - arrowSize * Math.cos(angle + Math.PI / 6),
+                    endY - arrowSize * Math.sin(angle + Math.PI / 6)
+                );
+                ctx.closePath();
+                ctx.fillStyle = "rgba(0, 100, 255, 0.9)";
+                ctx.fill();
+
+                // Draw origin point
+                ctx.beginPath();
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(255, 0, 0, 0.7)";
+                ctx.fill();
+            }
+        };
+
+        const drawClusterCenters = (ctx: CanvasRenderingContext2D, strokes: any[], scaleX: number, scaleY: number) => {
+            if (!strokes || strokes.length === 0) return;
+
+            ctx.save();
+
+            // Draw centers
+            for (const stroke of strokes) {
+                const x = Math.floor(stroke.centerX * scaleX);
+                const y = Math.floor(stroke.centerY * scaleY);
+
+                // Draw crosshair
+                const size = 5;
+
+                ctx.beginPath();
+                // Horizontal line
+                ctx.moveTo(x - size, y);
+                ctx.lineTo(x + size, y);
+                // Vertical line
+                ctx.moveTo(x, y - size);
+                ctx.lineTo(x, y + size);
+
+                ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw center circle
+                ctx.beginPath();
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(255, 255, 0, 0.9)";
+                ctx.fill();
+            }
+
+            ctx.restore();
+        };
+
+        // Обновляем вид градиентов с использованием WebGL
+        updateGradientsView(
+            strokeData,
+            originalCanvasRef,
+            gradientsCanvasRef,
+            showGradients,
+            showCenters,
+            showColorGradient,
+            gradientSensitivity,
+            drawGradientVectors,
+            drawClusterCenters
+        );
+    }, [strokeData, showGradients, showCenters, showColorGradient, gradientSensitivity]);
 
     // Find the nearest stroke to mouse position
     const findNearestStroke = (mouseX: number, mouseY: number, strokes: any[]) => {
@@ -123,56 +256,129 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
         return nearestStroke;
     };
 
-    // Draw stroke highlight (using convex hull rather than bounding box)
+    // Draw stroke highlight using convex hull or bounding box based on the mode
     const drawStrokeHighlight = (ctx: CanvasRenderingContext2D, stroke: any) => {
         if (!stroke) return;
 
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Get pixel coordinates
-        const pixels = stroke.pixels.map((pixel: number[]) => ({
-            x: Math.floor(pixel[0] * scaleX),
-            y: Math.floor(pixel[1] * scaleY)
-        }));
+        // Highlight strategy depends on the processing mode
+        if (processingMode === "pixels") {
+            // For pixel mode, just draw a bounding box around all pixels
+            const points = stroke.pixels.map((pixel: number[]) => ({
+                x: Math.floor(pixel[0] * scaleX),
+                y: Math.floor(pixel[1] * scaleY)
+            }));
 
-        // Create convex hull using Andrew's monotone chain algorithm
-        const hull = computeConvexHull(pixels);
+            if (points.length > 0) {
+                // Find the bounding box
+                let minX = points[0].x;
+                let minY = points[0].y;
+                let maxX = points[0].x;
+                let maxY = points[0].y;
 
-        // Draw convex hull with smooth style
-        if (hull.length > 0) {
-            // Draw filled shape with a subtle glow effect
-            ctx.beginPath();
-            ctx.moveTo(hull[0].x, hull[0].y);
+                for (const p of points) {
+                    minX = Math.min(minX, p.x);
+                    minY = Math.min(minY, p.y);
+                    maxX = Math.max(maxX, p.x);
+                    maxY = Math.max(maxY, p.y);
+                }
 
-            for (let i = 1; i < hull.length; i++) {
-                ctx.lineTo(hull[i].x, hull[i].y);
+                // Add padding
+                minX -= 2;
+                minY -= 2;
+                maxX += 2;
+                maxY += 2;
+
+                // Draw a rectangle with glow effect
+                ctx.shadowColor = 'rgba(62, 148, 236, 0.6)';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = 'rgba(62, 148, 236, 0.1)';
+                ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+
+                // Reset shadow for border
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+
+                // Draw dashed border
+                ctx.strokeStyle = 'rgba(62, 148, 236, 0.8)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 2]);
+                ctx.lineDashOffset = lineDashOffsetRef.current;
+                ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+                ctx.setLineDash([]);
+            }
+        } else {
+            // For strokes mode, use convex hull as before
+            const points = stroke.pixels.map((pixel: number[]) => ({
+                x: Math.floor(pixel[0] * scaleX),
+                y: Math.floor(pixel[1] * scaleY)
+            }));
+
+            // Use computeConvexHull for strokes mode
+            let hull: { x: number, y: number }[] = [];
+
+            if (points.length > 0) {
+                if (points.length >= 3) {
+                    // Compute and expand the convex hull
+                    hull = computeConvexHull(points);
+                    hull = expandConvexHull(hull, 2);
+                } else {
+                    // Create a bounding rectangle for small strokes
+                    let minX = points[0].x;
+                    let minY = points[0].y;
+                    let maxX = points[0].x;
+                    let maxY = points[0].y;
+
+                    for (const p of points) {
+                        minX = Math.min(minX, p.x);
+                        minY = Math.min(minY, p.y);
+                        maxX = Math.max(maxX, p.x);
+                        maxY = Math.max(maxY, p.y);
+                    }
+
+                    // Add padding
+                    hull = [
+                        { x: minX - 2, y: minY - 2 },
+                        { x: maxX + 2, y: minY - 2 },
+                        { x: maxX + 2, y: maxY + 2 },
+                        { x: minX - 2, y: maxY + 2 }
+                    ];
+                }
             }
 
-            ctx.closePath();
+            // Draw the hull with glow effect
+            if (hull.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(hull[0].x, hull[0].y);
 
-            // Создаем свечение вокруг выделения
-            ctx.shadowColor = 'rgba(62, 148, 236, 0.6)';
-            ctx.shadowBlur = 10;
-            ctx.fillStyle = 'rgba(62, 148, 236, 0.1)';
-            ctx.fill();
+                for (let i = 1; i < hull.length; i++) {
+                    ctx.lineTo(hull[i].x, hull[i].y);
+                }
 
-            // Сбрасываем настройки тени для обводки
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
+                ctx.closePath();
 
-            // Рисуем анимированную обводку с пунктирной линией
-            ctx.strokeStyle = 'rgba(62, 148, 236, 0.8)';
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 2]); // Пунктирная линия
-            ctx.lineDashOffset = lineDashOffsetRef.current; // Анимированное смещение
-            ctx.stroke();
-            ctx.setLineDash([]); // Сброс стиля линии
+                ctx.shadowColor = 'rgba(62, 148, 236, 0.6)';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = 'rgba(62, 148, 236, 0.1)';
+                ctx.fill();
+
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+
+                ctx.strokeStyle = 'rgba(62, 148, 236, 0.8)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 2]);
+                ctx.lineDashOffset = lineDashOffsetRef.current;
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
         }
 
-        // Draw orientation vector - используем цвет, соответствующий теме
+        // Draw orientation vector
         const centerX = stroke.centerX * scaleX;
         const centerY = stroke.centerY * scaleY;
-        const vectorLength = 25; // Немного уменьшаем длину для элегантности
+        const vectorLength = 25; // Slightly shorter for elegance
         const angle = stroke.theta;
         const endX = centerX + Math.cos(angle) * vectorLength;
         const endY = centerY + Math.sin(angle) * vectorLength;
@@ -184,9 +390,9 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Рисуем стрелку на конце вектора
+        // Draw arrowhead
         const arrowSize = 5;
-        const arrowAngle = Math.PI / 8; // Угол для стрелки
+        const arrowAngle = Math.PI / 8;
 
         ctx.beginPath();
         ctx.moveTo(endX, endY);
@@ -203,7 +409,7 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Draw center point - с красивым градиентным заполнением
+        // Draw center point with gradient fill
         const pointRadius = 4;
         const gradient = ctx.createRadialGradient(
             centerX, centerY, 0,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ResearcherCard from "../../components/ResearcherCard";
-import { Locale, Researcher } from "../../types";
+import { Locale, ResearcherWithCount } from "../../types";
 import { getDictionary } from "../../dictionaries";
 import { api } from "@/lib/api";
 
@@ -11,7 +11,7 @@ export default function ResearchersPage({
 }: {
   params: { lang: Locale };
 }) {
-  const [researchers, setResearchers] = useState<Researcher[]>([]);
+  const [researchers, setResearchers] = useState<ResearcherWithCount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { lang } = params || {};
   const dictionary = getDictionary(lang);
@@ -60,9 +60,9 @@ export default function ResearchersPage({
             <div className="text-2xl font-bold dark:text-indigo-400">
               {researchers.length > 0
                 ? Math.round(
-                    researchers.reduce((acc, r) => acc + r.totalCitations, 0) /
-                      researchers.length
-                  )
+                  researchers.reduce((acc, r) => acc + r.totalCitations, 0) /
+                  researchers.length
+                )
                 : 0}
             </div>
             <div className="text-sm text-foreground/70">
@@ -73,9 +73,9 @@ export default function ResearchersPage({
             <div className="text-2xl font-bold dark:text-indigo-400">
               {researchers.length > 0
                 ? Math.round(
-                    researchers.reduce((acc, r) => acc + r.hIndex, 0) /
-                      researchers.length
-                  )
+                  researchers.reduce((acc, r) => acc + r.hIndex, 0) /
+                  researchers.length
+                )
                 : 0}
             </div>
             <div className="text-sm text-foreground/70">
@@ -85,7 +85,7 @@ export default function ResearchersPage({
           <div>
             <div className="text-2xl font-bold dark:text-indigo-400">
               {researchers.reduce(
-                (acc, r) => acc + (r.publications?.length || 0),
+                (acc, r) => acc + (r.publicationsCount || 0),
                 0
               )}
             </div>

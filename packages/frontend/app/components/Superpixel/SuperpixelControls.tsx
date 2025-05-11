@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 
 interface SuperpixelControlsProps {
   params: SuperpixelParams;
-  onParamChange: (name: keyof SuperpixelParams, value: number) => void;
+  onParamChange: (name: keyof SuperpixelParams, value: number | string) => void;
   onImageSelect: (file: File) => void;
   onProcess: () => void;
   isProcessing: boolean;
@@ -48,7 +48,7 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleParamChange =
-    (name: keyof SuperpixelParams) => (value: number) => {
+    (name: keyof SuperpixelParams) => (value: number | string) => {
       onParamChange(name, value);
     };
 
@@ -64,6 +64,10 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
       ...prev,
       [option]: !prev[option],
     }));
+  };
+
+  const handleModeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onParamChange("mode", e.target.value as "strokes" | "pixels");
   };
 
   return (
@@ -98,6 +102,47 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
       </div>
 
       <div className="space-y-6">
+        <div className="mb-6">
+          <h3 className="text-sm text-muted-foreground mb-2">Processing Mode</h3>
+          <div className="flex gap-4">
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="mode-strokes"
+                name="mode"
+                value="strokes"
+                checked={!params.mode || params.mode === "strokes"}
+                onChange={handleModeChange}
+                className="mr-2 h-4 w-4 rounded-full border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor="mode-strokes" className="text-sm text-foreground">
+                {isRussian ? "Мазки" : "Strokes"}
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="mode-pixels"
+                name="mode"
+                value="pixels"
+                checked={params.mode === "pixels"}
+                onChange={handleModeChange}
+                className="mr-2 h-4 w-4 rounded-full border-gray-300 text-primary focus:ring-primary"
+              />
+              <label htmlFor="mode-pixels" className="text-sm text-foreground">
+                {isRussian ? "Пиксели" : "Pixels"}
+              </label>
+            </div>
+          </div>
+          {params.mode === "pixels" && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {isRussian
+                ? "Режим Пиксели передает все данные о пикселях, что может замедлить обработку больших изображений."
+                : "Pixel mode transfers all pixel data, which may slow down processing for large images."}
+            </p>
+          )}
+        </div>
+
         <div>
           <p className="text-sm mb-2 text-muted-foreground flex justify-between">
             <span>{dict.sandbox.superpixel.numberOfSuperpixels}</span>
@@ -108,7 +153,7 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
           <Slider
             value={[params.numberOfSuperpixels]}
             min={10}
-            max={4000}
+            max={7500}
             step={10}
             onValueChange={(value) =>
               handleParamChange("numberOfSuperpixels")(value[0])
@@ -192,7 +237,7 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
           <Slider
             value={[params.adaptiveFactor]}
             min={0}
-            max={1}
+            max={5}
             step={0.01}
             onValueChange={(value) =>
               handleParamChange("adaptiveFactor")(value[0])

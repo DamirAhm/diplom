@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -19,6 +22,9 @@ const (
 	DefaultAdaptiveFactor = 0.5
 	GaussianKernelSize    = 5
 
+	// Processing timeout in seconds
+	ProcessingTimeout = 120
+
 	// Coefficients for RGB to LAB conversion
 	XyzRefWhiteX = 0.95047
 	XyzRefWhiteY = 1.00000
@@ -26,7 +32,7 @@ const (
 
 	// Values for adaptive clustering
 	AdaptiveGradientPower     = 2.5
-	BaseGridMinimumPercentage = 0.33
+	BaseGridMinimumPercentage = 0.2
 	JitterPercentage          = 0.3
 
 	// Cluster distance factor
@@ -55,6 +61,7 @@ type SuperpixelRequest struct {
 	Iterations          int     `json:"iterations"`
 	GridSize            int     `json:"gridSize"`
 	AdaptiveFactor      float64 `json:"adaptiveFactor"`
+	Mode                string  `json:"mode"`
 }
 
 type Stroke struct {
@@ -81,11 +88,10 @@ type GridVector struct {
 }
 
 type SuperpixelResponse struct {
-	ImageWidth    int          `json:"imageWidth"`
-	ImageHeight   int          `json:"imageHeight"`
-	Strokes       []Stroke     `json:"strokes"`
-	GridVectors   []GridVector `json:"gridVectors"`
-	GradientDebug [][]float64  `json:"gradientDebug"`
+	ImageWidth  int          `json:"imageWidth"`
+	ImageHeight int          `json:"imageHeight"`
+	Strokes     []Stroke     `json:"strokes"`
+	GridVectors []GridVector `json:"gridVectors"`
 }
 
 type ImageProcessingHandler struct {
@@ -112,6 +118,14 @@ func NewImageProcessingHandler(uploadDir string) *ImageProcessingHandler {
 }
 
 func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *http.Request) {
+	// Create a context with timeout
+	ctx, cancel := context.WithTimeout(r.Context(), ProcessingTimeout*time.Second)
+	defer cancel()
+
+	// Create channels for results and errors
+	resultChan := make(chan SuperpixelResponse, 1)
+	errChan := make(chan error, 1)
+
 	rand.Seed(time.Now().UnixNano())
 
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -123,6 +137,17 @@ func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *ht
 	paramJSON := r.FormValue("params")
 	if err := json.Unmarshal([]byte(paramJSON), &req); err != nil {
 		http.Error(w, "Invalid parameters: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Set default mode to "strokes" if not specified
+	if req.Mode == "" {
+		req.Mode = "strokes"
+	}
+
+	// Validate mode
+	if req.Mode != "strokes" && req.Mode != "pixels" {
+		http.Error(w, "Invalid mode. Must be 'strokes' or 'pixels'", http.StatusBadRequest)
 		return
 	}
 
@@ -160,26 +185,150 @@ func (h *ImageProcessingHandler) ProcessSuperpixels(w http.ResponseWriter, r *ht
 
 	bounds := img.Bounds()
 	width, height := bounds.Dx(), bounds.Dy()
-	labImg, _ := h.preprocessImage(img)
 
-	colorGradients := h.calculateColorGradients(labImg, width, height)
-	normalizedGradients := h.normalizeGradientsForVisualization(colorGradients, width, height)
-	strokes := h.extractStrokeData(img, req.NumberOfSuperpixels, req.CompactnessFactor, req.Elongation, req.Iterations, req.AdaptiveFactor)
-	gridVectors := h.createGradientGrid(img, req.GridSize)
+	// Run the intensive processing in a goroutine with timeout control
+	go func() {
+		// Check for context cancellation
+		if ctx.Err() != nil {
+			errChan <- errors.New("processing timed out")
+			return
+		}
 
-	resp := SuperpixelResponse{
-		ImageWidth:    width,
-		ImageHeight:   height,
-		Strokes:       strokes,
-		GridVectors:   gridVectors,
-		GradientDebug: normalizedGradients,
+		// Perform the resource-intensive operations
+		strokes := h.extractStrokeData(img, req.NumberOfSuperpixels, req.CompactnessFactor, req.Elongation, req.Iterations, req.AdaptiveFactor)
+
+		// Check for context cancellation after extractStrokeData
+		if ctx.Err() != nil {
+			errChan <- errors.New("processing timed out during stroke extraction")
+			return
+		}
+
+		gridVectors := h.createGradientGrid(img, req.GridSize)
+
+		// Check for context cancellation after createGradientGrid
+		if ctx.Err() != nil {
+			errChan <- errors.New("processing timed out during gradient grid creation")
+			return
+		}
+
+		// Process strokes based on the requested mode
+		if req.Mode == "strokes" {
+			// For strokes mode, optimize by reducing the pixel data
+			// Instead of sending all pixels, just send the contour
+			for i := range strokes {
+				// Extract only the contour for each stroke
+				strokes[i].Pixels = h.extractStrokeContour(strokes[i].Pixels)
+			}
+		}
+		// For pixels mode, we send all pixel data (no modification needed)
+
+		resultChan <- SuperpixelResponse{
+			ImageWidth:  width,
+			ImageHeight: height,
+			Strokes:     strokes,
+			GridVectors: gridVectors,
+		}
+	}()
+
+	// Wait for either the result, an error, or a timeout
+	select {
+	case resp := <-resultChan:
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
+		}
+	case err := <-errChan:
+		http.Error(w, err.Error(), http.StatusRequestTimeout)
+	case <-ctx.Done():
+		http.Error(w, "Image processing timed out. Try reducing the number of superpixels or using a smaller image.", http.StatusRequestTimeout)
+	}
+}
+
+// extractStrokeContour возвращает только внешний контур мазка вместо всех пикселей
+func (h *ImageProcessingHandler) extractStrokeContour(pixels [][2]int) [][2]int {
+	if len(pixels) <= 100 {
+		return pixels // Для маленьких мазков оставляем как есть
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
-		return
+	// Создаем карту посещенных пикселей
+	minX, minY := pixels[0][0], pixels[0][1]
+	maxX, maxY := pixels[0][0], pixels[0][1]
+
+	// Находим границы мазка
+	for _, p := range pixels {
+		if p[0] < minX {
+			minX = p[0]
+		}
+		if p[0] > maxX {
+			maxX = p[0]
+		}
+		if p[1] < minY {
+			minY = p[1]
+		}
+		if p[1] > maxY {
+			maxY = p[1]
+		}
 	}
+
+	// Создаем сетку, отмечая все пиксели мазка
+	width := maxX - minX + 3 // +3 для добавления границы в 1 пиксель
+	height := maxY - minY + 3
+	grid := make([][]bool, height)
+	for i := range grid {
+		grid[i] = make([]bool, width)
+	}
+
+	// Отмечаем пиксели мазка
+	for _, p := range pixels {
+		x := p[0] - minX + 1
+		y := p[1] - minY + 1
+		if x >= 0 && x < width && y >= 0 && y < height {
+			grid[y][x] = true
+		}
+	}
+
+	// Ищем контурные пиксели (те, у которых есть соседи, не принадлежащие мазку)
+	contour := make([][2]int, 0)
+
+	// Направления для проверки 8 соседей
+	dx := []int{-1, 0, 1, -1, 1, -1, 0, 1}
+	dy := []int{-1, -1, -1, 0, 0, 1, 1, 1}
+
+	for y := 1; y < height-1; y++ {
+		for x := 1; x < width-1; x++ {
+			if !grid[y][x] {
+				continue // Этот пиксель не принадлежит мазку
+			}
+
+			// Проверяем, является ли это граничным пикселем
+			isBoundary := false
+			for i := 0; i < 8; i++ {
+				nx, ny := x+dx[i], y+dy[i]
+				if nx >= 0 && nx < width && ny >= 0 && ny < height && !grid[ny][nx] {
+					isBoundary = true
+					break
+				}
+			}
+
+			if isBoundary {
+				contour = append(contour, [2]int{x + minX - 1, y + minY - 1})
+			}
+		}
+	}
+
+	// Если контур получился слишком большим, прореживаем его
+	if len(contour) > 500 {
+		samplingRate := len(contour)/500 + 1
+		sampledContour := make([][2]int, 0, 500)
+
+		for i := 0; i < len(contour); i += samplingRate {
+			sampledContour = append(sampledContour, contour[i])
+		}
+
+		return sampledContour
+	}
+
+	return contour
 }
 
 func (h *ImageProcessingHandler) preprocessImage(img image.Image) ([][]Pixel, [][][]float64) {
@@ -1030,9 +1179,6 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 				startY := int(math.Max(0, c.CenterY-float64(S)))
 				endY := int(math.Min(float64(height-1), c.CenterY+float64(S)))
 
-				// Локальные лучшие результаты для этого кластера
-				localResults := make([]ClusterResult, 0)
-
 				for y := startY; y <= endY; y++ {
 					for x := startX; x <= endX; x++ {
 						dx := float64(x) - c.CenterX
@@ -1053,21 +1199,18 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 						dist := colorDist + compactness*spatialDist/float64(S)
 
 						// Добавляем результат в локальный буфер
-						localResults = append(localResults, ClusterResult{
+						resultChan <- ClusterResult{
 							ClusterIdx: i,
 							PixelX:     x,
 							PixelY:     y,
 							Distance:   dist,
-						})
+						}
 					}
-				}
-
-				// Отправляем все локальные результаты в общий канал
-				for _, result := range localResults {
-					resultChan <- result
 				}
 			}(i)
 		}
+
+		labeledPixels := 0
 
 		// Запускаем горутину для закрытия канала после обработки всех кластеров
 		go func() {
@@ -1083,6 +1226,7 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 			if result.Distance < distances[y][x] {
 				distances[y][x] = result.Distance
 				labels[y][x] = result.ClusterIdx
+				labeledPixels++
 			}
 		}
 
@@ -1145,65 +1289,54 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 	}
 
 	// Проверяем, есть ли непомеченные пиксели
-	hasUnlabeledPixels := false
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			if labels[y][x] == -1 {
-				hasUnlabeledPixels = true
-				break
-			}
-		}
-		if hasUnlabeledPixels {
-			break
-		}
-	}
+	// hasUnlabeledPixels := labeledPixels < width*height
 
-	// Заполняем все непомеченные пиксели
-	if hasUnlabeledPixels {
-		for y := 0; y < height; y++ {
-			for x := 0; x < width; x++ {
-				if labels[y][x] == -1 {
-					minDist := math.Inf(1)
-					nearestCluster := -1
+	// // Заполняем все непомеченные пиксели
+	// if hasUnlabeledPixels {
+	// 	for y := 0; y < height; y++ {
+	// 		for x := 0; x < width; x++ {
+	// 			if labels[y][x] == -1 {
+	// 				minDist := math.Inf(1)
+	// 				nearestCluster := -1
 
-					for i, c := range clusters {
-						dx := float64(x) - c.CenterX
-						dy := float64(y) - c.CenterY
-						dist := dx*dx + dy*dy
+	// 				for i, c := range clusters {
+	// 					dx := float64(x) - c.CenterX
+	// 					dy := float64(y) - c.CenterY
+	// 					dist := dx*dx + dy*dy
 
-						if dist < minDist {
-							minDist = dist
-							nearestCluster = i
-						}
-					}
+	// 					if dist < minDist {
+	// 						minDist = dist
+	// 						nearestCluster = i
+	// 					}
+	// 				}
 
-					if nearestCluster >= 0 {
-						labels[y][x] = nearestCluster
+	// 				if nearestCluster >= 0 {
+	// 					labels[y][x] = nearestCluster
 
-						l, a, b := rgbToLab(img.At(x, y))
-						var theta float64
-						if x >= 2 && x < width-2 && y >= 2 && y < height-2 {
-							perpX := -majorVectorY[y][x]
-							perpY := majorVectorX[y][x]
-							theta = math.Atan2(perpY, perpX)
-						} else {
-							theta = 0.0
-						}
+	// 					l, a, b := rgbToLab(img.At(x, y))
+	// 					var theta float64
+	// 					if x >= 2 && x < width-2 && y >= 2 && y < height-2 {
+	// 						perpX := -majorVectorY[y][x]
+	// 						perpY := majorVectorX[y][x]
+	// 						theta = math.Atan2(perpY, perpX)
+	// 					} else {
+	// 						theta = 0.0
+	// 					}
 
-						pixel := Pixel{
-							X:     x,
-							Y:     y,
-							L:     l,
-							A:     a,
-							B:     b,
-							Theta: theta,
-						}
-						clusters[nearestCluster].Pixels = append(clusters[nearestCluster].Pixels, pixel)
-					}
-				}
-			}
-		}
-	}
+	// 					pixel := Pixel{
+	// 						X:     x,
+	// 						Y:     y,
+	// 						L:     l,
+	// 						A:     a,
+	// 						B:     b,
+	// 						Theta: theta,
+	// 					}
+	// 					clusters[nearestCluster].Pixels = append(clusters[nearestCluster].Pixels, pixel)
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	return h.clustersToStrokes(img, clusters, labels)
 }

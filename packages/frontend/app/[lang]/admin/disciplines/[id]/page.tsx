@@ -10,10 +10,9 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, Plus, Trash2 } from "lucide-react";
 import { DisciplineFormData, disciplineSchema } from "../schema";
-import { api, uploadFile } from "@/lib/api";
+import { api } from "@/lib/api";
 import { Form, FormMessage } from "@/components/ui/form";
 import { LocalizedTextField } from "@/components/ui/form-fields";
-import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 import { FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -22,6 +21,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Researcher } from "@/app/types";
+import { ResearcherSelector } from "@/components/ui/researcher-selector";
+import { PhotoUpload } from "@/components/ui/photo-upload";
 
 // Interface for the simplified researcher representation used in disciplines
 interface DisciplineResearcher {
@@ -48,7 +49,6 @@ export default function DisciplineFormPage({
     const router = useRouter();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(id !== "new");
-    const [photoPreview, setPhotoPreview] = useState<string>("");
     const [researchers, setResearchers] = useState<Researcher[]>([]);
     const [selectedResearchers, setSelectedResearchers] = useState<Set<number>>(new Set());
     const [showResearcherSelector, setShowResearcherSelector] = useState(false);
@@ -61,6 +61,7 @@ export default function DisciplineFormPage({
 
     const { setValue, watch, reset, formState } = form;
     const formResearchers = watch("researchers");
+    const imageUrl = watch("image");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -72,11 +73,13 @@ export default function DisciplineFormPage({
                 if (id !== "new") {
                     const discipline = await api.disciplines.getOne(id);
                     reset(discipline);
-                    setPhotoPreview(discipline.image);
 
                     // Track selected researchers
                     const selectedIds = new Set(discipline.researchers.map(r => r.id));
                     setSelectedResearchers(selectedIds);
+                } else {
+                    // Initialize with empty set for new discipline
+                    setSelectedResearchers(new Set());
                 }
             } catch (error) {
                 toast({
@@ -114,51 +117,8 @@ export default function DisciplineFormPage({
         }
     });
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            try {
-                const { url } = await uploadFile(file);
-                setValue("image", url);
-                setPhotoPreview(url);
-            } catch (error) {
-                toast({
-                    variant: "destructive",
-                    title: dictionary.common.error,
-                    description: dictionary.admin.uploadError,
-                });
-            }
-        }
-    };
-
-    const toggleResearcher = (researcher: Researcher) => {
-        const newSelectedResearchers = new Set(selectedResearchers);
-        const researcherExists = formResearchers.some(r => r.id === researcher.id);
-
-        if (researcherExists) {
-            // Remove researcher
-            newSelectedResearchers.delete(researcher.id);
-            setValue("researchers", formResearchers.filter(r => r.id !== researcher.id));
-        } else {
-            // Add researcher
-            newSelectedResearchers.add(researcher.id);
-
-            // Create a simplified researcher representation for the discipline
-            const disciplineResearcher: DisciplineResearcher = {
-                id: researcher.id,
-                name: {
-                    en: `${researcher.name.en} ${researcher.lastName.en}`,
-                    ru: `${researcher.name.ru} ${researcher.lastName.ru}`
-                }
-            };
-
-            setValue("researchers", [
-                ...formResearchers,
-                disciplineResearcher
-            ]);
-        }
-
-        setSelectedResearchers(newSelectedResearchers);
+    const handlePhotoChange = (url: string) => {
+        setValue("image", url);
     };
 
     if (isLoading) {
@@ -212,35 +172,15 @@ export default function DisciplineFormPage({
                         />
 
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <div className="text-sm font-medium">{dictionary.admin.image || "Image"}</div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => document.getElementById("image-upload")?.click()}
-                                >
-                                    {dictionary.admin.uploadImage || "Upload Image"}
-                                </Button>
-                                <input
-                                    id="image-upload"
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={handleImageUpload}
-                                />
-                            </div>
-                            {photoPreview && (
-                                <div className="mt-2">
-                                    <ImageWithFallback
-                                        src={photoPreview}
-                                        alt="Discipline image"
-                                        width={200}
-                                        height={150}
-                                        className="rounded-md object-cover"
-                                    />
-                                </div>
-                            )}
+                            <div className="text-sm font-medium">{dictionary.admin.image || "Image"}</div>
+                            <PhotoUpload
+                                photoUrl={imageUrl}
+                                onPhotoChange={handlePhotoChange}
+                                buttonLabel={dictionary.admin.uploadImage || "Upload Image"}
+                                errorMessage={dictionary.admin.uploadError}
+                                previewSize={200}
+                                multiple={false}
+                            />
                             <FormField
                                 control={form.control}
                                 name="image"
@@ -253,89 +193,30 @@ export default function DisciplineFormPage({
                         </div>
 
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <FormLabel>
-                                    {dictionary.admin.researchers || "Researchers"}
-                                    <span className="text-destructive ml-1">*</span>
-                                </FormLabel>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowResearcherSelector(!showResearcherSelector)}
-                                >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    {dictionary.admin.addResearcher || "Add Researcher"}
-                                </Button>
-                            </div>
+                            <FormLabel>
+                                {dictionary.admin.researchers || "Researchers"}
+                                <span className="text-destructive ml-1">*</span>
+                            </FormLabel>
 
-                            {/* Selected researchers list */}
-                            {formResearchers.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    {formResearchers.map((researcher) => (
-                                        <Badge
-                                            key={researcher.id}
-                                            variant="default"
-                                            className="flex items-center gap-1 px-3 py-1"
-                                        >
-                                            {researcher.name[lang]}
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-4 w-4 p-0 ml-1"
-                                                onClick={() => {
-                                                    // Find the full researcher to toggle
-                                                    const fullResearcher = researchers.find(r => r.id === researcher.id);
-                                                    if (fullResearcher) {
-                                                        toggleResearcher(fullResearcher);
-                                                    }
-                                                }}
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </Badge>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Researcher selector */}
-                            {showResearcherSelector && (
-                                <Card className="mt-2">
-                                    <CardContent className="p-4">
-                                        <ScrollArea className="h-60">
-                                            <div className="space-y-2">
-                                                {researchers.map((researcher) => (
-                                                    <div
-                                                        key={researcher.id}
-                                                        className={`flex items-center justify-between p-2 rounded-md cursor-pointer ${selectedResearchers.has(researcher.id)
-                                                            ? 'bg-primary/10 border border-primary/30'
-                                                            : 'hover:bg-primary/5'
-                                                            }`}
-                                                        onClick={() => toggleResearcher(researcher)}
-                                                    >
-                                                        <div className="flex items-center gap-2">
-                                                            {researcher.photo && (
-                                                                <ImageWithFallback
-                                                                    src={researcher.photo}
-                                                                    alt={`${researcher.name[lang]} ${researcher.lastName[lang]}`}
-                                                                    width={30}
-                                                                    height={30}
-                                                                    className="rounded-full object-cover"
-                                                                />
-                                                            )}
-                                                            <span>{researcher.name[lang]} {researcher.lastName[lang]}</span>
-                                                        </div>
-                                                        {selectedResearchers.has(researcher.id) && (
-                                                            <Check className="h-4 w-4 text-primary" />
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </ScrollArea>
-                                    </CardContent>
-                                </Card>
-                            )}
+                            <ResearcherSelector
+                                researchers={researchers}
+                                selectedIds={formResearchers.map(r => r.id)}
+                                onChange={(ids) => {
+                                    const newResearchers = ids.map(id => {
+                                        const researcher = researchers.find(r => r.id === id);
+                                        if (!researcher) return null;
+                                        return {
+                                            id: researcher.id,
+                                            name: {
+                                                en: `${researcher.name.en} ${researcher.lastName.en}`,
+                                                ru: `${researcher.name.ru} ${researcher.lastName.ru}`
+                                            }
+                                        };
+                                    }).filter((r): r is DisciplineResearcher => r !== null);
+                                    setValue("researchers", newResearchers);
+                                }}
+                                lang={lang}
+                            />
 
                             <FormField
                                 control={form.control}
@@ -349,18 +230,9 @@ export default function DisciplineFormPage({
                         </div>
                     </div>
 
-                    <div className="flex justify-end space-x-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => router.push(`/${lang}/admin/disciplines`)}
-                        >
-                            {dictionary.common.cancel}
-                        </Button>
-                        <Button type="submit">
-                            {dictionary.common.save}
-                        </Button>
-                    </div>
+                    <Button type="submit" disabled={formState.isSubmitting}>
+                        {formState.isSubmitting ? dictionary.common.saving : dictionary.common.save}
+                    </Button>
                 </form>
             </Form>
         </div>
