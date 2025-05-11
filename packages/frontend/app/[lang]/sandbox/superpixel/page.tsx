@@ -36,6 +36,7 @@ export default function SuperpixelPage({
 }) {
   const dict = getDictionary(lang).sandbox.superpixel;
   const { toast } = useToast();
+  const isRussian = lang === "ru";
 
   const originalCanvasRef = useRef<HTMLCanvasElement>(null);
   const strokesCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,6 +62,7 @@ export default function SuperpixelPage({
   );
   const [strokesRendered, setStrokesRendered] = useState(false);
   const [bordersRendered, setBordersRendered] = useState(false);
+  const [maxDisplayedStrokes, setMaxDisplayedStrokes] = useState<number>(1000);
 
   const [drawOptions, setDrawOptions] = useState({
     drawCenters: false,
@@ -200,6 +202,11 @@ export default function SuperpixelPage({
 
       setStrokeData(data);
 
+      // Adjust maxDisplayedStrokes based on the actual number of strokes
+      if (data.strokes && data.strokes.length < maxDisplayedStrokes) {
+        setMaxDisplayedStrokes(data.strokes.length);
+      }
+
       if (strokesCanvasRef.current) {
         if (strokesCanvasRef.current.parentElement) {
           strokesCanvasRef.current.style.visibility = "hidden";
@@ -208,14 +215,14 @@ export default function SuperpixelPage({
         if (params.mode === "pixels") {
           await drawAllStrokesPixelMode(
             strokesCanvasRef.current,
-            data.strokes,
+            data.strokes.slice(0, maxDisplayedStrokes),
             scaleX,
             scaleY
           );
         } else {
           await drawAllStrokes(
             strokesCanvasRef.current,
-            data.strokes,
+            data.strokes.slice(0, maxDisplayedStrokes),
             scaleX,
             scaleY
           );
@@ -234,7 +241,7 @@ export default function SuperpixelPage({
 
         await drawBorders(
           bordersCanvasRef.current,
-          data.strokes,
+          data.strokes.slice(0, maxDisplayedStrokes),
           scaleX,
           scaleY,
         );
@@ -376,20 +383,29 @@ export default function SuperpixelPage({
       if (params.mode === "pixels") {
         drawAllStrokesPixelMode(
           strokesCanvasRef.current,
-          strokeData.strokes,
+          strokeData.strokes.slice(0, maxDisplayedStrokes),
           scaleX,
           scaleY
         );
       } else {
         drawAllStrokes(
           strokesCanvasRef.current,
-          strokeData.strokes,
+          strokeData.strokes.slice(0, maxDisplayedStrokes),
+          scaleX,
+          scaleY
+        );
+      }
+
+      if (bordersCanvasRef.current && bordersRendered) {
+        drawBorders(
+          bordersCanvasRef.current,
+          strokeData.strokes.slice(0, maxDisplayedStrokes),
           scaleX,
           scaleY
         );
       }
     }
-  }, [params.mode, strokeData, strokesRendered]);
+  }, [maxDisplayedStrokes, params.mode, strokeData, strokesRendered]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -430,6 +446,30 @@ export default function SuperpixelPage({
                     value={gradientSensitivity}
                     onChange={(e) =>
                       setGradientSensitivity(parseFloat(e.target.value))
+                    }
+                    className="w-full cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {strokeData && strokeData.strokes && strokeData.strokes.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                    <Label className="text-muted-foreground">
+                      {isRussian ? "Количество отображаемых мазков" : "Displayed strokes"}
+                    </Label>
+                    <span className="font-medium text-foreground">
+                      {maxDisplayedStrokes} / {strokeData.strokes.length}
+                    </span>
+                  </div>
+                  <Input
+                    type="range"
+                    min={1}
+                    max={strokeData.strokes.length}
+                    step={1}
+                    value={maxDisplayedStrokes}
+                    onChange={(e) =>
+                      setMaxDisplayedStrokes(parseInt(e.target.value))
                     }
                     className="w-full cursor-pointer"
                   />

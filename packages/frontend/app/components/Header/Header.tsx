@@ -73,7 +73,7 @@ export default function Header({ lang }: HeaderProps) {
                   .join(" ")}
                 &nbsp;
               </span>
-              <span className="hidden sm:block">
+              <span className="hidden lg:block md:hidden sm:block">
                 {dictionary.common.laboratoryName.split(" ").slice(-1).at(-1)}
               </span>
             </Link>
