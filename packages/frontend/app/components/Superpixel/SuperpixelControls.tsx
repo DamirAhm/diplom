@@ -66,10 +66,6 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
     }));
   };
 
-  const handleModeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onParamChange("mode", e.target.value as "strokes" | "pixels");
-  };
-
   return (
     <div className="w-full p-4 bg-background rounded-lg border border-border">
       <div className="mb-6">
@@ -102,47 +98,6 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
       </div>
 
       <div className="space-y-6">
-        <div className="mb-6">
-          <h3 className="text-sm text-muted-foreground mb-2">Processing Mode</h3>
-          <div className="flex gap-4">
-            <div className="flex items-center">
-              <input
-                type="radio"
-                id="mode-strokes"
-                name="mode"
-                value="strokes"
-                checked={!params.mode || params.mode === "strokes"}
-                onChange={handleModeChange}
-                className="mr-2 h-4 w-4 rounded-full border-gray-300 text-primary focus:ring-primary"
-              />
-              <label htmlFor="mode-strokes" className="text-sm text-foreground">
-                {isRussian ? "Мазки" : "Strokes"}
-              </label>
-            </div>
-            <div className="flex items-center">
-              <input
-                type="radio"
-                id="mode-pixels"
-                name="mode"
-                value="pixels"
-                checked={params.mode === "pixels"}
-                onChange={handleModeChange}
-                className="mr-2 h-4 w-4 rounded-full border-gray-300 text-primary focus:ring-primary"
-              />
-              <label htmlFor="mode-pixels" className="text-sm text-foreground">
-                {isRussian ? "Пиксели" : "Pixels"}
-              </label>
-            </div>
-          </div>
-          {params.mode === "pixels" && (
-            <p className="text-xs text-muted-foreground mt-2">
-              {isRussian
-                ? "Режим Пиксели передает все данные о пикселях, что может замедлить обработку больших изображений."
-                : "Pixel mode transfers all pixel data, which may slow down processing for large images."}
-            </p>
-          )}
-        </div>
-
         <div>
           <p className="text-sm mb-2 text-muted-foreground flex justify-between">
             <span>{dict.sandbox.superpixel.numberOfSuperpixels}</span>

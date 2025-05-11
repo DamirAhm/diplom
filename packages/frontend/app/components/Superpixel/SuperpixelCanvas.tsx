@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { updateGradientsView } from "./utils";
-import { drawAllStrokes, drawAllStrokesPixelMode, drawBorders, computeConvexHull, expandConvexHull } from "./CanvasDrawing";
+import { drawAllStrokes, drawBorders, computeConvexHull, expandConvexHull } from "./CanvasDrawing";
 
 interface SuperpixelCanvasProps {
     strokeData: any;
@@ -19,7 +19,6 @@ interface SuperpixelCanvasProps {
     gradientSensitivity: number;
     setHighlightedStrokeId: (id: number | null) => void;
     highlightedStrokeId: number | null;
-    processingMode: "strokes" | "pixels";
 }
 
 export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
@@ -36,8 +35,7 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
     showColorGradient,
     gradientSensitivity,
     setHighlightedStrokeId,
-    highlightedStrokeId,
-    processingMode
+    highlightedStrokeId
 }) => {
     // Переменная для анимации пунктирной линии
     const lineDashOffsetRef = useRef(0);
@@ -103,23 +101,14 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
     useEffect(() => {
         setHighlightedStrokeId(null);
 
-        // Отрисовка мазков с использованием выпуклых оболочек или отдельных пикселей
+        // Отрисовка мазков и границ
         if (strokeData && strokesCanvasRef.current) {
-            if (processingMode === "pixels") {
-                drawAllStrokesPixelMode(
-                    strokesCanvasRef.current,
-                    strokeData.strokes,
-                    scaleX,
-                    scaleY
-                );
-            } else {
-                drawAllStrokes(
-                    strokesCanvasRef.current,
-                    strokeData.strokes,
-                    scaleX,
-                    scaleY
-                );
-            }
+            drawAllStrokes(
+                strokesCanvasRef.current,
+                strokeData.strokes,
+                scaleX,
+                scaleY
+            );
 
             // Отрисовка границ мазков
             if (bordersCanvasRef.current) {
@@ -131,7 +120,7 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
                 );
             }
         }
-    }, [strokeData, scaleX, scaleY, processingMode]);
+    }, [strokeData, scaleX, scaleY]);
 
     // Обновление градиентного вида при изменении данных или настроек отображения
     useEffect(() => {
@@ -256,22 +245,28 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
         return nearestStroke;
     };
 
-    // Draw stroke highlight using convex hull or bounding box based on the mode
+    // Draw stroke highlight using convex hull
     const drawStrokeHighlight = (ctx: CanvasRenderingContext2D, stroke: any) => {
         if (!stroke) return;
 
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        // Highlight strategy depends on the processing mode
-        if (processingMode === "pixels") {
-            // For pixel mode, just draw a bounding box around all pixels
-            const points = stroke.pixels.map((pixel: number[]) => ({
-                x: Math.floor(pixel[0] * scaleX),
-                y: Math.floor(pixel[1] * scaleY)
-            }));
+        // Use convex hull for highlighting strokes
+        const points = stroke.pixels.map((pixel: number[]) => ({
+            x: Math.floor(pixel[0] * scaleX),
+            y: Math.floor(pixel[1] * scaleY)
+        }));
 
-            if (points.length > 0) {
-                // Find the bounding box
+        // Create a convex hull if enough points
+        let hull: { x: number, y: number }[] = [];
+
+        if (points.length > 0) {
+            if (points.length >= 3) {
+                // Compute and expand the convex hull
+                hull = computeConvexHull(points);
+                hull = expandConvexHull(hull, 2);
+            } else {
+                // Create a bounding rectangle for small strokes
                 let minX = points[0].x;
                 let minY = points[0].y;
                 let maxX = points[0].x;
@@ -285,94 +280,40 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
                 }
 
                 // Add padding
-                minX -= 2;
-                minY -= 2;
-                maxX += 2;
-                maxY += 2;
-
-                // Draw a rectangle with glow effect
-                ctx.shadowColor = 'rgba(62, 148, 236, 0.6)';
-                ctx.shadowBlur = 10;
-                ctx.fillStyle = 'rgba(62, 148, 236, 0.1)';
-                ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
-
-                // Reset shadow for border
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-
-                // Draw dashed border
-                ctx.strokeStyle = 'rgba(62, 148, 236, 0.8)';
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([4, 2]);
-                ctx.lineDashOffset = lineDashOffsetRef.current;
-                ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
-                ctx.setLineDash([]);
+                hull = [
+                    { x: minX - 2, y: minY - 2 },
+                    { x: maxX + 2, y: minY - 2 },
+                    { x: maxX + 2, y: maxY + 2 },
+                    { x: minX - 2, y: maxY + 2 }
+                ];
             }
-        } else {
-            // For strokes mode, use convex hull as before
-            const points = stroke.pixels.map((pixel: number[]) => ({
-                x: Math.floor(pixel[0] * scaleX),
-                y: Math.floor(pixel[1] * scaleY)
-            }));
+        }
 
-            // Use computeConvexHull for strokes mode
-            let hull: { x: number, y: number }[] = [];
+        // Draw the hull with glow effect
+        if (hull.length > 0) {
+            ctx.beginPath();
+            ctx.moveTo(hull[0].x, hull[0].y);
 
-            if (points.length > 0) {
-                if (points.length >= 3) {
-                    // Compute and expand the convex hull
-                    hull = computeConvexHull(points);
-                    hull = expandConvexHull(hull, 2);
-                } else {
-                    // Create a bounding rectangle for small strokes
-                    let minX = points[0].x;
-                    let minY = points[0].y;
-                    let maxX = points[0].x;
-                    let maxY = points[0].y;
-
-                    for (const p of points) {
-                        minX = Math.min(minX, p.x);
-                        minY = Math.min(minY, p.y);
-                        maxX = Math.max(maxX, p.x);
-                        maxY = Math.max(maxY, p.y);
-                    }
-
-                    // Add padding
-                    hull = [
-                        { x: minX - 2, y: minY - 2 },
-                        { x: maxX + 2, y: minY - 2 },
-                        { x: maxX + 2, y: maxY + 2 },
-                        { x: minX - 2, y: maxY + 2 }
-                    ];
-                }
+            for (let i = 1; i < hull.length; i++) {
+                ctx.lineTo(hull[i].x, hull[i].y);
             }
 
-            // Draw the hull with glow effect
-            if (hull.length > 0) {
-                ctx.beginPath();
-                ctx.moveTo(hull[0].x, hull[0].y);
+            ctx.closePath();
 
-                for (let i = 1; i < hull.length; i++) {
-                    ctx.lineTo(hull[i].x, hull[i].y);
-                }
+            ctx.shadowColor = 'rgba(62, 148, 236, 0.6)';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = 'rgba(62, 148, 236, 0.1)';
+            ctx.fill();
 
-                ctx.closePath();
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
 
-                ctx.shadowColor = 'rgba(62, 148, 236, 0.6)';
-                ctx.shadowBlur = 10;
-                ctx.fillStyle = 'rgba(62, 148, 236, 0.1)';
-                ctx.fill();
-
-                ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-
-                ctx.strokeStyle = 'rgba(62, 148, 236, 0.8)';
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([4, 2]);
-                ctx.lineDashOffset = lineDashOffsetRef.current;
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
+            ctx.strokeStyle = 'rgba(62, 148, 236, 0.8)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 2]);
+            ctx.lineDashOffset = lineDashOffsetRef.current;
+            ctx.stroke();
+            ctx.setLineDash([]);
         }
 
         // Draw orientation vector

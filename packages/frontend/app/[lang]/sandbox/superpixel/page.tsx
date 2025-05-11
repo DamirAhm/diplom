@@ -17,7 +17,6 @@ import { SuperpixelControls } from "@/app/components/Superpixel/SuperpixelContro
 import { SuperpixelCanvas } from "@/app/components/Superpixel/SuperpixelCanvas";
 import {
   drawAllStrokes,
-  drawAllStrokesPixelMode,
   updateGradientsView,
   drawGradientVectors,
   drawClusterCenters,
@@ -60,9 +59,6 @@ export default function SuperpixelPage({
   const [highlightedStrokeId, setHighlightedStrokeId] = useState<number | null>(
     null
   );
-  const [strokesRendered, setStrokesRendered] = useState(false);
-  const [bordersRendered, setBordersRendered] = useState(false);
-  const [maxDisplayedStrokes, setMaxDisplayedStrokes] = useState<number>(1000);
 
   const [drawOptions, setDrawOptions] = useState({
     drawCenters: false,
@@ -76,6 +72,53 @@ export default function SuperpixelPage({
 
   const [scaleX, setScaleX] = useState(1);
   const [scaleY, setScaleY] = useState(1);
+
+  // Function to sort strokes by color similarity
+  const sortStrokesByColor = (strokes: any[]) => {
+    if (!strokes || strokes.length === 0) return strokes;
+
+    const result = [...strokes];
+
+    // Helper function to calculate color distance
+    const colorDistance = (colorA: [number, number, number], colorB: [number, number, number]) => {
+      const meanR = (colorA[0] + colorB[0]) / 2;
+
+      return Math.sqrt(
+        (2 + meanR / 256) * Math.pow(colorA[0] - colorB[0], 2) +
+        4 * Math.pow(colorA[1] - colorB[1], 2) +
+        (2 + (255 - meanR) / 256) * Math.pow(colorA[2] - colorB[2], 2)
+      );
+    };
+
+    // Start with the first stroke
+    const sortedStrokes = [result[0]];
+    const remaining = result.slice(1);
+
+    // For each position in the sorted array
+    while (remaining.length > 0) {
+      const lastStroke = sortedStrokes[sortedStrokes.length - 1];
+      let nearestIndex = 0;
+      let minDistance = Infinity;
+
+      // Find the nearest stroke by color
+      remaining.forEach((stroke, index) => {
+        const distance = colorDistance(
+          lastStroke.color as [number, number, number],
+          stroke.color as [number, number, number]
+        );
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestIndex = index;
+        }
+      });
+
+      // Add the nearest stroke to the sorted array and remove from remaining
+      sortedStrokes.push(remaining[nearestIndex]);
+      remaining.splice(nearestIndex, 1);
+    }
+
+    return sortedStrokes;
+  };
 
   const handleImageChange = (file: File) => {
     if (strokesCanvasRef.current) {
@@ -178,8 +221,6 @@ export default function SuperpixelPage({
 
     setStrokeData(null);
     setHighlightedStrokeId(null);
-    setStrokesRendered(false);
-    setBordersRendered(false);
   };
 
   const processImage = async () => {
@@ -194,41 +235,29 @@ export default function SuperpixelPage({
 
     setLoading(true);
     clearCanvases();
-    setStrokesRendered(false);
-    setBordersRendered(false);
 
     try {
       const data = await processSuperpixelImage(imageFile, params);
 
-      setStrokeData(data);
-
-      // Adjust maxDisplayedStrokes based on the actual number of strokes
-      if (data.strokes && data.strokes.length < maxDisplayedStrokes) {
-        setMaxDisplayedStrokes(data.strokes.length);
+      // Sort strokes by color similarity
+      if (data.strokes && data.strokes.length > 0) {
+        data.strokes = sortStrokesByColor(data.strokes);
       }
+
+      setStrokeData(data);
 
       if (strokesCanvasRef.current) {
         if (strokesCanvasRef.current.parentElement) {
           strokesCanvasRef.current.style.visibility = "hidden";
         }
 
-        if (params.mode === "pixels") {
-          await drawAllStrokesPixelMode(
-            strokesCanvasRef.current,
-            data.strokes.slice(0, maxDisplayedStrokes),
-            scaleX,
-            scaleY
-          );
-        } else {
-          await drawAllStrokes(
-            strokesCanvasRef.current,
-            data.strokes.slice(0, maxDisplayedStrokes),
-            scaleX,
-            scaleY
-          );
-        }
+        await drawAllStrokes(
+          strokesCanvasRef.current,
+          data.strokes,
+          scaleX,
+          scaleY
+        );
 
-        setStrokesRendered(true);
         if (drawOptions.showStrokes && strokesCanvasRef.current.parentElement) {
           strokesCanvasRef.current.style.visibility = "visible";
         }
@@ -241,11 +270,10 @@ export default function SuperpixelPage({
 
         await drawBorders(
           bordersCanvasRef.current,
-          data.strokes.slice(0, maxDisplayedStrokes),
+          data.strokes,
           scaleX,
           scaleY,
         );
-        setBordersRendered(true);
 
         if (drawOptions.drawBorders && bordersCanvasRef.current.parentElement) {
           bordersCanvasRef.current.style.visibility = "visible";
@@ -309,20 +337,20 @@ export default function SuperpixelPage({
   };
 
   useEffect(() => {
-    if (strokeData && strokesRendered && strokesCanvasRef.current) {
+    if (strokeData && strokesCanvasRef.current) {
       strokesCanvasRef.current.style.visibility = drawOptions.showStrokes
         ? "visible"
         : "hidden";
     }
-  }, [strokeData, drawOptions.showStrokes, strokesRendered]);
+  }, [strokeData, drawOptions.showStrokes]);
 
   useEffect(() => {
-    if (strokeData && bordersRendered && bordersCanvasRef.current) {
+    if (strokeData && bordersCanvasRef.current) {
       bordersCanvasRef.current.style.visibility = drawOptions.drawBorders
         ? "visible"
         : "hidden";
     }
-  }, [strokeData, drawOptions.drawBorders, bordersRendered]);
+  }, [strokeData, drawOptions.drawBorders]);
 
   useEffect(() => {
     if (strokeData) {
@@ -378,35 +406,6 @@ export default function SuperpixelPage({
     strokeData,
   ]);
 
-  useEffect(() => {
-    if (strokeData && strokesCanvasRef.current && strokesRendered) {
-      if (params.mode === "pixels") {
-        drawAllStrokesPixelMode(
-          strokesCanvasRef.current,
-          strokeData.strokes.slice(0, maxDisplayedStrokes),
-          scaleX,
-          scaleY
-        );
-      } else {
-        drawAllStrokes(
-          strokesCanvasRef.current,
-          strokeData.strokes.slice(0, maxDisplayedStrokes),
-          scaleX,
-          scaleY
-        );
-      }
-
-      if (bordersCanvasRef.current && bordersRendered) {
-        drawBorders(
-          bordersCanvasRef.current,
-          strokeData.strokes.slice(0, maxDisplayedStrokes),
-          scaleX,
-          scaleY
-        );
-      }
-    }
-  }, [maxDisplayedStrokes, params.mode, strokeData, strokesRendered]);
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-foreground">{dict.title}</h1>
@@ -446,30 +445,6 @@ export default function SuperpixelPage({
                     value={gradientSensitivity}
                     onChange={(e) =>
                       setGradientSensitivity(parseFloat(e.target.value))
-                    }
-                    className="w-full cursor-pointer"
-                  />
-                </div>
-              )}
-
-              {strokeData && strokeData.strokes && strokeData.strokes.length > 0 && (
-                <div className="mt-6">
-                  <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                    <Label className="text-muted-foreground">
-                      {isRussian ? "Количество отображаемых мазков" : "Displayed strokes"}
-                    </Label>
-                    <span className="font-medium text-foreground">
-                      {maxDisplayedStrokes} / {strokeData.strokes.length}
-                    </span>
-                  </div>
-                  <Input
-                    type="range"
-                    min={1}
-                    max={strokeData.strokes.length}
-                    step={1}
-                    value={maxDisplayedStrokes}
-                    onChange={(e) =>
-                      setMaxDisplayedStrokes(parseInt(e.target.value))
                     }
                     className="w-full cursor-pointer"
                   />
@@ -542,7 +517,7 @@ export default function SuperpixelPage({
                         className="max-w-full border border-border rounded"
                         style={{
                           visibility:
-                            strokesRendered && drawOptions.showStrokes
+                            drawOptions.showStrokes
                               ? "visible"
                               : "hidden",
                         }}
@@ -554,7 +529,7 @@ export default function SuperpixelPage({
                         className="absolute top-0 left-0 pointer-events-none"
                         style={{
                           visibility:
-                            bordersRendered && drawOptions.drawBorders
+                            drawOptions.drawBorders
                               ? "visible"
                               : "hidden",
                           zIndex: 7,
@@ -591,7 +566,6 @@ export default function SuperpixelPage({
                         gradientSensitivity={gradientSensitivity}
                         setHighlightedStrokeId={setHighlightedStrokeId}
                         highlightedStrokeId={highlightedStrokeId}
-                        processingMode={params.mode as "strokes" | "pixels"}
                       />
                     </div>
                     <div
