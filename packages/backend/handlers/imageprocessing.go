@@ -632,7 +632,6 @@ func (h *ImageProcessingHandler) initializeClustersWithAdaptive(pixels [][]Pixel
 				}
 
 				if tooClose {
-					i--
 					continue
 				}
 
@@ -1299,22 +1298,412 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 			pixels = append(pixels, [2]int{p.X, p.Y})
 		}
 
-		strokes = append(strokes, Stroke{
+		// Определяем границы мазка
+		minX, minY := width, height
+		maxX, maxY := 0, 0
+		for _, p := range pixels {
+			if p[0] < minX {
+				minX = p[0]
+			}
+			if p[0] > maxX {
+				maxX = p[0]
+			}
+			if p[1] < minY {
+				minY = p[1]
+			}
+			if p[1] > maxY {
+				maxY = p[1]
+			}
+		}
+
+		stroke := Stroke{
 			ID:             i,
 			CenterX:        cluster.CenterX,
 			CenterY:        cluster.CenterY,
 			Color:          color,
 			Pixels:         pixels,
 			Theta:          cluster.Theta,
-			Width:          0,
-			Height:         0,
+			Width:          float64(maxX - minX),
+			Height:         float64(maxY - minY),
 			ThetaCoherence: 1,
-			MinX:           0,
-			MinY:           0,
-			MaxX:           0,
-			MaxY:           0,
-		})
+			MinX:           minX,
+			MinY:           minY,
+			MaxX:           maxX,
+			MaxY:           maxY,
+		}
+
+		strokes = append(strokes, stroke)
 	}
 
-	return strokes
+	// Проверяем и разделяем мазки, если необходимо
+	return h.processDisconnectedStrokes(strokes, width, height)
+}
+
+// processDisconnectedStrokes находит и разделяет мазки на отдельные компоненты связности
+func (h *ImageProcessingHandler) processDisconnectedStrokes(strokes []Stroke, width, height int) []Stroke {
+	result := make([]Stroke, 0, len(strokes))
+	nextID := len(strokes)
+
+	// Создаем карту, чтобы отслеживать, какие пиксели уже назначены новым мазкам
+	assignedPixels := make(map[[2]int]bool)
+
+	for _, stroke := range strokes {
+		if len(stroke.Pixels) < 5 {
+			result = append(result, stroke) // Слишком маленькие мазки не обрабатываем
+
+			// Отмечаем пиксели как назначенные
+			for _, p := range stroke.Pixels {
+				assignedPixels[p] = true
+			}
+
+			continue
+		}
+
+		components := h.findConnectedComponents(stroke.Pixels, width, height)
+
+		if len(components) <= 1 {
+			result = append(result, stroke) // Мазок не разделен, используем как есть
+
+			// Отмечаем пиксели как назначенные
+			for _, p := range stroke.Pixels {
+				assignedPixels[p] = true
+			}
+		} else {
+			// Создаем карту для быстрого поиска всех пикселей этого мазка
+			pixelMap := make(map[[2]int]bool)
+			for _, p := range stroke.Pixels {
+				pixelMap[p] = true
+			}
+
+			// Обнаруженные компоненты связности
+			validComponents := make([][][2]int, 0, len(components))
+
+			// Разделяем мазок на компоненты связности
+			for _, component := range components {
+				if len(component) < 5 {
+					// Слишком маленькие компоненты сохраняем для последующей обработки
+					continue
+				}
+
+				validComponents = append(validComponents, component)
+
+				newStroke := h.createStrokeFromPixels(component, stroke.Color, nextID)
+				nextID++
+				result = append(result, newStroke)
+
+				// Отмечаем пиксели как назначенные
+				for _, p := range component {
+					assignedPixels[p] = true
+					delete(pixelMap, p) // Удаляем из карты пикселей, чтобы найти неназначенные
+				}
+			}
+
+			// Обрабатываем оставшиеся пиксели (непривязанные или слишком маленькие компоненты)
+			unassignedPixels := make([][2]int, 0)
+			for p := range pixelMap {
+				unassignedPixels = append(unassignedPixels, p)
+			}
+
+			if len(unassignedPixels) > 0 && len(validComponents) > 0 {
+				// Назначаем непривязанные пиксели ближайшей компоненте
+				h.assignUnassignedPixels(unassignedPixels, validComponents, result, assignedPixels)
+			} else if len(unassignedPixels) > 0 {
+				// Если нет ни одной валидной компоненты, но есть непривязанные пиксели,
+				// создаем для них отдельный мазок
+				if len(unassignedPixels) >= 5 {
+					newStroke := h.createStrokeFromPixels(unassignedPixels, stroke.Color, nextID)
+					nextID++
+					result = append(result, newStroke)
+
+					for _, p := range unassignedPixels {
+						assignedPixels[p] = true
+					}
+				} else {
+					// Если пикселей слишком мало, просто добавляем их к исходному мазку
+					result = append(result, stroke)
+					for _, p := range stroke.Pixels {
+						assignedPixels[p] = true
+					}
+				}
+			}
+		}
+	}
+
+	// Проверяем, остались ли непривязанные пиксели в исходных мазках
+	// и распределяем их к ближайшим новым мазкам
+	h.redistributeUnassignedPixels(strokes, result, assignedPixels)
+
+	return result
+}
+
+// assignUnassignedPixels назначает непривязанные пиксели ближайшим компонентам
+func (h *ImageProcessingHandler) assignUnassignedPixels(pixels [][2]int, components [][][2]int, strokes []Stroke, assignedPixels map[[2]int]bool) {
+	// Для каждого непривязанного пикселя находим ближайшую компоненту
+	for _, pixel := range pixels {
+		if assignedPixels[pixel] {
+			continue // Пиксель уже назначен
+		}
+
+		bestComponentIdx := -1
+		minDistance := math.Inf(1)
+
+		// Найдем ближайшую компоненту
+		for i, component := range components {
+			for _, cp := range component {
+				dist := float64((pixel[0]-cp[0])*(pixel[0]-cp[0]) + (pixel[1]-cp[1])*(pixel[1]-cp[1]))
+				if dist < minDistance {
+					minDistance = dist
+					bestComponentIdx = i
+				}
+			}
+		}
+
+		// Если нашли ближайшую компоненту
+		if bestComponentIdx >= 0 {
+			// Находим индекс соответствующего мазка в результирующем массиве
+			for i := range strokes {
+				// Проверяем, содержит ли этот мазок хотя бы один пиксель из компоненты
+				if contains(strokes[i].Pixels, components[bestComponentIdx][0]) {
+					// Добавляем непривязанный пиксель к этому мазку
+					strokes[i].Pixels = append(strokes[i].Pixels, pixel)
+					assignedPixels[pixel] = true
+
+					// Обновляем границы мазка, если нужно
+					if pixel[0] < strokes[i].MinX {
+						strokes[i].MinX = pixel[0]
+					}
+					if pixel[0] > strokes[i].MaxX {
+						strokes[i].MaxX = pixel[0]
+					}
+					if pixel[1] < strokes[i].MinY {
+						strokes[i].MinY = pixel[1]
+					}
+					if pixel[1] > strokes[i].MaxY {
+						strokes[i].MaxY = pixel[1]
+					}
+
+					// Обновляем ширину и высоту
+					strokes[i].Width = float64(strokes[i].MaxX - strokes[i].MinX)
+					strokes[i].Height = float64(strokes[i].MaxY - strokes[i].MinY)
+
+					// Пересчитываем центр
+					sumX, sumY := 0, 0
+					for _, p := range strokes[i].Pixels {
+						sumX += p[0]
+						sumY += p[1]
+					}
+					strokes[i].CenterX = float64(sumX) / float64(len(strokes[i].Pixels))
+					strokes[i].CenterY = float64(sumY) / float64(len(strokes[i].Pixels))
+
+					break
+				}
+			}
+		}
+	}
+}
+
+// redistributeUnassignedPixels находит пиксели, которые не были назначены ни одному мазку,
+// и распределяет их к ближайшим мазкам
+func (h *ImageProcessingHandler) redistributeUnassignedPixels(originalStrokes, newStrokes []Stroke, assignedPixels map[[2]int]bool) {
+	// Собираем все непривязанные пиксели
+	unassignedPixels := make([][2]int, 0)
+
+	for _, stroke := range originalStrokes {
+		for _, pixel := range stroke.Pixels {
+			if !assignedPixels[pixel] {
+				unassignedPixels = append(unassignedPixels, pixel)
+			}
+		}
+	}
+
+	// Если есть непривязанные пиксели, распределяем их
+	if len(unassignedPixels) > 0 && len(newStrokes) > 0 {
+		for _, pixel := range unassignedPixels {
+			bestStrokeIdx := -1
+			minDistance := math.Inf(1)
+
+			// Найдем ближайший мазок
+			for i, stroke := range newStrokes {
+				centerDist := math.Sqrt(
+					math.Pow(float64(pixel[0])-stroke.CenterX, 2) +
+						math.Pow(float64(pixel[1])-stroke.CenterY, 2),
+				)
+
+				if centerDist < minDistance {
+					minDistance = centerDist
+					bestStrokeIdx = i
+				}
+			}
+
+			// Если нашли ближайший мазок
+			if bestStrokeIdx >= 0 {
+				stroke := &newStrokes[bestStrokeIdx]
+
+				// Добавляем пиксель к мазку
+				stroke.Pixels = append(stroke.Pixels, pixel)
+				assignedPixels[pixel] = true
+
+				// Обновляем границы
+				if pixel[0] < stroke.MinX {
+					stroke.MinX = pixel[0]
+				}
+				if pixel[0] > stroke.MaxX {
+					stroke.MaxX = pixel[0]
+				}
+				if pixel[1] < stroke.MinY {
+					stroke.MinY = pixel[1]
+				}
+				if pixel[1] > stroke.MaxY {
+					stroke.MaxY = pixel[1]
+				}
+
+				// Обновляем размеры
+				stroke.Width = float64(stroke.MaxX - stroke.MinX)
+				stroke.Height = float64(stroke.MaxY - stroke.MinY)
+
+				// Пересчитываем центр
+				sumX, sumY := 0, 0
+				for _, p := range stroke.Pixels {
+					sumX += p[0]
+					sumY += p[1]
+				}
+				stroke.CenterX = float64(sumX) / float64(len(stroke.Pixels))
+				stroke.CenterY = float64(sumY) / float64(len(stroke.Pixels))
+			}
+		}
+	}
+}
+
+// contains проверяет, содержится ли пиксель в массиве пикселей
+func contains(pixels [][2]int, pixel [2]int) bool {
+	for _, p := range pixels {
+		if p[0] == pixel[0] && p[1] == pixel[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// findConnectedComponents находит компоненты связности в мазке используя BFS
+func (h *ImageProcessingHandler) findConnectedComponents(pixels [][2]int, width, height int) [][][2]int {
+	if len(pixels) == 0 {
+		return nil
+	}
+
+	// Создаем карту пикселей для быстрого поиска
+	pixelMap := make(map[[2]int]bool)
+	for _, p := range pixels {
+		pixelMap[p] = true
+	}
+
+	// Направления для поиска соседей (4-связность)
+	dx := []int{0, 1, 0, -1}
+	dy := []int{-1, 0, 1, 0}
+
+	// Карта посещенных пикселей
+	visited := make(map[[2]int]bool)
+
+	components := make([][][2]int, 0)
+
+	// BFS для каждого непосещенного пикселя
+	for _, startPixel := range pixels {
+		if visited[startPixel] {
+			continue
+		}
+
+		component := make([][2]int, 0)
+		queue := [][2]int{startPixel}
+		visited[startPixel] = true
+
+		for len(queue) > 0 {
+			pixel := queue[0]
+			queue = queue[1:]
+			component = append(component, pixel)
+
+			// Проверяем соседей
+			for i := 0; i < 4; i++ {
+				nx, ny := pixel[0]+dx[i], pixel[1]+dy[i]
+				neighbor := [2]int{nx, ny}
+
+				if nx >= 0 && nx < width &&
+					ny >= 0 && ny < height &&
+					pixelMap[neighbor] &&
+					!visited[neighbor] {
+					visited[neighbor] = true
+					queue = append(queue, neighbor)
+				}
+			}
+		}
+
+		components = append(components, component)
+	}
+
+	return components
+}
+
+// createStrokeFromPixels создает новый мазок из списка пикселей
+func (h *ImageProcessingHandler) createStrokeFromPixels(pixels [][2]int, color [3]uint8, id int) Stroke {
+	if len(pixels) == 0 {
+		return Stroke{ID: id}
+	}
+
+	// Вычисляем центр и границы мазка
+	sumX, sumY := 0, 0
+	minX, minY := pixels[0][0], pixels[0][1]
+	maxX, maxY := pixels[0][0], pixels[0][1]
+
+	for _, p := range pixels {
+		sumX += p[0]
+		sumY += p[1]
+
+		if p[0] < minX {
+			minX = p[0]
+		}
+		if p[0] > maxX {
+			maxX = p[0]
+		}
+		if p[1] < minY {
+			minY = p[1]
+		}
+		if p[1] > maxY {
+			maxY = p[1]
+		}
+	}
+
+	centerX := float64(sumX) / float64(len(pixels))
+	centerY := float64(sumY) / float64(len(pixels))
+
+	// Находим главное направление (используем простую аппроксимацию)
+	// Упрощенный способ - направление от центра к самой дальней точке
+	maxDist := 0.0
+	var dirX, dirY float64
+
+	for _, p := range pixels {
+		dx := float64(p[0]) - centerX
+		dy := float64(p[1]) - centerY
+		dist := dx*dx + dy*dy
+
+		if dist > maxDist {
+			maxDist = dist
+			dirX, dirY = dx, dy
+		}
+	}
+
+	theta := math.Atan2(dirY, dirX)
+
+	return Stroke{
+		ID:             id,
+		CenterX:        centerX,
+		CenterY:        centerY,
+		Color:          color,
+		Pixels:         pixels,
+		Theta:          theta,
+		Width:          float64(maxX - minX),
+		Height:         float64(maxY - minY),
+		ThetaCoherence: 1.0, // Можно вычислить более точно
+		MinX:           minX,
+		MinY:           minY,
+		MaxX:           maxX,
+		MaxY:           maxY,
+	}
 }
