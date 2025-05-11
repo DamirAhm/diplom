@@ -239,6 +239,8 @@ export default function SuperpixelPage({
     try {
       const data = await processSuperpixelImage(imageFile, params);
 
+      setLoading(false);
+
       // Sort strokes by color similarity
       if (data.strokes && data.strokes.length > 0) {
         data.strokes = sortStrokesByColor(data.strokes);

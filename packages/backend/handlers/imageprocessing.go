@@ -1341,113 +1341,159 @@ func (h *ImageProcessingHandler) extractStrokeData(img image.Image, numberOfSupe
 
 // processDisconnectedStrokes находит и разделяет мазки на отдельные компоненты связности
 func (h *ImageProcessingHandler) processDisconnectedStrokes(strokes []Stroke, width, height int) []Stroke {
+	// Create a slice to hold the results with capacity of original strokes
 	result := make([]Stroke, 0, len(strokes))
 	nextID := len(strokes)
 
-	// Создаем карту, чтобы отслеживать, какие пиксели уже назначены новым мазкам
+	// Synchronization objects
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Create a map to track which pixels are already assigned to new strokes
 	assignedPixels := make(map[[2]int]bool)
 
-	for _, stroke := range strokes {
-		if len(stroke.Pixels) < 5 {
-			result = append(result, stroke) // Слишком маленькие мазки не обрабатываем
+	// Process strokes in parallel
+	wg.Add(len(strokes))
+	resultChan := make(chan []Stroke, len(strokes))
 
-			// Отмечаем пиксели как назначенные
-			for _, p := range stroke.Pixels {
-				assignedPixels[p] = true
-			}
+	for i := range strokes {
+		go func(idx int, stroke Stroke) {
+			defer wg.Done()
 
-			continue
-		}
+			localResults := make([]Stroke, 0)
+			localAssignedPixels := make(map[[2]int]bool)
+			localNextID := 0 // We'll adjust this later
 
-		components := h.findConnectedComponents(stroke.Pixels, width, height)
+			if len(stroke.Pixels) < 5 {
+				// Too small strokes are not processed
+				localResults = append(localResults, stroke)
 
-		if len(components) <= 1 {
-			result = append(result, stroke) // Мазок не разделен, используем как есть
-
-			// Отмечаем пиксели как назначенные
-			for _, p := range stroke.Pixels {
-				assignedPixels[p] = true
-			}
-		} else {
-			// Создаем карту для быстрого поиска всех пикселей этого мазка
-			pixelMap := make(map[[2]int]bool)
-			for _, p := range stroke.Pixels {
-				pixelMap[p] = true
-			}
-
-			// Обнаруженные компоненты связности
-			validComponents := make([][][2]int, 0, len(components))
-
-			// Разделяем мазок на компоненты связности
-			for _, component := range components {
-				if len(component) < 5 {
-					// Слишком маленькие компоненты сохраняем для последующей обработки
-					continue
+				// Mark pixels as assigned
+				for _, p := range stroke.Pixels {
+					localAssignedPixels[p] = true
 				}
+			} else {
+				components := h.findConnectedComponents(stroke.Pixels, width, height)
 
-				validComponents = append(validComponents, component)
+				if len(components) <= 1 {
+					// Stroke is not separated, use as is
+					localResults = append(localResults, stroke)
 
-				newStroke := h.createStrokeFromPixels(component, stroke.Color, nextID)
-				nextID++
-				result = append(result, newStroke)
-
-				// Отмечаем пиксели как назначенные
-				for _, p := range component {
-					assignedPixels[p] = true
-					delete(pixelMap, p) // Удаляем из карты пикселей, чтобы найти неназначенные
-				}
-			}
-
-			// Обрабатываем оставшиеся пиксели (непривязанные или слишком маленькие компоненты)
-			unassignedPixels := make([][2]int, 0)
-			for p := range pixelMap {
-				unassignedPixels = append(unassignedPixels, p)
-			}
-
-			if len(unassignedPixels) > 0 && len(validComponents) > 0 {
-				// Назначаем непривязанные пиксели ближайшей компоненте
-				h.assignUnassignedPixels(unassignedPixels, validComponents, result, assignedPixels)
-			} else if len(unassignedPixels) > 0 {
-				// Если нет ни одной валидной компоненты, но есть непривязанные пиксели,
-				// создаем для них отдельный мазок
-				if len(unassignedPixels) >= 5 {
-					newStroke := h.createStrokeFromPixels(unassignedPixels, stroke.Color, nextID)
-					nextID++
-					result = append(result, newStroke)
-
-					for _, p := range unassignedPixels {
-						assignedPixels[p] = true
+					// Mark pixels as assigned
+					for _, p := range stroke.Pixels {
+						localAssignedPixels[p] = true
 					}
 				} else {
-					// Если пикселей слишком мало, просто добавляем их к исходному мазку
-					result = append(result, stroke)
+					// Create a map for quick lookup of all pixels in this stroke
+					pixelMap := make(map[[2]int]bool)
 					for _, p := range stroke.Pixels {
-						assignedPixels[p] = true
+						pixelMap[p] = true
+					}
+
+					// Detected connected components
+					validComponents := make([][][2]int, 0, len(components))
+
+					// Separate stroke into connected components
+					for _, component := range components {
+						if len(component) < 5 {
+							// Too small components are kept for later processing
+							continue
+						}
+
+						validComponents = append(validComponents, component)
+
+						newStroke := h.createStrokeFromPixels(component, stroke.Color, localNextID)
+						localNextID++
+						localResults = append(localResults, newStroke)
+
+						// Mark pixels as assigned
+						for _, p := range component {
+							localAssignedPixels[p] = true
+							delete(pixelMap, p) // Remove from pixel map to find unassigned
+						}
+					}
+
+					// Process remaining pixels (unassigned or too small components)
+					unassignedPixels := make([][2]int, 0)
+					for p := range pixelMap {
+						unassignedPixels = append(unassignedPixels, p)
+					}
+
+					if len(unassignedPixels) > 0 && len(validComponents) > 0 {
+						// Assign unassigned pixels to the nearest component
+						h.assignUnassignedPixelsLocal(unassignedPixels, validComponents, localResults, localAssignedPixels)
+					} else if len(unassignedPixels) > 0 {
+						// If there are no valid components but there are unassigned pixels,
+						// create a separate stroke for them
+						if len(unassignedPixels) >= 5 {
+							newStroke := h.createStrokeFromPixels(unassignedPixels, stroke.Color, localNextID)
+							localNextID++
+							localResults = append(localResults, newStroke)
+
+							for _, p := range unassignedPixels {
+								localAssignedPixels[p] = true
+							}
+						} else {
+							// If there are too few pixels, just add them to the original stroke
+							localResults = append(localResults, stroke)
+							for _, p := range stroke.Pixels {
+								localAssignedPixels[p] = true
+							}
+						}
 					}
 				}
+			}
+
+			resultChan <- localResults
+
+			// Update the global assigned pixels map under lock
+			mu.Lock()
+			for p := range localAssignedPixels {
+				assignedPixels[p] = true
+			}
+			mu.Unlock()
+
+		}(i, strokes[i])
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+	close(resultChan)
+
+	// Collect all results and adjust IDs
+	idOffset := nextID
+	for localResults := range resultChan {
+		for _, s := range localResults {
+			// Adjust the ID if it's a new stroke (not from the original set)
+			if s.ID < len(strokes) {
+				result = append(result, s)
+			} else {
+				s.ID = idOffset
+				idOffset++
+				result = append(result, s)
 			}
 		}
 	}
 
-	// Проверяем, остались ли непривязанные пиксели в исходных мазках
-	// и распределяем их к ближайшим новым мазкам
+	// Check if there are any unassigned pixels in the original strokes
+	// and distribute them to the nearest new strokes
 	h.redistributeUnassignedPixels(strokes, result, assignedPixels)
 
 	return result
 }
 
-// assignUnassignedPixels назначает непривязанные пиксели ближайшим компонентам
-func (h *ImageProcessingHandler) assignUnassignedPixels(pixels [][2]int, components [][][2]int, strokes []Stroke, assignedPixels map[[2]int]bool) {
-	// Для каждого непривязанного пикселя находим ближайшую компоненту
+// assignUnassignedPixelsLocal is a local version of assignUnassignedPixels that doesn't modify shared data
+func (h *ImageProcessingHandler) assignUnassignedPixelsLocal(pixels [][2]int, components [][][2]int, strokes []Stroke, assignedPixels map[[2]int]bool) {
+	// For each unassigned pixel, find the nearest component
 	for _, pixel := range pixels {
 		if assignedPixels[pixel] {
-			continue // Пиксель уже назначен
+			continue // Pixel is already assigned
 		}
 
 		bestComponentIdx := -1
 		minDistance := math.Inf(1)
 
-		// Найдем ближайшую компоненту
+		// Find the nearest component
 		for i, component := range components {
 			for _, cp := range component {
 				dist := float64((pixel[0]-cp[0])*(pixel[0]-cp[0]) + (pixel[1]-cp[1])*(pixel[1]-cp[1]))
@@ -1458,17 +1504,17 @@ func (h *ImageProcessingHandler) assignUnassignedPixels(pixels [][2]int, compone
 			}
 		}
 
-		// Если нашли ближайшую компоненту
+		// If we found the nearest component
 		if bestComponentIdx >= 0 {
-			// Находим индекс соответствующего мазка в результирующем массиве
+			// Find the index of the corresponding stroke in the result array
 			for i := range strokes {
-				// Проверяем, содержит ли этот мазок хотя бы один пиксель из компоненты
+				// Check if this stroke contains at least one pixel from the component
 				if contains(strokes[i].Pixels, components[bestComponentIdx][0]) {
-					// Добавляем непривязанный пиксель к этому мазку
+					// Add the unassigned pixel to this stroke
 					strokes[i].Pixels = append(strokes[i].Pixels, pixel)
 					assignedPixels[pixel] = true
 
-					// Обновляем границы мазка, если нужно
+					// Update stroke boundaries if needed
 					if pixel[0] < strokes[i].MinX {
 						strokes[i].MinX = pixel[0]
 					}
@@ -1482,11 +1528,11 @@ func (h *ImageProcessingHandler) assignUnassignedPixels(pixels [][2]int, compone
 						strokes[i].MaxY = pixel[1]
 					}
 
-					// Обновляем ширину и высоту
+					// Update width and height
 					strokes[i].Width = float64(strokes[i].MaxX - strokes[i].MinX)
 					strokes[i].Height = float64(strokes[i].MaxY - strokes[i].MinY)
 
-					// Пересчитываем центр
+					// Recalculate center
 					sumX, sumY := 0, 0
 					for _, p := range strokes[i].Pixels {
 						sumX += p[0]
