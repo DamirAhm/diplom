@@ -48,11 +48,9 @@ export default function ResearchersAdminPage() {
 
   const confirmDelete = async () => {
     try {
-      const promises = itemsToDelete.map((researcher) =>
-        api.researchers.delete(researcher.id.toString())
-      );
-
-      await Promise.all(promises);
+      for (const item of itemsToDelete) {
+        await api.researchers.delete(item.id.toString());
+      }
 
       toast({
         title: dictionary.admin.success,

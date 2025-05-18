@@ -50,11 +50,9 @@ export default function DisciplinesAdminPage() {
 
     const confirmDelete = async () => {
         try {
-            const promises = itemsToDelete.map((discipline) =>
-                api.disciplines.delete(discipline.id.toString())
-            );
-
-            await Promise.all(promises);
+            for (const item of itemsToDelete) {
+                await api.disciplines.delete(item.id.toString());
+            }
 
             toast({
                 title: dictionary.admin.success,

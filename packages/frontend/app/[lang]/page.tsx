@@ -58,7 +58,7 @@ export default async function HomePage(args: HomePageProps) {
           opacity={0.15}
         />
 
-        <div className="container flex-col relative mx-auto py-32 md:py-36 lg:py-36  min-h-[652px] flex items-center">
+        <div className="container flex-col justify-around relative mx-auto py-32 md:py-36 lg:py-36  min-h-[850px] flex items-center">
           <div className="max-w-4xl mx-auto text-center mb-0 md:mb-12">
             <h1 className="font-heading text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight">
               <span className="text-foreground">{dictionary.home.title}</span>

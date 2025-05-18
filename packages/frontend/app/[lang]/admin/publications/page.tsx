@@ -49,9 +49,9 @@ export default function PublicationsAdminPage({
 
   const confirmDelete = async () => {
     try {
-      await Promise.all(
-        itemsToDelete.map((item) => api.publications.delete(item.id))
-      );
+      for (const item of itemsToDelete) {
+        await api.publications.delete(item.id);
+      }
 
       toast({
         title: dictionary.admin.success,

@@ -52,9 +52,9 @@ export default function TrainingAdminPage({
 
   const confirmDelete = async () => {
     try {
-      await Promise.all(
-        itemsToDelete.map((item) => api.training.delete(item.id.toString()))
-      );
+      for (const item of itemsToDelete) {
+        await api.training.delete(item.id.toString());
+      }
 
       toast({
         title: dictionary.admin.success,

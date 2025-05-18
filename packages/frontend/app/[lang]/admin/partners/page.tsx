@@ -51,11 +51,9 @@ export default function PartnersAdminPage({
 
   const confirmDelete = async () => {
     try {
-      const promises = itemsToDelete.map((partner) =>
-        api.partners.delete(partner.id.toString())
-      );
-
-      await Promise.all(promises);
+      for (const item of itemsToDelete) {
+        await api.partners.delete(item.id.toString());
+      }
 
       toast({
         title: dictionary.admin.success,

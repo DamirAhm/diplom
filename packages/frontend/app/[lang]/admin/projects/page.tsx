@@ -49,11 +49,9 @@ export default function ProjectsAdminPage({
 
   const confirmDelete = async () => {
     try {
-      await Promise.all(
-        itemsToDelete.map((project) =>
-          api.projects.delete(project.id.toString())
-        )
-      );
+      for (const item of itemsToDelete) {
+        await api.projects.delete(item.id.toString());
+      }
 
       toast({
         title: dictionary.admin.success,
