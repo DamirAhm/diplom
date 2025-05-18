@@ -242,6 +242,16 @@ func (r *SQLiteProjectRepo) Delete(id int) error {
 		}
 	}
 
+	_, err = r.db.Exec("DELETE FROM project_images WHERE project_id = ?", id)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.db.Exec("DELETE FROM project_videos WHERE project_id = ?", id)
+	if err != nil {
+		return err
+	}
+
 	if err := r.localizedStringRepo.Delete(titleID); err != nil {
 		return err
 	}

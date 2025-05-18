@@ -276,3 +276,21 @@ func (h *PublicationHandler) GetPublicPublications(w http.ResponseWriter, r *htt
 
 	json.NewEncoder(w).Encode(visiblePublications)
 }
+
+// GetTotalCount godoc
+// @Summary Get total publications count
+// @Description Get the total number of publications (including not visible)
+// @Tags publications
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]int
+// @Failure 500 {object} string "Internal Server Error"
+// @Router /publications/count [get]
+func (h *PublicationHandler) GetTotalCount(w http.ResponseWriter, r *http.Request) {
+	count, err := h.publicationRepo.GetTotalCount()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]int{"count": count})
+}

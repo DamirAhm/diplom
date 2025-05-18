@@ -13,6 +13,7 @@ export default function ResearchersPage({
 }) {
   const [researchers, setResearchers] = useState<ResearcherWithCount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [publicationsCount, setPublicationsCount] = useState<number>(0);
   const { lang } = params || {};
   const dictionary = getDictionary(lang);
 
@@ -27,8 +28,13 @@ export default function ResearchersPage({
         setIsLoading(false);
       }
     };
-
     fetchResearchers();
+    api.publications.getTotalCount()
+      .then(setPublicationsCount)
+      .catch((err) => {
+        console.error("Failed to fetch publications count:", err);
+        setPublicationsCount(0);
+      });
   }, []);
 
   return (
@@ -84,10 +90,7 @@ export default function ResearchersPage({
           </div>
           <div>
             <div className="text-2xl font-bold dark:text-indigo-400">
-              {researchers.reduce(
-                (acc, r) => acc + (r.publicationsCount || 0),
-                0
-              )}
+              {publicationsCount}
             </div>
             <div className="text-sm text-foreground/70">
               {lang === "en" ? "Publications" : "Публикации"}

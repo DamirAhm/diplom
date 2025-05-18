@@ -120,6 +120,7 @@ func main() {
 	api.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/logout", authHandler.Logout).Methods("POST", "OPTIONS")
 	api.HandleFunc("/publications/public", publicationsHandler.GetPublicPublications).Methods("GET")
+	api.HandleFunc("/publications/count", publicationsHandler.GetTotalCount).Methods("GET")
 
 	protected := api.PathPrefix("").Subrouter()
 	protected.Use(handlers.AuthMiddleware(cfg))

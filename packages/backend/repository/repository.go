@@ -33,6 +33,7 @@ type PublicationRepo interface {
 	Update(pub models.Publication) error
 	Delete(id int) error
 	GetAuthors(id int) ([]models.Researcher, error)
+	GetTotalCount() (int, error)
 }
 
 type ResearcherRepo interface {
@@ -43,8 +44,6 @@ type ResearcherRepo interface {
 	FindByFullName(fullName string) (*models.ResearcherWithPublicationsCount, error)
 	Update(researcher models.Researcher) error
 	Delete(id int) error
-	AddPublication(researcherID int, publicationID int) error
-	RemovePublication(researcherID int, publicationID int) error
 }
 
 type ProjectRepo interface {

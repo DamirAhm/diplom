@@ -233,6 +233,10 @@ export const api = {
       api.put<Publication>(`/publications/${id}/toggle-visibility`, {}),
     getAuthors: (id: number) =>
       api.get<Researcher[]>(`/publications/${id}/authors`),
+    getTotalCount: async () => {
+      const res = await api.get<{ count: number }>("/publications/count");
+      return res.count;
+    },
   },
   partners: {
     getAll: () =>

@@ -102,7 +102,6 @@ func (pc *PublicationCrawler) CrawlResearcher(researcher models.Researcher, with
 	for _, source := range pc.sources {
 		publications, publicationsToUpdate, updatedResearcher, err := source.FetchPublications(researcher, withCitations)
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
 
@@ -110,18 +109,11 @@ func (pc *PublicationCrawler) CrawlResearcher(researcher models.Researcher, with
 		for _, pub := range publications {
 			key := fmt.Sprintf("%s-%s", pub.Title.En, pub.PublishedAt)
 			if !existingPubMap[key] {
-				pubID, err := pc.publicationRepo.Create(pub)
+				_, err := pc.publicationRepo.Create(pub)
 				if err != nil {
 					continue
 				}
-
-				if pubID > 0 {
-					err = pc.researcherRepo.AddPublication(researcher.ID, int(pubID))
-					if err != nil {
-					} else {
-						newPubCount++
-					}
-				}
+				newPubCount++
 			}
 		}
 

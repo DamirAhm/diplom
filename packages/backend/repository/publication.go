@@ -736,3 +736,12 @@ func (r *SQLitePublicationRepo) GetByTitle(title string) (*models.Publication, e
 		Visible:        visible,
 	}, nil
 }
+
+func (r *SQLitePublicationRepo) GetTotalCount() (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM publications").Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

@@ -451,26 +451,10 @@ func (r *SQLiteResearcherRepo) movePublicationsToExternalAuthors(tx *sql.Tx, res
 	return nil
 }
 
-func (r *SQLiteResearcherRepo) AddPublication(researcherID int, publicationID int) error {
-	_, err := r.db.Exec(
-		"INSERT INTO researcher_publications (researcher_id, publication_id) VALUES (?, ?)",
-		researcherID, publicationID,
-	)
-	return err
-}
-
-func (r *SQLiteResearcherRepo) RemovePublication(researcherID int, publicationID int) error {
-	_, err := r.db.Exec(
-		"DELETE FROM researcher_publications WHERE researcher_id = ? AND publication_id = ?",
-		researcherID, publicationID,
-	)
-	return err
-}
-
 func (r *SQLiteResearcherRepo) GetResearcherPublicationsCount(researcherID int) (int, error) {
 	var count int
 	err := r.db.QueryRow(`
-		SELECT COUNT(*) FROM researcher_publications WHERE researcher_id = ?
+		SELECT COUNT(*) FROM publication_authors WHERE researcher_id = ?
 	`, researcherID).Scan(&count)
 	if err != nil {
 		return 0, err
