@@ -116,7 +116,7 @@ export function SelectionHeader<T>({
   }
 
   return (
-    <div className="mb-4 flex items-center justify-between rounded-lg border bg-muted/50 p-2">
+    <div className="mb-4 pl-4 flex items-center justify-between rounded-lg border bg-muted/50 p-2">
       <div className="flex items-center space-x-4">
         <Checkbox
           checked={selectedItems.length === items.length}

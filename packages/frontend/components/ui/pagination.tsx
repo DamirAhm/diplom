@@ -59,7 +59,7 @@ export function Pagination({
             value={pageSize.toString()}
             onValueChange={(value) => onPageSizeChange(Number(value))}
           >
-            <SelectTrigger className="w-[100px] hover:bg-accent">
+            <SelectTrigger className="w-[100px] hover:bg-primary">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -67,7 +67,7 @@ export function Pagination({
                 <SelectItem
                   key={size}
                   value={size.toString()}
-                  className="cursor-pointer hover:bg-accent focus:bg-accent data-[highlighted]:bg-accent"
+                  className="cursor-pointer hover:bg-primary focus:bg-primary data-[highlighted]:bg-primary"
                 >
                   {size}
                 </SelectItem>

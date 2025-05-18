@@ -185,7 +185,7 @@ export function DataTable<T>({
                     className={cn(
                       column.className,
                       column.sortable &&
-                        "cursor-pointer select-none hover:bg-primary hover:text-white"
+                      "cursor-pointer select-none hover:bg-primary/50 hover:text-white"
                     )}
                     onClick={() => column.sortable && handleSort(column)}
                   >
@@ -243,8 +243,8 @@ export function DataTable<T>({
                         {column.cell
                           ? column.cell(item)
                           : typeof column.accessorKey === "function"
-                          ? column.accessorKey(item)
-                          : String(item[column.accessorKey])}
+                            ? column.accessorKey(item)
+                            : String(item[column.accessorKey])}
                       </TableCell>
                     ))}
                     {editPath && (
