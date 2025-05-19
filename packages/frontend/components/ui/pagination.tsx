@@ -59,7 +59,7 @@ export function Pagination({
             value={pageSize.toString()}
             onValueChange={(value) => onPageSizeChange(Number(value))}
           >
-            <SelectTrigger className="w-[100px] hover:bg-primary">
+            <SelectTrigger className="w-[100px] hover:bg-primary hover:text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

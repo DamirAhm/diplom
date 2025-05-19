@@ -114,6 +114,7 @@ export interface NeuronSimulationRequest {
   signalParams: any;
   simTime: number;
   timeStep: number;
+  rkMethod?: string;
 }
 
 export interface TimePoint {
@@ -275,18 +276,5 @@ export const api = {
   neuron: {
     simulate: (data: NeuronSimulationRequest) =>
       api.post<SimulationResponse>("/neuron/simulate", data),
-    excitabilityTest: (data: NeuronSimulationRequest) =>
-      api.post<ExcitabilityResponse>("/neuron/excitability", data),
-    parameterMap: (data: ParameterMapRequest) =>
-      api.post<ParameterMapResponse>("/neuron/parameter-map", data),
-    uploadCustomSignal: (file: File) => {
-      const formData = new FormData();
-      formData.append("signalFile", file);
-      return request<{ status: string }>("/neuron/custom-signal", {
-        method: "POST",
-        body: formData,
-        headers: {},
-      });
-    },
   },
 };

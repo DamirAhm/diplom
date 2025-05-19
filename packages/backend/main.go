@@ -170,9 +170,6 @@ func main() {
 
 	// Маршруты для симуляции нейрона с туннельным диодом
 	api.HandleFunc("/neuron/simulate", neuronHandler.TimeSeriesSimulation).Methods("POST")
-	api.HandleFunc("/neuron/excitability", neuronHandler.ExcitabilityTest).Methods("POST")
-	api.HandleFunc("/neuron/parameter-map", neuronHandler.ParameterMap).Methods("POST")
-	api.HandleFunc("/neuron/custom-signal", neuronHandler.CustomSignalUpload).Methods("POST")
 
 	router.HandleFunc("/uploads/{filename}", fileHandler.ServeFile).Methods("GET")
 

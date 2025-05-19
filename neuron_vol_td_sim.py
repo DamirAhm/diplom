@@ -8,7 +8,7 @@ class RKMethod(Enum):
     RK2 = 2
     RK8 = 8
 
-def generate_double_pulse(t, amplitude=20e-6, pulse_width=0.008, pulse_period=1e-3, double_pulse_interval=4e-3, offset=0e-6):
+def generate_cliff(t, amplitude=20e-6, pulse_width=0.008, pulse_period=1e-3, double_pulse_interval=4e-3, offset=0e-6):
     signal = np.zeros_like(t)
 
     # First pair of pulses
@@ -24,11 +24,26 @@ def generate_double_pulse(t, amplitude=20e-6, pulse_width=0.008, pulse_period=1e
     mask3 = (t >= start3) & (t <=start3 + pulse_width)
     mask4 = (t >= start4) & (t <= start4 + pulse_width)
     
-    signal[(t >= 0) & (t <= 0.0018)] = 19e-6
-    signal[(t > 0.0018) & (t <= 0.0095)] = (t-0.0018) * 210e-5 + 19e-6
+    signal[(t >= 0) & (t <= 0.0018)] = 25e-6
+    signal[(t > 0.0018) & (t <= 0.0095)] = (t-0.0018) * 280e-5 + 25e-6
     return signal + offset
 
-def generate_sinusoidal(t, offset=21e-6, amplitude=5e-7, frequency=1000):
+def generate_ladder(t, amplitude=20e-6, pulse_width=0.008, pulse_period=1e-3, double_pulse_interval=4e-3, offset=0e-6):
+    signal = np.zeros_like(t)
+
+    # First pair of pulses
+    start1 = 0
+    start2 = 0.01
+    
+    mask1 = (t >= start1) & (t <= start1 + pulse_width)
+    mask2 = (t >= start2) & (t <= start2 + pulse_width)
+    
+    signal[mask1] = 25e-6
+    signal[mask2] = (t-0.0018) * 280e-5 + 25e-6
+    
+    return signal + offset
+
+def generate_sinusoidal(t, offset=20e-6, amplitude=15e-6, frequency=2500):
     return offset + amplitude * np.sin(2 * np.pi * frequency * t)
 
 def generate_random(t, mean=250e-6, std=50e-6):
@@ -84,26 +99,29 @@ def gi401(e):
     return idiode(e) + itunnel(e) + iex(e)
 
 def and_ts(V1, V2):
-    Ron = 1434
-    Roff = 1e6
-    Von1 = 0.28
-    Voff1 = 0.14
-    Von2 = -0.12
-    Voff2 = -0.006
-    TAU = 0.0000001
-    T = 0.5
-    boltz = 1.380649e-23
-    echarge = 1.602176634e-19
+    # Parameters matching SPICE model
+    Ron_p = 806
+    Ron_n = 1434
+    Vth_p = 0.267
+    Vh_p = 0.08
+    Vth_n = -0.119
+    Vh_n = -0.006
+    TAUs = 1.2e-7
+    TAUr = 1.3e-7
+    A = 2.0
+    Ds = 0.05
+    Dr = 0.5
+    Vs = 0.0099
+    Vr = 0.0175
+    Ilk = 1e-12
     
-    def g(V):
-        return V/Ron + (1-V)/Roff
+    # State variable dynamics function F(V1,V2) as specified in SPICE
+    Ix = (1/TAUs)*(1/(1+np.exp(-1/(Vs**2)*(V1-Vth_p)*(V1-Vth_n))))*((1-1/(np.exp((A*V2+Ds))))*(1-V2)+V2*(1-1/(np.exp(A*(1-V2))))) - \
+         (1/TAUr)*(1-1/(1+np.exp(-1/(Vr**2)*(V1-Vh_n)*(V1-Vh_p))))*((1-1/(np.exp((A*V2))))*(1-V2)+V2*(1-1/(np.exp(A*(1-V2)+Dr))))
     
-    Ix = (1/TAU) * (
-        (1/(1 + np.exp(-1/(T*boltz/echarge)*(V1-Von1)*(V1-Von2)))) * (1-V2) -
-        (1 - (1/(1 + np.exp(-1/(T*boltz/echarge)*(V1-Voff2)*(V1-Voff1))))) * V2
-    )
+    # Memristor I-V Relationship as specified in SPICE
+    Imem = V1*V2/Ron_p+Ilk if V1 > 0 else V1*V2/Ron_n-Ilk
     
-    Imem = V1 * g(V2)
     return Imem, Ix
 
 def nvt(X, t, Iin):
@@ -161,19 +179,19 @@ def solve_ode(f, y0, t, method=RKMethod.RK2, *args):
 
 def main():
     # Simulation parameters
-    Tmax = 10e-3  # 10ms total simulation time
+    Tmax = 50e-3  # Increased simulation time
     h = 0.5e-7
     t = np.arange(0, Tmax, h)
     n = len(t)
     
     # Generate input signal
-    Iin = lambda t: generate_sinusoidal(t)
+    Iin = lambda t: generate_sinusoidal(t, offset=35e-6, amplitude=1e-6, frequency=1000)
     
     # Initial conditions
-    y0 = [0, 0]
+    y0 = [0.2, 0.2]
     
     # Solve ODE using selected method
-    Y = solve_ode(nvt, y0, t, RKMethod.RK2, Iin)
+    Y = solve_ode(nvt, y0, t, RKMethod.RK1, Iin)
     
     # Plotting results
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
@@ -182,7 +200,8 @@ def main():
     ax1.plot(t, Y[0, :], 'b-', label='Voltage (V)')
     ax1_twin = ax1.twinx()
     ax1_twin.plot(t, [Iin(ti) for ti in t], 'r-', label='Current (A)')
-    # ax1_twin.set_ylim(1.8e-5, 10e-5)
+    ax1_twin.set_ylim(2e-5, 2.4e-5)
+    ax1.set_ylim(-0.05, 0.3)
     ax1.set_xlim(0, Tmax)
     ax1.set_xlabel('Time (s)')
     ax1.set_ylabel('Voltage (V)', color='b')
@@ -190,30 +209,12 @@ def main():
     ax1.legend(loc='upper left')
     ax1_twin.legend(loc='upper right')
     
-    # Plot phase space
-    ax2.plot(Y[0, :], Y[1, :])
-    ax2.set_xlim(0, Tmax)
-    set_latex_labels(ax2, '$v$', '$x$', 'Phase Space')
-    
+    ax2.plot(t, Y[1, :], 'b-', label='Voltage (V)')
+    ax2.set_xlabel('Time (s)')
+    ax2.set_ylabel('Voltage (V)', color='b')
+
     plt.tight_layout()
     plt.show()
-    
-    # Hamilton energy calculation
-    # v = Y[0, :]
-    # x = Y[1, :]
-    # Ron = 1434
-    # Evm = 0
-    # Ik = 1e-12
-    # Vo = 0.25
-    # C = 200e-9
-    
-    # W = x * (x * (v + Evm) - Ik*Ron)/2/Ron + 1/2*C*v**2
-    # H = W/C/Vo**2
-    
-    # plt.figure()
-    # plt.plot(t, H)
-    # set_latex_labels(plt.gca(), 'Time, sec', '$H$', 'Hamilton Energy')
-    # plt.show()
 
 if __name__ == "__main__":
     main() 
