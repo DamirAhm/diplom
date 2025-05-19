@@ -26,7 +26,6 @@ import { useDebouncedCallback } from "use-debounce";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -35,9 +34,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+import { Loader } from "lucide-react";
 
 // Register required Chart.js components
 ChartJS.register(
@@ -65,10 +64,6 @@ export default function Neuron({
   const dictionary = getDictionary(lang);
   const dict = dictionary.sandbox.neuron;
 
-  // Chart refs
-  const voltageChartRef = useRef<HTMLCanvasElement>(null);
-  const memristorChartRef = useRef<HTMLCanvasElement>(null);
-
   // Neuron parameters
   const [capacitance, setCapacitanceRaw] = useState<number>(22);
   const [tuningVoltage, setTuningVoltageRaw] = useState<number>(0);
@@ -79,29 +74,29 @@ export default function Neuron({
   const [diodeModel, setDiodeModel] = useState<string>("GI401A");
 
   // Input signal
-  const [signalType, setSignalType] = useState<string>("Constant");
-  const [signalAmplitude, setSignalAmplitudeRaw] = useState<number>(20);
-  const [signalFrequency, setSignalFrequencyRaw] = useState<number>(1000);
-  const [signalOffset, setSignalOffsetRaw] = useState<number>(0);
+  const [signalType, setSignalType] = useState<string>("Sine");
+  const [signalAmplitude, setSignalAmplitudeRaw] = useState<number>(6);
+  const [signalFrequency, setSignalFrequencyRaw] = useState<number>(650);
+  const [signalOffset, setSignalOffsetRaw] = useState<number>(27.5);
 
   // New parameters for Step signal
   const [stepTime, setStepTimeRaw] = useState<number>(10);
 
   // New parameters for Pulse signal
-  const [pulseBaseline, setPulseBaselineRaw] = useState<number>(0);
+  const [pulseBaseline, setPulseBaselineRaw] = useState<number>(30);
   const [pulseStart, setPulseStartRaw] = useState<number>(0);
-  const [pulseWidth, setPulseWidthRaw] = useState<number>(0.5);
-  const [pulseNumber, setPulseNumberRaw] = useState<number>(10);
+  const [pulseWidth, setPulseWidthRaw] = useState<number>(1.5);
+  const [pulseNumber, setPulseNumberRaw] = useState<number>(50);
 
   // New parameters for Sine signal
   const [sinePhase, setSinePhaseRaw] = useState<number>(0);
 
   // New parameters for Pink Noise
-  const [noiseBaseline, setNoiseBaselineRaw] = useState<number>(0);
-  const [noiseFrequency, setNoiseFrequencyRaw] = useState<number>(100);
+  const [noiseBaseline, setNoiseBaselineRaw] = useState<number>(29.5);
+  const [noiseFrequency, setNoiseFrequencyRaw] = useState<number>(1000);
 
   // Simulation settings
-  const [simTime, setSimTimeRaw] = useState<number>(30);
+  const [simTime, setSimTimeRaw] = useState<number>(50);
   const [rkMethod, setRKMethod] = useState<string>("RK4");
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
 
@@ -163,6 +158,23 @@ export default function Neuron({
   };
 
   const setSignalTypeAndRun = (value: string) => {
+    switch (value) {
+      case "Pulse":
+        setSignalAmplitudeRaw(14.3);
+        setSignalFrequencyRaw(434)
+        break;
+      case "PinkNoise":
+        setSignalAmplitudeRaw(10);
+        break;
+      case "Sine":
+        setSignalAmplitudeRaw(6);
+        setSignalFrequencyRaw(650);
+        break;
+      case "Constant":
+        setSignalAmplitudeRaw(21);
+        break;
+    }
+
     setSignalType(value);
     debouncedRunSimulation();
   };
@@ -327,7 +339,7 @@ export default function Neuron({
       labels: downsampledData.map((point) => (point.t * 1000).toFixed(2)), // Convert to ms
       datasets: [
         {
-          label: "Membrane Potential (V)",
+          label: "Output Voltage (V)",
           data: downsampledData.map((point) => point.v),
           borderColor: "rgba(75, 192, 192, 1)",
           backgroundColor: "rgba(75, 192, 192, 0.2)",
@@ -478,17 +490,6 @@ export default function Neuron({
           ticks: {
             callback: function (value) {
               return Number(value).toFixed(1);
-            },
-          },
-        },
-      },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              const label = context.dataset.label || "";
-              const value = context.raw as number;
-              return `${label}: ${value.toFixed(3)}`;
             },
           },
         },
@@ -963,26 +964,7 @@ export default function Neuron({
                 >
                   {isSimulating ? (
                     <>
-                      <svg
-                        className="mr-2 h-4 w-4 animate-spin"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
                       {dict.simulation.simulating}
                     </>
                   ) : (

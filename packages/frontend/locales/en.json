@@ -205,7 +205,7 @@
     "graphPlaceholder": "Graph will appear here",
     "analysisPlaceholder": "Analysis results will appear here",
     "runSimulation": "Run Simulation",
-    "membraneVoltage": "Membrane Voltage",
+    "membraneVoltage": "Output Voltage",
     "noData": "No simulation data available",
     "analysisNotAvailable": "Analysis is not available yet",
     "superpixel": {
@@ -244,7 +244,7 @@
     },
     "chart": {
       "time": "Time (ms)",
-      "voltage": "Membrane Potential (mV)",
+      "voltage": "Output Voltage (mV)",
       "models": {
         "hh": "Hodgkin-Huxley Model",
         "fhn": "FitzHugh-Nagumo Model",
@@ -312,7 +312,7 @@
         "chaos": "Chaotic Mode"
       },
       "visualization": {
-        "membraneVoltage": "Membrane Voltage and Input Current",
+        "membraneVoltage": "Output Voltage and Input Current",
         "memristorState": "Memristor State",
         "noData": "Run a simulation to see results",
         "noMemristorData": "Run a simulation to see memristor state"

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"math"
+	"math/rand"
 	"net/http"
 )
 
@@ -320,19 +321,52 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 			params[k] = v
 		}
 
-		// Simple approximation of pink noise using a few sine waves with different frequencies
+		// Implementing Voss-McCartney algorithm for pink noise
+		pinkSource := rand.NewSource(42) // Fixed seed for reproducibility
+		pinkRand := rand.New(pinkSource)
+		maxKey := uint32(0x1F) // Five bits set
+		var key uint32 = 0
+		white := [5]float64{0, 0, 0, 0, 0}
+
+		// Generate the next pink noise sample based on time
 		inputSignal = func(t float64) float64 {
-			noise := 0.0
-			for i := 1; i <= 5; i++ {
-				// Decrease amplitude as frequency increases
-				amp := signalParams.Amplitude / math.Sqrt(float64(i))
-				// Use prime numbers for frequencies to avoid periodicity
-				freq := signalParams.Frequency * float64(2*i+1)
-				// Random-like phase based on the frequency
-				phase := math.Pi * float64(i) / 5.0
-				noise += amp * math.Sin(2*math.Pi*freq*t+phase)
+			// Calculate the sample index based on time and frequency
+			sampleIndex := int(t*signalParams.Frequency) % 10000000
+
+			// Ensure we generate the correct sample for this index
+			for i := 0; i < sampleIndex; i++ {
+				// Skip ahead in the sequence
+				lastKey := key
+				key++
+				if key > maxKey {
+					key = 0
+				}
+				diff := lastKey ^ key
+				for j := 0; j < 5; j++ {
+					if diff&(1<<uint(j)) != 0 {
+						white[j] = pinkRand.Float64()*2 - 1
+					}
+				}
 			}
-			return signalParams.Baseline + noise
+
+			// Generate the actual sample for this time point
+			lastKey := key
+			key++
+			if key > maxKey {
+				key = 0
+			}
+			diff := lastKey ^ key
+			for i := 0; i < 5; i++ {
+				if diff&(1<<uint(i)) != 0 {
+					white[i] = pinkRand.Float64()*2 - 1
+				}
+			}
+
+			// Sum the white noise components
+			sum := white[0] + white[1] + white[2] + white[3] + white[4]
+
+			// Scale and add baseline
+			return signalParams.Baseline + signalParams.Amplitude*sum*0.1
 		}
 
 	default:
