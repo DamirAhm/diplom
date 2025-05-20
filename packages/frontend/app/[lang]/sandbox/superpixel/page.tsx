@@ -163,10 +163,10 @@ export default function SuperpixelPage({
             const canvasElement = originalCanvasRef.current;
 
             // Determine the maximum width for the canvas display, responsive to container size
-            let displayMaxWidth = 800; // Default maximum width (e.g., for desktop)
-            if (canvasElement.parentElement && canvasElement.parentElement.clientWidth > 0) {
+            let displayMaxWidth = 1000;
+            if (canvasElement.parentElement?.parentElement && canvasElement.parentElement?.parentElement.clientWidth > 0) {
               // Use the parent's width, but don't exceed the default max (800)
-              displayMaxWidth = Math.min(800, canvasElement.parentElement.clientWidth);
+              displayMaxWidth = Math.min(displayMaxWidth, canvasElement.parentElement?.parentElement.clientWidth);
             }
             // Also, don't upscale the image if it's naturally smaller than this calculated displayMaxWidth
             displayMaxWidth = Math.min(displayMaxWidth, originalWidth);
@@ -175,7 +175,7 @@ export default function SuperpixelPage({
             if (displayMaxWidth < 1) displayMaxWidth = 1;
 
 
-            const displayMaxHeight = 600; // Max height constraint (can be made dynamic too if needed)
+            const displayMaxHeight = 600;
 
             let displayWidth = originalWidth;
             let displayHeight = originalHeight;
@@ -184,6 +184,8 @@ export default function SuperpixelPage({
             // Scale to fit within displayMaxWidth and displayMaxHeight, preserving aspect ratio
             // Check if scaling is needed (image larger than bounds)
             if (originalWidth > displayMaxWidth || originalHeight > displayMaxHeight) {
+              console.log(displayMaxWidth, aspectRatio);
+
               if (displayMaxWidth / aspectRatio <= displayMaxHeight) {
                 // Fit to width
                 displayWidth = displayMaxWidth;
