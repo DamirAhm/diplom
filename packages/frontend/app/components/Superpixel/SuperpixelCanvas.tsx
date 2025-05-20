@@ -227,7 +227,7 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
     const findNearestStroke = (mouseX: number, mouseY: number, strokes: any[]) => {
         let nearestStroke = null;
         let minDistance = Infinity;
-        const searchRadius = 20; // 20px radius
+        const searchRadius = 100;
 
         for (const stroke of strokes) {
             // Scale center coordinates
@@ -373,7 +373,10 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
         const handleMouseMove = (event: MouseEvent) => {
             if (!strokeData || !strokeData.strokes) return;
 
-            const rect = strokesCanvas.getBoundingClientRect();
+            const targetCanvas = event.currentTarget as HTMLCanvasElement;
+            if (!targetCanvas) return;
+
+            const rect = targetCanvas.getBoundingClientRect();
             const mouseX = event.clientX - rect.left;
             const mouseY = event.clientY - rect.top;
 

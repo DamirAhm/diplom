@@ -59,6 +59,8 @@ export default function SuperpixelPage({
   const [highlightedStrokeId, setHighlightedStrokeId] = useState<number | null>(
     null
   );
+  const [originalImageFullDimensions, setOriginalImageFullDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [processingDimensions, setProcessingDimensions] = useState<{ width: number; height: number } | null>(null);
 
   const [drawOptions, setDrawOptions] = useState({
     drawCenters: false,
@@ -70,8 +72,8 @@ export default function SuperpixelPage({
 
   const [gradientSensitivity, setGradientSensitivity] = useState(1.0);
 
-  const [scaleX, setScaleX] = useState(1);
-  const [scaleY, setScaleY] = useState(1);
+  const [strokeScaleX, setStrokeScaleX] = useState(1);
+  const [strokeScaleY, setStrokeScaleY] = useState(1);
 
   // Function to sort strokes by color similarity
   const sortStrokesByColor = (strokes: any[]) => {
@@ -140,6 +142,11 @@ export default function SuperpixelPage({
       }
     }
     setImageFile(file);
+    setOriginalImageFullDimensions(null); // Reset while loading new image
+    setProcessingDimensions(null); // Reset processing dimensions
+    setStrokeScaleX(1); // Reset stroke scales
+    setStrokeScaleY(1); // Reset stroke scales
+    // clearCanvases() will setStrokeData(null)
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -149,29 +156,73 @@ export default function SuperpixelPage({
         const img = new Image();
         img.onload = () => {
           if (originalCanvasRef.current) {
-            const maxWidth = 800;
-            const maxHeight = 600;
-            let width = img.width;
-            let height = img.height;
+            const originalWidth = img.width;
+            const originalHeight = img.height;
+            setOriginalImageFullDimensions({ width: originalWidth, height: originalHeight });
 
-            if (width > maxWidth) {
-              height = (maxWidth / width) * height;
-              width = maxWidth;
+            const canvasElement = originalCanvasRef.current;
+
+            // Determine the maximum width for the canvas display, responsive to container size
+            let displayMaxWidth = 800; // Default maximum width (e.g., for desktop)
+            if (canvasElement.parentElement && canvasElement.parentElement.clientWidth > 0) {
+              // Use the parent's width, but don't exceed the default max (800)
+              displayMaxWidth = Math.min(800, canvasElement.parentElement.clientWidth);
+            }
+            // Also, don't upscale the image if it's naturally smaller than this calculated displayMaxWidth
+            displayMaxWidth = Math.min(displayMaxWidth, originalWidth);
+
+            // Ensure displayMaxWidth is at least 1px if all other values were 0 or less.
+            if (displayMaxWidth < 1) displayMaxWidth = 1;
+
+
+            const displayMaxHeight = 600; // Max height constraint (can be made dynamic too if needed)
+
+            let displayWidth = originalWidth;
+            let displayHeight = originalHeight;
+            const aspectRatio = originalWidth / originalHeight;
+
+            // Scale to fit within displayMaxWidth and displayMaxHeight, preserving aspect ratio
+            // Check if scaling is needed (image larger than bounds)
+            if (originalWidth > displayMaxWidth || originalHeight > displayMaxHeight) {
+              if (displayMaxWidth / aspectRatio <= displayMaxHeight) {
+                // Fit to width
+                displayWidth = displayMaxWidth;
+                displayHeight = displayWidth / aspectRatio;
+              } else {
+                // Fit to height
+                displayHeight = displayMaxHeight;
+                displayWidth = displayHeight * aspectRatio;
+              }
+            } else {
+              // Image is smaller than or fits within displayMaxWidth and displayMaxHeight
+              // Use original dimensions (no upscaling)
+              displayWidth = originalWidth;
+              displayHeight = originalHeight;
             }
 
-            if (height > maxHeight) {
-              width = (maxHeight / height) * width;
-              height = maxHeight;
-            }
+            // Round to nearest integer and ensure at least 1px
+            displayWidth = Math.max(1, Math.round(displayWidth));
+            displayHeight = Math.max(1, Math.round(displayHeight));
 
-            setCanvasSizes(width, height);
-            setScaleX(width / img.width);
-            setScaleY(height / img.height);
+            setCanvasSizes(displayWidth, displayHeight); // Sets originalCanvasRef to display dimensions
+
+            // Scale factors to draw results (in originalFullDimensions) onto display canvases
+            // These are now specifically for gradients
+            /* Will be removed
+            if (originalWidth > 0 && originalHeight > 0) {
+              setGradientScaleX(displayWidth / originalWidth);
+              setGradientScaleY(displayHeight / originalHeight);
+            } else {
+              setGradientScaleX(1);
+              setGradientScaleY(1);
+            }
+            */
+            // strokeScaleX and strokeScaleY will be set in processImage
 
             const ctx = originalCanvasRef.current.getContext("2d");
             if (ctx) {
-              ctx.clearRect(0, 0, width, height);
-              ctx.drawImage(img, 0, 0, width, height);
+              ctx.clearRect(0, 0, displayWidth, displayHeight);
+              ctx.drawImage(img, 0, 0, displayWidth, displayHeight); // Draw scaled image for display
             }
 
             clearCanvases();
@@ -221,13 +272,17 @@ export default function SuperpixelPage({
 
     setStrokeData(null);
     setHighlightedStrokeId(null);
+    // Reset scales related to processing, gradient scales are reset in handleImageChange
+    setProcessingDimensions(null);
+    setStrokeScaleX(1);
+    setStrokeScaleY(1);
   };
 
   const processImage = async () => {
-    if (!imageFile) {
+    if (!previewUrl || !originalImageFullDimensions) {
       toast({
         title: "Error",
-        description: "Please select an image first",
+        description: "Please select an image and wait for it to load first.",
         variant: "destructive",
       });
       return;
@@ -237,7 +292,87 @@ export default function SuperpixelPage({
     clearCanvases();
 
     try {
-      const data = await processSuperpixelImage(imageFile, params);
+      // Create an Image object to draw on the offscreen canvas
+      const processingImg = new Image();
+      // Use a promise to ensure the image is loaded before proceeding
+      await new Promise<void>((resolve, reject) => {
+        processingImg.onload = () => resolve();
+        processingImg.onerror = (err) => reject(err);
+        processingImg.src = previewUrl; // previewUrl contains the original image data URL
+      });
+
+      // Define maximum dimensions for processing
+      const MAX_PROCESSING_WIDTH = 1920;
+      const MAX_PROCESSING_HEIGHT = 1080;
+
+      let processingWidth = originalImageFullDimensions.width;
+      let processingHeight = originalImageFullDimensions.height;
+      const aspectRatio = processingWidth / processingHeight;
+
+      // Scale down if the image exceeds processing limits, preserving aspect ratio
+      if (processingWidth > MAX_PROCESSING_WIDTH || processingHeight > MAX_PROCESSING_HEIGHT) {
+        if (MAX_PROCESSING_WIDTH / aspectRatio <= MAX_PROCESSING_HEIGHT) {
+          // Fit to width
+          processingWidth = MAX_PROCESSING_WIDTH;
+          processingHeight = processingWidth / aspectRatio;
+        } else {
+          // Fit to height
+          processingHeight = MAX_PROCESSING_HEIGHT;
+          processingWidth = processingHeight * aspectRatio;
+        }
+      }
+
+      // Round to nearest integer and ensure at least 1px
+      processingWidth = Math.max(1, Math.round(processingWidth));
+      processingHeight = Math.max(1, Math.round(processingHeight));
+
+      // Create an offscreen canvas with calculated processing dimensions
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = processingWidth;
+      offscreenCanvas.height = processingHeight;
+      const offscreenCtx = offscreenCanvas.getContext('2d');
+
+      if (!offscreenCtx) {
+        toast({
+          title: "Error",
+          description: "Could not create offscreen canvas context",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Draw the (potentially scaled) image onto the offscreen canvas
+      offscreenCtx.drawImage(processingImg, 0, 0, processingWidth, processingHeight);
+
+      // Store processing dimensions and calculate stroke scales
+      setProcessingDimensions({ width: processingWidth, height: processingHeight });
+
+      let newStrokeScaleX = 1;
+      let newStrokeScaleY = 1;
+      if (originalCanvasRef.current && processingWidth > 0 && processingHeight > 0) {
+        newStrokeScaleX = originalCanvasRef.current.width / processingWidth;
+        newStrokeScaleY = originalCanvasRef.current.height / processingHeight;
+      }
+      setStrokeScaleX(newStrokeScaleX); // Set state for SuperpixelCanvas and future effects
+      setStrokeScaleY(newStrokeScaleY); // Set state for SuperpixelCanvas and future effects
+
+      // Get image data from the offscreen canvas as a Blob
+      const imageBlob = await new Promise<Blob | null>((resolve) =>
+        offscreenCanvas.toBlob(resolve, "image/png")
+      );
+
+      if (!imageBlob) {
+        toast({
+          title: "Error",
+          description: "Could not get image data from offscreen canvas",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const data = await processSuperpixelImage(imageBlob, params);
 
       setLoading(false);
 
@@ -256,8 +391,8 @@ export default function SuperpixelPage({
         await drawAllStrokes(
           strokesCanvasRef.current,
           data.strokes,
-          scaleX,
-          scaleY
+          newStrokeScaleX, // Use directly calculated value
+          newStrokeScaleY, // Use directly calculated value
         );
 
         if (drawOptions.showStrokes && strokesCanvasRef.current.parentElement) {
@@ -273,8 +408,8 @@ export default function SuperpixelPage({
         await drawBorders(
           bordersCanvasRef.current,
           data.strokes,
-          scaleX,
-          scaleY,
+          newStrokeScaleX, // Use directly calculated value
+          newStrokeScaleY, // Use directly calculated value
         );
 
         if (drawOptions.drawBorders && bordersCanvasRef.current.parentElement) {
@@ -287,18 +422,18 @@ export default function SuperpixelPage({
         drawOptions.drawCenters ||
         drawOptions.useGradientColors
       ) {
-        const drawGradientVectorsWithScale = (
+        const drawGradientVectorsWithCorrectScale = (
           ctx: CanvasRenderingContext2D,
           vectors: any[]
         ) => {
-          drawGradientVectors(ctx, vectors, scaleX, scaleY);
+          drawGradientVectors(ctx, vectors, strokeScaleX, strokeScaleY);
         };
 
-        const drawClusterCentersWithScale = (
+        const drawClusterCentersWithCorrectScale = (
           ctx: CanvasRenderingContext2D,
           strokes: any[]
         ) => {
-          drawClusterCenters(ctx, strokes, scaleX, scaleY);
+          drawClusterCenters(ctx, strokes, strokeScaleX, strokeScaleY);
         };
 
         updateGradientsView(
@@ -309,8 +444,8 @@ export default function SuperpixelPage({
           drawOptions.drawCenters,
           drawOptions.useGradientColors,
           gradientSensitivity,
-          drawGradientVectorsWithScale,
-          drawClusterCentersWithScale,
+          drawGradientVectorsWithCorrectScale,
+          drawClusterCentersWithCorrectScale,
         );
       }
     } catch (error) {
@@ -361,18 +496,18 @@ export default function SuperpixelPage({
         drawOptions.drawCenters ||
         drawOptions.useGradientColors
       ) {
-        const drawGradientVectorsWithScale = (
+        const drawGradientVectorsWithStateScale = ( // Renamed for clarity within this scope
           ctx: CanvasRenderingContext2D,
           vectors: any[]
         ) => {
-          drawGradientVectors(ctx, vectors, scaleX, scaleY);
+          drawGradientVectors(ctx, vectors, strokeScaleX, strokeScaleY);
         };
 
-        const drawClusterCentersWithScale = (
+        const drawClusterCentersWithStateScale = ( // Renamed for clarity
           ctx: CanvasRenderingContext2D,
           strokes: any[]
         ) => {
-          drawClusterCenters(ctx, strokes, scaleX, scaleY);
+          drawClusterCenters(ctx, strokes, strokeScaleX, strokeScaleY);
         };
 
         updateGradientsView(
@@ -383,8 +518,8 @@ export default function SuperpixelPage({
           drawOptions.drawCenters,
           drawOptions.useGradientColors,
           gradientSensitivity,
-          drawGradientVectorsWithScale,
-          drawClusterCentersWithScale,
+          drawGradientVectorsWithStateScale,
+          drawClusterCentersWithStateScale,
         );
       } else {
         if (gradientsCanvasRef.current) {
@@ -406,6 +541,8 @@ export default function SuperpixelPage({
     drawOptions.useGradientColors,
     gradientSensitivity,
     strokeData,
+    strokeScaleX, // Added dependency
+    strokeScaleY,  // Added dependency
   ]);
 
   return (
@@ -560,8 +697,8 @@ export default function SuperpixelPage({
                         gradientsCanvasRef={gradientsCanvasRef}
                         highlightCanvasRef={highlightCanvasRef}
                         bordersCanvasRef={bordersCanvasRef}
-                        scaleX={scaleX}
-                        scaleY={scaleY}
+                        scaleX={strokeScaleX}
+                        scaleY={strokeScaleY}
                         showGradients={drawOptions.showGradients}
                         showCenters={drawOptions.drawCenters}
                         showColorGradient={drawOptions.useGradientColors}

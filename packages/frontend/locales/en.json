@@ -1,9 +1,9 @@
 {
   "home": {
     "title": "Youth Research Institute",
-    "description": "The Youth Research Institute is an innovative scientific department at Saint Petersburg State Electrotechnical University “LETI”. Our goal is to create an advanced scientific environment for young researchers where they can realize their ideas in robotics, artificial intelligence, nonlinear dynamics, and other promising fields. We strive to develop interdisciplinary research and create future technologies.",
+    "description": "The Youth Research Institute is an innovative scientific department at Saint Petersburg State Electrotechnical University \"LETI\". Our goal is to create an advanced scientific environment for young researchers where they can realize their ideas in robotics, artificial intelligence, nonlinear dynamics, and other promising fields. We strive to develop interdisciplinary research and create future technologies.",
     "whoWeAre": "Who we are",
-    "whoWeAreDescription": "We are an innovative scientific department at Saint Petersburg State Electrotechnical University “LETI”.",
+    "whoWeAreDescription": "We are an innovative scientific department at Saint Petersburg State Electrotechnical University \"LETI\".",
     "ourGoal": "What is our goal",
     "goalDescription": "Creating an advanced scientific environment for young researchers where they can realize their ideas in robotics, artificial intelligence, nonlinear dynamics, and other promising fields.",
     "ourAspiration": "Our aspiration",
@@ -205,7 +205,7 @@
     "graphPlaceholder": "Graph will appear here",
     "analysisPlaceholder": "Analysis results will appear here",
     "runSimulation": "Run Simulation",
-    "membraneVoltage": "Membrane Voltage",
+    "membraneVoltage": "Output Voltage",
     "noData": "No simulation data available",
     "analysisNotAvailable": "Analysis is not available yet",
     "superpixel": {
@@ -244,7 +244,7 @@
     },
     "chart": {
       "time": "Time (ms)",
-      "voltage": "Membrane Potential (mV)",
+      "voltage": "Output Voltage (mV)",
       "models": {
         "hh": "Hodgkin-Huxley Model",
         "fhn": "FitzHugh-Nagumo Model",
@@ -264,7 +264,60 @@
         "paper3": "Electronic neurons based on tunnel diodes: Design and dynamics",
         "paper4": "Memristive devices and systems",
         "paper5": "Energy-efficient neuromorphic computing with memristive tunnel diode neurons"
-      }
+      },
+      "parameters": {
+        "neuronParameters": "Neuron Parameters",
+        "capacitance": "Capacitance (nF)",
+        "tuningVoltage": "Tuning Voltage (V)",
+        "modVoltage": "Modulatory Voltage (V)",
+        "invertMemristor": "Invert Memristor",
+        "diodeModel": "Diode Model"
+      },
+      "signal": {
+        "inputSignal": "Input Signal",
+        "signalType": "Signal Type",
+        "amplitude": "Amplitude (μA)",
+        "constant": "Constant Current",
+        "step": "Step Current",
+        "pulse": "Pulse Train",
+        "sine": "Sinusoidal",
+        "pinkNoise": "Pink Noise",
+        "beforeStep": "Before Step (μA)",
+        "stepTime": "Step Time (ms)",
+        "baseline": "Baseline (μA)",
+        "startTime": "Start Time (ms)",
+        "pulseWidth": "Pulse Width (ms)",
+        "frequency": "Frequency (Hz)",
+        "numberOfPulses": "Number of Pulses",
+        "offset": "Offset (μA)",
+        "phase": "Phase (degrees)",
+        "baseFrequency": "Base Frequency (Hz)"
+      },
+      "simulation": {
+        "settings": "Simulation Settings",
+        "time": "Simulation Time (ms)",
+        "rkMethod": "Runge-Kutta Method",
+        "rk1": "RK1 (Euler)",
+        "rk2": "RK2 (Heun)",
+        "rk4": "RK4 (Classical)",
+        "rk8": "RK8 (High Order)",
+        "run": "Run Simulation",
+        "simulating": "Simulating..."
+      },
+      "presets": {
+        "title": "Presets",
+        "class1": "Class 1 Excitability",
+        "class2": "Class 2 Excitability",
+        "class3": "Class 3 Excitability",
+        "chaos": "Chaotic Mode"
+      },
+      "visualization": {
+        "membraneVoltage": "Output Voltage and Input Current",
+        "memristorState": "Memristor State",
+        "noData": "Run a simulation to see results",
+        "noMemristorData": "Run a simulation to see memristor state"
+      },
+      "resetParameters": "Reset Parameters"
     }
   },
   "admin": {

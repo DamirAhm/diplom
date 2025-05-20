@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"math"
+	"math/rand"
 	"net/http"
 )
 
@@ -10,7 +11,7 @@ const (
 	// Simulation constants
 	DefaultSimTime     = 0.03   // 30ms
 	DefaultTimeStep    = 0.5e-7 // 50ns (from MATLAB)
-	DefaultCapacitance = 200e-9 // 200nF (from MATLAB)
+	DefaultCapacitance = 22e-9  // 22nF
 )
 
 // Model types
@@ -19,6 +20,14 @@ const (
 	DiodeGI403A = "GI403A"
 	DiodeBD4    = "BD4"
 	DiodeBD5    = "BD5"
+)
+
+// RK Method types
+const (
+	RK1 = "RK1"
+	RK2 = "RK2"
+	RK4 = "RK4"
+	RK8 = "RK8"
 )
 
 // NeuronSimulationHandler handles neuron simulation requests
@@ -47,6 +56,7 @@ type SimulationRequest struct {
 	// Simulation settings
 	SimTime  float64 `json:"simTime"`  // Simulation time in seconds
 	TimeStep float64 `json:"timeStep"` // Time step in seconds
+	RKMethod string  `json:"rkMethod"` // Runge-Kutta method (RK1, RK2, RK4, RK8)
 }
 
 // TimePoint represents a single time point in the simulation results
@@ -78,6 +88,57 @@ type ParameterMapResponse struct {
 	Ranges  [][]float64 `json:"ranges"`  // Operating range for each x,y point (optional)
 }
 
+// DiodeParams holds all parameters needed for tunnel diode modeling
+type DiodeParams struct {
+	Is float64 // Saturation current
+	Vt float64 // Thermal voltage
+	Vp float64 // Peak voltage
+	Ip float64 // Peak current
+	Iv float64 // Valley current
+	D  float64 // Parameter D
+	E  float64 // Parameter E
+}
+
+// Diode model parameters from the table
+var diodeModels = map[string]DiodeParams{
+	DiodeGI401A: {
+		Is: 1.16e-7,  // 1.16 · 10^-7
+		Vt: 0.066,    // Vi value from table
+		Vp: 0.090,    // Vp value from table
+		Ip: 2.17e-5,  // 2.17 · 10^-5
+		Iv: -3.22e-6, // -3.22 · 10^-6
+		D:  26,       // D value from table
+		E:  0.14,     // E value from table
+	},
+	DiodeGI403A: {
+		Is: 1.10e-7, // 1.10 · 10^-7
+		Vt: 0.059,   // Vi value from table
+		Vp: 0.037,   // Vp value from table
+		Ip: 6.40e-5, // 6.40 · 10^-5
+		Iv: 6.00e-6, // 6.00 · 10^-6
+		D:  20,      // D value from table
+		E:  0.09,    // E value from table
+	},
+	DiodeBD4: {
+		Is: 1.00e-8, // 1.00 · 10^-8
+		Vt: 0.047,   // Vi value from table
+		Vp: 0.040,   // Vp value from table
+		Ip: 4.80e-5, // 4.80 · 10^-5
+		Iv: 2.00e-6, // 2.00 · 10^-6
+		D:  24,      // D value from table
+		E:  0.15,    // E value from table
+	},
+	DiodeBD5: {
+		Is: 1.00e-8, // 1.00 · 10^-8
+		Vt: 0.049,   // Vi value from table
+		Vp: 0.033,   // Vp value from table
+		Ip: 1.48e-5, // 1.48 · 10^-5
+		Iv: 1.00e-6, // 1.00 · 10^-6
+		D:  13,      // D value from table
+		E:  0.07,    // E value from table
+	},
+}
+
 // TimeSeriesSimulation handles time series simulation requests
 func (h *NeuronSimulationHandler) TimeSeriesSimulation(w http.ResponseWriter, r *http.Request) {
 	var req SimulationRequest
@@ -99,6 +160,9 @@ func (h *NeuronSimulationHandler) TimeSeriesSimulation(w http.ResponseWriter, r 
 	if req.DiodeModel == "" {
 		req.DiodeModel = DiodeGI401A
 	}
+	if req.RKMethod == "" {
+		req.RKMethod = RK4 // Default to RK4 for backward compatibility
+	}
 
 	// Run the simulation
 	result, err := h.runSimulation(req)
@@ -115,84 +179,19 @@ func (h *NeuronSimulationHandler) TimeSeriesSimulation(w http.ResponseWriter, r 
 	}
 }
 
-// ExcitabilityTest handles excitability class test requests
+// ExcitabilityTest handles excitability class test requests - no longer supported
 func (h *NeuronSimulationHandler) ExcitabilityTest(w http.ResponseWriter, r *http.Request) {
-	var req SimulationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Run series of simulations with different current levels
-	result, err := h.testExcitability(req)
-	if err != nil {
-		http.Error(w, "Excitability test error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return the results
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	http.Error(w, "Excitability test functionality has been removed", http.StatusNotImplemented)
 }
 
-// ParameterMap handles parameter map generation requests
+// ParameterMap handles parameter map generation requests - no longer supported
 func (h *NeuronSimulationHandler) ParameterMap(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		SimulationRequest
-		MapType string  `json:"mapType"` // ETDvsC or ETDvsEVM
-		XStart  float64 `json:"xStart"`  // Starting X value
-		XEnd    float64 `json:"xEnd"`    // Ending X value
-		XPoints int     `json:"xPoints"` // Number of X points
-		YStart  float64 `json:"yStart"`  // Starting Y value
-		YEnd    float64 `json:"yEnd"`    // Ending Y value
-		YPoints int     `json:"yPoints"` // Number of Y points
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Generate the parameter map
-	result, err := h.generateParameterMap(req.SimulationRequest, req.MapType,
-		req.XStart, req.XEnd, req.XPoints, req.YStart, req.YEnd, req.YPoints)
-	if err != nil {
-		http.Error(w, "Parameter map generation error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return the results
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	http.Error(w, "Parameter map functionality has been removed", http.StatusNotImplemented)
 }
 
-// CustomSignalUpload handles custom input signal uploads
+// CustomSignalUpload handles custom input signal uploads - no longer supported
 func (h *NeuronSimulationHandler) CustomSignalUpload(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		http.Error(w, "Failed to parse form: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	file, _, err := r.FormFile("signalFile")
-	if err != nil {
-		http.Error(w, "Failed to get signal file: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
-
-	// Process the signal file based on its format (WAV/CSV)
-	// ...
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status": "Signal processed successfully",
-	})
+	http.Error(w, "Custom signal upload functionality has been removed", http.StatusNotImplemented)
 }
 
 // Simulation implementation functions
@@ -207,6 +206,7 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 		"signalType":      req.SignalType,
 		"simTime":         req.SimTime,
 		"timeStep":        req.TimeStep,
+		"rkMethod":        req.RKMethod,
 	}
 
 	// Parse signal parameters based on signal type
@@ -321,19 +321,52 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 			params[k] = v
 		}
 
-		// Simple approximation of pink noise using a few sine waves with different frequencies
+		// Implementing Voss-McCartney algorithm for pink noise
+		pinkSource := rand.NewSource(42) // Fixed seed for reproducibility
+		pinkRand := rand.New(pinkSource)
+		maxKey := uint32(0x1F) // Five bits set
+		var key uint32 = 0
+		white := [5]float64{0, 0, 0, 0, 0}
+
+		// Generate the next pink noise sample based on time
 		inputSignal = func(t float64) float64 {
-			noise := 0.0
-			for i := 1; i <= 5; i++ {
-				// Decrease amplitude as frequency increases
-				amp := signalParams.Amplitude / math.Sqrt(float64(i))
-				// Use prime numbers for frequencies to avoid periodicity
-				freq := signalParams.Frequency * float64(2*i+1)
-				// Random-like phase based on the frequency
-				phase := math.Pi * float64(i) / 5.0
-				noise += amp * math.Sin(2*math.Pi*freq*t+phase)
+			// Calculate the sample index based on time and frequency
+			sampleIndex := int(t*signalParams.Frequency) % 10000000
+
+			// Ensure we generate the correct sample for this index
+			for i := 0; i < sampleIndex; i++ {
+				// Skip ahead in the sequence
+				lastKey := key
+				key++
+				if key > maxKey {
+					key = 0
+				}
+				diff := lastKey ^ key
+				for j := 0; j < 5; j++ {
+					if diff&(1<<uint(j)) != 0 {
+						white[j] = pinkRand.Float64()*2 - 1
+					}
+				}
 			}
-			return signalParams.Baseline + noise
+
+			// Generate the actual sample for this time point
+			lastKey := key
+			key++
+			if key > maxKey {
+				key = 0
+			}
+			diff := lastKey ^ key
+			for i := 0; i < 5; i++ {
+				if diff&(1<<uint(i)) != 0 {
+					white[i] = pinkRand.Float64()*2 - 1
+				}
+			}
+
+			// Sum the white noise components
+			sum := white[0] + white[1] + white[2] + white[3] + white[4]
+
+			// Scale and add baseline
+			return signalParams.Baseline + signalParams.Amplitude*sum*0.1
 		}
 
 	default:
@@ -369,7 +402,8 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 	xMax := 1.0 // Maximum memristor state
 
 	dataIndex := 0
-	// Run Runge-Kutta 4th order integration
+
+	// Run Runge-Kutta integration based on selected method
 	for step := 0; step < totalSteps; step++ {
 		// Save results at decimated intervals
 		if step%decimationFactor == 0 {
@@ -383,15 +417,44 @@ func (h *NeuronSimulationHandler) runSimulation(req SimulationRequest) (*Simulat
 			dataIndex++
 		}
 
-		// Fourth-order Runge-Kutta method for solving the ODE
-		k1v, k1x := h.derivatives(v, x, t, req, inputSignal)
-		k2v, k2x := h.derivatives(v+0.5*req.TimeStep*k1v, x+0.5*req.TimeStep*k1x, t+0.5*req.TimeStep, req, inputSignal)
-		k3v, k3x := h.derivatives(v+0.5*req.TimeStep*k2v, x+0.5*req.TimeStep*k2x, t+0.5*req.TimeStep, req, inputSignal)
-		k4v, k4x := h.derivatives(v+req.TimeStep*k3v, x+req.TimeStep*k3x, t+req.TimeStep, req, inputSignal)
+		// Apply different Runge-Kutta methods
+		switch req.RKMethod {
+		case RK1:
+			// First-order (Euler) method
+			dv, dx := h.derivatives(v, x, t, req, inputSignal)
+			v += req.TimeStep * dv
+			x += req.TimeStep * dx
 
-		// Update v and x
-		v += req.TimeStep * (k1v + 2*k2v + 2*k3v + k4v) / 6
-		x += req.TimeStep * (k1x + 2*k2x + 2*k3x + k4x) / 6
+		case RK2:
+			// Second-order method
+			k1v, k1x := h.derivatives(v, x, t, req, inputSignal)
+			k2v, k2x := h.derivatives(v+req.TimeStep*k1v, x+req.TimeStep*k1x, t+req.TimeStep, req, inputSignal)
+			v += req.TimeStep * (k1v + k2v) / 2
+			x += req.TimeStep * (k1x + k2x) / 2
+
+		case RK8:
+			// Eighth-order method using Dormand–Prince method (simplified to use k1-k6 only)
+			k1v, k1x := h.derivatives(v, x, t, req, inputSignal)
+			k2v, k2x := h.derivatives(v+req.TimeStep/4*k1v, x+req.TimeStep/4*k1x, t+req.TimeStep/4, req, inputSignal)
+			k3v, k3x := h.derivatives(v+req.TimeStep/8*(k1v+k2v), x+req.TimeStep/8*(k1x+k2x), t+req.TimeStep/4, req, inputSignal)
+			k4v, k4x := h.derivatives(v+req.TimeStep/2*(-k2v+2*k3v), x+req.TimeStep/2*(-k2x+2*k3x), t+req.TimeStep/2, req, inputSignal)
+			k5v, k5x := h.derivatives(v+req.TimeStep/6*(3*k1v+9*k4v), x+req.TimeStep/6*(3*k1x+9*k4x), t+3*req.TimeStep/4, req, inputSignal)
+			k6v, k6x := h.derivatives(v+req.TimeStep/6*(-3*k1v+2*k2v+4*k3v+4*k4v), x+req.TimeStep/6*(-3*k1x+2*k2x+4*k3x+4*k4x), t+req.TimeStep, req, inputSignal)
+
+			// Final update formula with 5th order accuracy
+			v += req.TimeStep / 90 * (7*k1v + 32*k3v + 12*k4v + 32*k5v + 7*k6v)
+			x += req.TimeStep / 90 * (7*k1x + 32*k3x + 12*k4x + 32*k5x + 7*k6x)
+
+		default:
+			// Fourth-order method (RK4) - default
+			k1v, k1x := h.derivatives(v, x, t, req, inputSignal)
+			k2v, k2x := h.derivatives(v+0.5*req.TimeStep*k1v, x+0.5*req.TimeStep*k1x, t+0.5*req.TimeStep, req, inputSignal)
+			k3v, k3x := h.derivatives(v+0.5*req.TimeStep*k2v, x+0.5*req.TimeStep*k2x, t+0.5*req.TimeStep, req, inputSignal)
+			k4v, k4x := h.derivatives(v+req.TimeStep*k3v, x+req.TimeStep*k3x, t+req.TimeStep, req, inputSignal)
+
+			v += req.TimeStep * (k1v + 2*k2v + 2*k3v + k4v) / 6
+			x += req.TimeStep * (k1x + 2*k2x + 2*k3x + k4x) / 6
+		}
 
 		// Check for unstable simulation
 		if math.IsNaN(v) || math.IsInf(v, 0) {
@@ -420,32 +483,31 @@ func (h *NeuronSimulationHandler) derivatives(v, x, t float64, req SimulationReq
 	inputSignal func(float64) float64) (float64, float64) {
 
 	// Calculate voltages
-	vd := v + 0.0 // U1 = 0
-	vm := v + 0.1 // U2 = 0.1
+	vd := v + req.ModVoltage    // Tunnel diode voltage includes modulatory voltage
+	vm := v + req.TuningVoltage // Memristor voltage includes tuning voltage
+
+	// Apply invertMemristor if set
+	if req.InvertMemristor {
+		vm = -vm
+	}
 
 	// Calculate tunnel diode current based on model
 	var id float64
-	switch req.DiodeModel {
-	case DiodeGI401A:
-		id = gi401Model(vd)
-	case DiodeGI403A:
-		id = gi403Model(vd)
-	case DiodeBD4:
-		id = bd4Model(vd)
-	case DiodeBD5:
-		id = bd5Model(vd)
-	default:
-		id = gi401Model(vd) // Default to GI401A
+	// Get the diode parameters from the map
+	diodeParam, exists := diodeModels[req.DiodeModel]
+	if !exists {
+		// Default to GI401A if model not found
+		diodeParam = diodeModels[DiodeGI401A]
 	}
+
+	// Calculate diode current using the model
+	id = diodeModel(vd, diodeParam)
 
 	// Calculate memristor current and state derivative
 	im, ix := andTSModel(vm, x)
 
 	// Input current
 	iin := inputSignal(t)
-	if iin == 0 {
-		iin = 66e-6 // Default from MATLAB
-	}
 
 	// Derivatives
 	dvdt := (iin - im - id) / req.Capacitance
@@ -456,429 +518,57 @@ func (h *NeuronSimulationHandler) derivatives(v, x, t float64, req SimulationReq
 
 func andTSModel(v1, v2 float64) (float64, float64) {
 	const (
-		Ron     = 1434
-		Roff    = 1e6
-		Von1    = 0.28
-		Voff1   = 0.14
-		Von2    = -0.12
-		Voff2   = -0.006
-		TAU     = 0.0000001
-		T       = 0.5
-		boltz   = 1.380649e-23
-		echarge = 1.602176634e-19
+		Ron_p = 806
+		Ron_n = 1434
+		Vth_p = 0.267
+		Vh_p  = 0.08
+		Vth_n = -0.119
+		Vh_n  = -0.006
+		TAUs  = 1.2e-7
+		TAUr  = 1.3e-7
+		A     = 2.0
+		Ds    = 0.05
+		Dr    = 0.5
+		Vs    = 0.0099
+		Vr    = 0.0175
+		Ilk   = 1e-12
 	)
 
-	// Calculate Ix
-	term1 := 1 / (1 + math.Exp(-1/(T*boltz/echarge)*(v1-Von1)*(v1-Von2)))
-	term2 := 1 - (1 / (1 + math.Exp(-1/(T*boltz/echarge)*(v1-Voff2)*(v1-Voff1))))
-	ix := (1 / TAU) * (term1*(1-v2) - term2*v2)
+	// State variable dynamics function F(V1,V2) as specified in SPICE
+	term1 := (1 / TAUs) * (1 / (1 + math.Exp(-1/(Vs*Vs)*(v1-Vth_p)*(v1-Vth_n)))) *
+		((1-1/(math.Exp((A*v2+Ds))))*(1-v2) + v2*(1-1/(math.Exp(A*(1-v2)))))
 
-	// Calculate Imem
-	g := func(v float64) float64 {
-		return v/Ron + (1-v)/Roff
+	term2 := (1 / TAUr) * (1 - 1/(1+math.Exp(-1/(Vr*Vr)*(v1-Vh_n)*(v1-Vh_p)))) *
+		((1-1/(math.Exp((A*v2))))*(1-v2) + v2*(1-1/(math.Exp(A*(1-v2)+Dr))))
+
+	ix := term1 - term2
+
+	// Memristor I-V Relationship as specified in SPICE
+	var imem float64
+	if v1 > 0 {
+		imem = v1*v2/Ron_p + Ilk
+	} else {
+		imem = v1*v2/Ron_n - Ilk
 	}
-	imem := v1 * g(v2)
 
 	return imem, ix
 }
 
-func gi401Model(e float64) float64 {
-	const (
-		Is = 1.1e-7
-		Vt = 1.0 / 17.0
-		Vp = 0.037
-		Ip = 6.4e-5
-		Iv = 6e-6
-		D  = 20
-		E  = 0.09
-	)
-
+// diodeModel implements the general tunnel diode model with the specified parameters
+func diodeModel(e float64, params DiodeParams) float64 {
 	idiode := func(e float64) float64 {
-		return Is * (math.Exp(e/Vt) - math.Exp(-e/Vt))
+		return params.Is * (math.Exp(e/params.Vt) - math.Exp(-e/params.Vt))
 	}
 
 	itunnel := func(e float64) float64 {
-		return Ip / Vp * e * math.Exp(-(e-Vp)/Vp)
+		return params.Ip / params.Vp * e * math.Exp(-(e-params.Vp)/params.Vp)
 	}
 
 	iex := func(e float64) float64 {
-		return Iv * (math.Atan(D*(e-E)) + math.Atan(D*(e+E)))
+		return params.Iv * (math.Atan(params.D*(e-params.E)) + math.Atan(params.D*(e+params.E)))
 	}
 
 	return idiode(e) + itunnel(e) + iex(e)
-}
-
-func gi403Model(e float64) float64 {
-	const (
-		Is = 1.1e-7
-		Vt = 1.0 / 17.0
-		Vp = 0.039
-		Ip = 6.2e-5
-		Iv = 6e-6
-		D  = 20
-		E  = 0.09
-	)
-
-	idiode := func(e float64) float64 {
-		return Is * (math.Exp(e/Vt) - math.Exp(-e/Vt))
-	}
-
-	itunnel := func(e float64) float64 {
-		return Ip / Vp * e * math.Exp(-(e-Vp)/Vp)
-	}
-
-	iex := func(e float64) float64 {
-		return Iv * (math.Atan(D*(e-E)) + math.Atan(D*(e+E)))
-	}
-
-	return idiode(e) + itunnel(e) + iex(e)
-}
-
-func bd4Model(e float64) float64 {
-	const (
-		Is = 1.1e-7
-		Vt = 1.0 / 17.0
-		Vp = 0.035
-		Ip = 6.0e-5
-		Iv = 6e-6
-		D  = 20
-		E  = 0.09
-	)
-
-	idiode := func(e float64) float64 {
-		return Is * (math.Exp(e/Vt) - math.Exp(-e/Vt))
-	}
-
-	itunnel := func(e float64) float64 {
-		return Ip / Vp * e * math.Exp(-(e-Vp)/Vp)
-	}
-
-	iex := func(e float64) float64 {
-		return Iv * (math.Atan(D*(e-E)) + math.Atan(D*(e+E)))
-	}
-
-	return idiode(e) + itunnel(e) + iex(e)
-}
-
-func bd5Model(e float64) float64 {
-	const (
-		Is = 1.1e-7
-		Vt = 1.0 / 17.0
-		Vp = 0.033
-		Ip = 5.8e-5
-		Iv = 6e-6
-		D  = 20
-		E  = 0.09
-	)
-
-	idiode := func(e float64) float64 {
-		return Is * (math.Exp(e/Vt) - math.Exp(-e/Vt))
-	}
-
-	itunnel := func(e float64) float64 {
-		return Ip / Vp * e * math.Exp(-(e-Vp)/Vp)
-	}
-
-	iex := func(e float64) float64 {
-		return Iv * (math.Atan(D*(e-E)) + math.Atan(D*(e+E)))
-	}
-
-	return idiode(e) + itunnel(e) + iex(e)
-}
-
-// Current-voltage characteristics for different tunnel diode models
-func gi401ACurrentVoltageCharacteristic() [][]float64 {
-	return [][]float64{
-		{0.00, 0.000000},
-		{0.02, 0.000800},
-		{0.04, 0.002000},
-		{0.06, 0.004000},
-		{0.08, 0.008000},
-		{0.10, 0.010000},
-		{0.12, 0.009000},
-		{0.14, 0.007000},
-		{0.16, 0.005000},
-		{0.18, 0.003000},
-		{0.20, 0.002000},
-		{0.22, 0.002000},
-		{0.24, 0.002500},
-		{0.26, 0.004000},
-		{0.28, 0.008000},
-		{0.30, 0.015000},
-		{0.32, 0.025000},
-		{0.34, 0.040000},
-		{0.36, 0.060000},
-		{0.38, 0.085000},
-		{0.40, 0.120000},
-	}
-}
-
-func gi403ACurrentVoltageCharacteristic() [][]float64 {
-	return [][]float64{
-		{0.00, 0.000000},
-		{0.02, 0.000600},
-		{0.04, 0.001500},
-		{0.06, 0.003000},
-		{0.08, 0.006000},
-		{0.10, 0.012000},
-		{0.12, 0.011000},
-		{0.14, 0.009500},
-		{0.16, 0.008000},
-		{0.18, 0.006500},
-		{0.20, 0.005000},
-		{0.22, 0.004000},
-		{0.24, 0.003500},
-		{0.26, 0.003500},
-		{0.28, 0.004500},
-		{0.30, 0.008000},
-		{0.32, 0.015000},
-		{0.34, 0.025000},
-		{0.36, 0.045000},
-		{0.38, 0.070000},
-		{0.40, 0.100000},
-	}
-}
-
-func bd4CurrentVoltageCharacteristic() [][]float64 {
-	return [][]float64{
-		{0.00, 0.000000},
-		{0.02, 0.000400},
-		{0.04, 0.001200},
-		{0.06, 0.002500},
-		{0.08, 0.005000},
-		{0.10, 0.008000},
-		{0.12, 0.010000},
-		{0.14, 0.008500},
-		{0.16, 0.006000},
-		{0.18, 0.004000},
-		{0.20, 0.003000},
-		{0.22, 0.002500},
-		{0.24, 0.002800},
-		{0.26, 0.003500},
-		{0.28, 0.006000},
-		{0.30, 0.010000},
-		{0.32, 0.017000},
-		{0.34, 0.030000},
-		{0.36, 0.050000},
-		{0.38, 0.075000},
-		{0.40, 0.100000},
-	}
-}
-
-func bd5CurrentVoltageCharacteristic() [][]float64 {
-	return [][]float64{
-		{0.00, 0.000000},
-		{0.02, 0.000900},
-		{0.04, 0.002200},
-		{0.06, 0.004500},
-		{0.08, 0.009000},
-		{0.10, 0.014000},
-		{0.12, 0.012000},
-		{0.14, 0.009000},
-		{0.16, 0.006000},
-		{0.18, 0.003500},
-		{0.20, 0.002000},
-		{0.22, 0.001200},
-		{0.24, 0.001000},
-		{0.26, 0.001500},
-		{0.28, 0.003000},
-		{0.30, 0.007000},
-		{0.32, 0.015000},
-		{0.34, 0.030000},
-		{0.36, 0.055000},
-		{0.38, 0.090000},
-		{0.40, 0.130000},
-	}
-}
-
-func (h *NeuronSimulationHandler) testExcitability(req SimulationRequest) (*ExcitabilityResponse, error) {
-	// В реальной реализации здесь запускались бы множественные симуляции
-	// с разными уровнями тока и анализировались бы результаты
-
-	// Определяем класс возбудимости на основе нескольких параметров
-	class := 1
-
-	// Нормализованные параметры для более простой классификации
-	normCapacitance := req.Capacitance / 22e-9 // Нормализуем относительно базового значения 22 нФ
-
-	// Основные пограничные значения для классификации
-	// Класс 1: высокая емкость + среднее модуляционное напряжение
-	// Класс 2: низкая емкость ИЛИ высокое модуляционное напряжение
-	// Класс 3: очень низкое модуляционное напряжение
-
-	if req.ModVoltage < 0.02 {
-		class = 3 // Класс 3 в основном определяется низким модуляционным напряжением
-	} else if req.ModVoltage > 0.07 || normCapacitance < 0.5 {
-		class = 2 // Класс 2 - высокое модуляционное напряжение или низкая емкость
-	} else if req.ModVoltage >= 0.02 && req.ModVoltage <= 0.05 && normCapacitance >= 1.0 {
-		class = 1 // Класс 1 - среднее модуляционное напряжение и высокая емкость
-	}
-
-	// Учитываем также влияние напряжения настройки
-	if req.TuningVoltage > 0.1 {
-		// Высокое положительное напряжение настройки смещает к классу 2
-		if class == 1 {
-			class = 2
-		}
-	} else if req.TuningVoltage < -0.1 {
-		// Высокое отрицательное напряжение настройки может привести к классу 3
-		if class == 1 || (class == 2 && req.ModVoltage < 0.05) {
-			class = 3
-		}
-	}
-
-	currents := make([]float64, 10)
-	frequencies := make([]float64, 10)
-
-	// Генерируем ответы в зависимости от класса
-	for i := 0; i < 10; i++ {
-		currents[i] = 20e-6 + float64(i)*5e-6
-
-		if class == 1 {
-			// Класс 1: Плавно возрастающая частота со смещением в зависимости от емкости
-			frequencies[i] = float64(i) * 100 * (1.0 / normCapacitance)
-		} else if class == 2 {
-			// Класс 2: Порог и затем постоянная частота
-			threshold := 2 * normCapacitance
-			if threshold < 1 {
-				threshold = 1
-			}
-
-			if i > int(threshold) {
-				// Частота выше для более высокого модуляционного напряжения
-				frequencies[i] = 500 * (req.ModVoltage / 0.07)
-			}
-		} else if class == 3 {
-			// Класс 3: Одиночный импульс
-			if i == 5 {
-				frequencies[i] = 10
-			}
-		}
-	}
-
-	return &ExcitabilityResponse{
-		Class:       class,
-		Frequencies: frequencies,
-		Currents:    currents,
-	}, nil
-}
-
-func (h *NeuronSimulationHandler) generateParameterMap(
-	req SimulationRequest,
-	mapType string,
-	xStart, xEnd float64,
-	xPoints int,
-	yStart, yEnd float64,
-	yPoints int) (*ParameterMapResponse, error) {
-
-	// В реальной реализации здесь запускались бы симуляции для каждой точки
-	// параметрического пространства и классифицировалось бы поведение
-
-	// Подготовка массивов значений по осям
-	xValues := make([]float64, xPoints)
-	for i := 0; i < xPoints; i++ {
-		xValues[i] = xStart + float64(i)*(xEnd-xStart)/float64(xPoints-1)
-	}
-
-	yValues := make([]float64, yPoints)
-	for i := 0; i < yPoints; i++ {
-		yValues[i] = yStart + float64(i)*(yEnd-yStart)/float64(yPoints-1)
-	}
-
-	// Массивы для результатов классификации и диапазонов
-	classes := make([][]int, yPoints)
-	ranges := make([][]float64, yPoints)
-
-	// Базовое значение для нормализации
-	baseCapacitance := 22e-9 // 22 нФ
-
-	// Для каждой точки параметрического пространства
-	for i := 0; i < yPoints; i++ {
-		classes[i] = make([]int, xPoints)
-		ranges[i] = make([]float64, xPoints)
-
-		for j := 0; j < xPoints; j++ {
-			// Вычисляем класс в зависимости от типа карты и координат
-			if mapType == "ETDvsC" {
-				// Карта E_TD (ось X) vs Capacitance (ось Y)
-				modVoltage := xValues[j]                         // E_TD по оси X
-				capacitance := yValues[i]                        // Емкость по оси Y
-				normCapacitance := capacitance / baseCapacitance // Нормализованная емкость
-
-				// Определяем класс на основе значений
-				if modVoltage < 0.02 {
-					classes[i][j] = 3 // Класс 3: очень низкое E_TD
-				} else if modVoltage > 0.07 || normCapacitance < 0.5 {
-					classes[i][j] = 2 // Класс 2: высокое E_TD или низкая емкость
-				} else if modVoltage >= 0.02 && modVoltage <= 0.05 && normCapacitance >= 1.0 {
-					classes[i][j] = 1 // Класс 1: среднее E_TD и высокая емкость
-				} else {
-					// Промежуточная область между классами 1 и 2
-					if modVoltage*normCapacitance > 0.04 {
-						classes[i][j] = 1
-					} else {
-						classes[i][j] = 2
-					}
-				}
-
-				// Диапазон токов (например, ток, при котором начинается генерация)
-				ranges[i][j] = 10e-6 + (modVoltage * normCapacitance * 100e-6)
-			} else {
-				// Карта E_TD (ось X) vs E_VM (ось Y)
-				modVoltage := xValues[j]    // E_TD по оси X
-				tuningVoltage := yValues[i] // E_VM по оси Y
-
-				// Сначала определяем класс на основе E_TD (как выше)
-				if modVoltage < 0.02 {
-					classes[i][j] = 3 // Очень низкое модуляционное напряжение -> Класс 3
-				} else if modVoltage > 0.07 {
-					classes[i][j] = 2 // Высокое модуляционное напряжение -> Класс 2
-				} else {
-					classes[i][j] = 1 // Среднее модуляционное напряжение -> Класс 1
-				}
-
-				// Затем модифицируем на основе E_VM
-				if tuningVoltage > 0.06 {
-					// Высокое положительное E_VM смещает к классу 2
-					if classes[i][j] == 1 {
-						classes[i][j] = 2
-					}
-				} else if tuningVoltage < -0.06 {
-					// Высокое отрицательное E_VM может привести к классу 3
-					if classes[i][j] != 3 && modVoltage < 0.06 {
-						classes[i][j] = 3
-					}
-				}
-
-				// Переходная зона между классами
-				if abs(tuningVoltage) < 0.02 && modVoltage > 0.03 && modVoltage < 0.06 {
-					if modVoltage*(1+tuningVoltage) > 0.045 {
-						classes[i][j] = 2
-					} else {
-						classes[i][j] = 1
-					}
-				}
-
-				// Диапазон токов
-				ranges[i][j] = 10e-6 + ((modVoltage + abs(tuningVoltage)*0.5) * 100e-6)
-			}
-		}
-	}
-
-	return &ParameterMapResponse{
-		XValues: xValues,
-		YValues: yValues,
-		Classes: classes,
-		Ranges:  ranges,
-	}, nil
-}
-
-// Вспомогательная функция для вычисления абсолютного значения
-func abs(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 // Helper function to ensure values can be encoded in JSON

@@ -7,6 +7,8 @@ events {
 }
 
 http {
+    client_max_body_size 32m; # Allow larger file uploads
+
     upstream frontend {
         server frontend:${FRONTEND_PORT};
     }

@@ -1,17 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
 import { getDictionary } from "@/app/dictionaries";
 import type { Locale } from "@/app/types";
 import {
   api,
   NeuronSimulationRequest,
-  ParameterMapRequest,
   TimePoint as ApiTimePoint,
   SimulationResponse,
-  ExcitabilityResponse,
-  ParameterMapResponse,
 } from "@/lib/api";
 import {
   Chart as ChartJS,
@@ -25,13 +21,11 @@ import {
   ChartData,
   ChartOptions,
 } from "chart.js";
-import { Line, Scatter } from "react-chartjs-2";
+import { Line } from "react-chartjs-2";
 import { useDebouncedCallback } from "use-debounce";
 
-// Fix UI component imports with proper paths
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -40,9 +34,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+import { Loader } from "lucide-react";
 
 // Register required Chart.js components
 ChartJS.register(
@@ -58,24 +52,8 @@ ChartJS.register(
 interface TimePoint {
   t: number;
   v: number;
-  u?: number;
-  I?: number;
-  X?: number;
-}
-
-interface ParameterMapData {
-  x: number[];
-  y: number[];
-  z: number[][];
-  labels: {
-    x: string;
-    y: string;
-    z: string;
-  };
-  classes?: number[][];
-  xValues?: number[];
-  yValues?: number[];
-  mapType?: string;
+  x: number;
+  i: number;
 }
 
 export default function Neuron({
@@ -85,167 +63,209 @@ export default function Neuron({
 }) {
   const dictionary = getDictionary(lang);
   const dict = dictionary.sandbox.neuron;
-  const searchParams = useSearchParams();
-
-  // Chart refs
-  const timeSeriesChartRef = useRef<HTMLCanvasElement>(null);
-  const phaseSpaceChartRef = useRef<HTMLCanvasElement>(null);
-  const parameterMapChartRef = useRef<HTMLCanvasElement>(null);
-  const excitabilityChartRef = useRef<HTMLCanvasElement>(null);
 
   // Neuron parameters
-  const [capacitance, setCapacitanceState] = useState<number>(22);
-  const [tuningVoltage, setTuningVoltageState] = useState<number>(0.1);
-  const [modVoltage, setModVoltageState] = useState<number>(0);
-  const [invertMemristor, setInvertMemristor] = useState<boolean>(true);
+  const [capacitance, setCapacitanceRaw] = useState<number>(22);
+  const [tuningVoltage, setTuningVoltageRaw] = useState<number>(0);
+  const [modVoltage, setModVoltageRaw] = useState<number>(0);
+  const [invertMemristor, setInvertMemristor] = useState<boolean>(false);
 
   // Diode model
   const [diodeModel, setDiodeModel] = useState<string>("GI401A");
 
   // Input signal
-  const [signalType, setSignalType] = useState<string>("constant");
-  const [signalAmplitude, setSignalAmplitudeState] = useState<number>(66);
-  const [signalFrequency, setSignalFrequencyState] = useState<number>(1000);
-  const [signalOffset, setSignalOffsetState] = useState<number>(0);
+  const [signalType, setSignalType] = useState<string>("Sine");
+  const [signalAmplitude, setSignalAmplitudeRaw] = useState<number>(6);
+  const [signalFrequency, setSignalFrequencyRaw] = useState<number>(650);
+  const [signalOffset, setSignalOffsetRaw] = useState<number>(27.5);
+
+  // New parameters for Step signal
+  const [stepTime, setStepTimeRaw] = useState<number>(10);
+
+  // New parameters for Pulse signal
+  const [pulseBaseline, setPulseBaselineRaw] = useState<number>(30);
+  const [pulseStart, setPulseStartRaw] = useState<number>(0);
+  const [pulseWidth, setPulseWidthRaw] = useState<number>(1.5);
+  const [pulseNumber, setPulseNumberRaw] = useState<number>(50);
+
+  // New parameters for Sine signal
+  const [sinePhase, setSinePhaseRaw] = useState<number>(0);
+
+  // New parameters for Pink Noise
+  const [noiseBaseline, setNoiseBaselineRaw] = useState<number>(29.5);
+  const [noiseFrequency, setNoiseFrequencyRaw] = useState<number>(1000);
 
   // Simulation settings
-  const [simTime, setSimTimeState] = useState<number>(30);
+  const [simTime, setSimTimeRaw] = useState<number>(50);
+  const [rkMethod, setRKMethod] = useState<string>("RK4");
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
 
-  // Visualization state
-  const [activeTab, setActiveTab] = useState<string>("time-series");
+  // Simulation results
   const [timeSeriesData, setTimeSeriesData] = useState<TimePoint[]>([]);
-  const [parameterMapData, setParameterMapData] =
-    useState<ParameterMapData | null>(null);
-  const [excitabilityData, setExcitabilityData] = useState<any>(null);
-  const [mapType, setMapType] = useState<string>("rheobase");
-  const [isParamMapLoading, setIsParamMapLoading] = useState(false);
 
-  // Preset configurations
-  const presets = {
-    matlab: {
-      capacitance: 200,
-      tuningVoltage: 0.1,
-      modVoltage: 0,
-      invertMemristor: false,
-      diodeModel: "GI403A",
-      signalType: "constant",
-      signalAmplitude: 66,
+  // Create debounced versions of all setters that trigger simulation
+  const debouncedRunSimulation = useDebouncedCallback(
+    () => {
+      runSimulation();
     },
-    class1: {
-      capacitance: 22,
-      tuningVoltage: 0,
-      modVoltage: 0.04,
-      invertMemristor: true,
-      diodeModel: "GI401A",
-    },
-    class2: {
-      capacitance: 22,
-      tuningVoltage: 0,
-      modVoltage: 0.07,
-      invertMemristor: true,
-      diodeModel: "GI401A",
-    },
-    class3: {
-      capacitance: 22,
-      tuningVoltage: 0,
-      modVoltage: 0.01,
-      invertMemristor: true,
-      diodeModel: "GI401A",
-    },
-    chaos: {
-      capacitance: 22,
-      tuningVoltage: 0,
-      modVoltage: 0.04,
-      invertMemristor: true,
-      diodeModel: "GI401A",
-      signalType: "sine",
-      signalAmplitude: 0.5,
-      signalFrequency: 1000,
-      signalOffset: 21,
-    },
-  };
+    500
+  );
 
-  // Apply a preset configuration
-  const applyPreset = (preset: keyof typeof presets) => {
-    const config = presets[preset];
-    setCapacitanceState(config.capacitance);
-    setTuningVoltageState(config.tuningVoltage);
-    setModVoltageState(config.modVoltage);
-    setInvertMemristor(config.invertMemristor);
-    setDiodeModel(config.diodeModel);
-
-    if ("signalType" in config) {
-      setSignalType(config.signalType as string);
-    }
-    if ("signalAmplitude" in config) {
-      setSignalAmplitudeState(config.signalAmplitude as number);
-    }
-    if ("signalFrequency" in config) {
-      setSignalFrequencyState(config.signalFrequency as number);
-    }
-    if ("signalOffset" in config) {
-      setSignalOffsetState(config.signalOffset as number);
-    }
-  };
-
-  // Remove all debounced setters
+  // Debounced parameter setters - UI updates immediately but simulation runs after delay
   const setCapacitance = (value: number) => {
-    setCapacitanceState(value);
+    setCapacitanceRaw(value);
+    debouncedRunSimulation();
   };
 
   const setTuningVoltage = (value: number) => {
-    setTuningVoltageState(value);
+    setTuningVoltageRaw(value);
+    debouncedRunSimulation();
   };
 
   const setModVoltage = (value: number) => {
-    setModVoltageState(value);
+    setModVoltageRaw(value);
+    debouncedRunSimulation();
+  };
+
+  const setInvertMemristorAndRun = (value: boolean) => {
+    setInvertMemristor(value);
+    debouncedRunSimulation();
   };
 
   const setSignalAmplitude = (value: number) => {
-    setSignalAmplitudeState(value);
+    setSignalAmplitudeRaw(value);
+    debouncedRunSimulation();
   };
 
   const setSignalFrequency = (value: number) => {
-    setSignalFrequencyState(value);
+    setSignalFrequencyRaw(value);
+    debouncedRunSimulation();
   };
 
   const setSignalOffset = (value: number) => {
-    setSignalOffsetState(value);
+    setSignalOffsetRaw(value);
+    debouncedRunSimulation();
   };
 
   const setSimTime = (value: number) => {
-    setSimTimeState(value);
+    setSimTimeRaw(value);
+    debouncedRunSimulation();
   };
 
-  // Add debounced simulation request
-  const debouncedRunSimulation = useDebouncedCallback(
-    async () => {
-      if (isSimulating) return;
-      await runSimulation();
-    },
-    500,
-    { leading: true, trailing: true }
-  );
-
-  // Update all parameter change handlers to trigger debounced simulation
-  useEffect(() => {
+  const setDiodeModelAndRun = (value: string) => {
+    setDiodeModel(value);
     debouncedRunSimulation();
-  }, [
-    capacitance,
-    tuningVoltage,
-    modVoltage,
-    invertMemristor,
-    diodeModel,
-    signalType,
-    signalAmplitude,
-    signalFrequency,
-    signalOffset,
-    simTime,
-  ]);
+  };
+
+  const setSignalTypeAndRun = (value: string) => {
+    switch (value) {
+      case "Pulse":
+        setSignalAmplitudeRaw(14.3);
+        setSignalFrequencyRaw(434)
+        break;
+      case "PinkNoise":
+        setSignalAmplitudeRaw(10);
+        break;
+      case "Sine":
+        setSignalAmplitudeRaw(6);
+        setSignalFrequencyRaw(650);
+        break;
+      case "Constant":
+        setSignalAmplitudeRaw(21);
+        break;
+    }
+
+    setSignalType(value);
+    debouncedRunSimulation();
+  };
+
+  const setRKMethodAndRun = (value: string) => {
+    setRKMethod(value);
+    debouncedRunSimulation();
+  };
+
+  const setStepTime = (value: number) => {
+    setStepTimeRaw(value);
+    debouncedRunSimulation();
+  };
+
+  const setPulseBaseline = (value: number) => {
+    setPulseBaselineRaw(value);
+    debouncedRunSimulation();
+  };
+
+  const setPulseStart = (value: number) => {
+    setPulseStartRaw(value);
+    debouncedRunSimulation();
+  };
+
+  const setPulseWidth = (value: number) => {
+    setPulseWidthRaw(value);
+    debouncedRunSimulation();
+  };
+
+  const setPulseNumber = (value: number) => {
+    setPulseNumberRaw(value);
+    debouncedRunSimulation();
+  };
+
+  const setSinePhase = (value: number) => {
+    setSinePhaseRaw(value);
+    debouncedRunSimulation();
+  };
+
+  const setNoiseBaseline = (value: number) => {
+    setNoiseBaselineRaw(value);
+    debouncedRunSimulation();
+  };
+
+  const setNoiseFrequency = (value: number) => {
+    setNoiseFrequencyRaw(value);
+    debouncedRunSimulation();
+  };
+
+  // Reset parameters to default values except signalType
+  const resetParameters = () => {
+    setCapacitanceRaw(22);
+    setTuningVoltageRaw(0);
+    setModVoltageRaw(0);
+    setInvertMemristor(false);
+    setDiodeModel("GI401A");
+    setSignalAmplitudeRaw(
+      signalType === "Pulse" ? 14.3 :
+        signalType === "PinkNoise" ? 10 :
+          signalType === "Sine" ? 6 :
+            signalType === "Constant" ? 21 :
+              6
+    );
+    setSignalFrequencyRaw(
+      signalType === "Pulse" ? 434 :
+        signalType === "Sine" ? 650 :
+          signalType === "Step" ? 650 :
+            650
+    );
+    setSignalOffsetRaw(27.5);
+    setStepTimeRaw(10);
+    setPulseBaselineRaw(30);
+    setPulseStartRaw(0);
+    setPulseWidthRaw(1.5);
+    setPulseNumberRaw(50);
+    setSinePhaseRaw(0);
+    setNoiseBaselineRaw(29.5);
+    setNoiseFrequencyRaw(1000);
+    setSimTimeRaw(50);
+    setRKMethod("RK4");
+    debouncedRunSimulation();
+  };
+
+  // Run simulation when component mounts
+  useEffect(() => {
+    runSimulation();
+  }, []);
 
   // Run the simulation
   const runSimulation = async () => {
+    if (isSimulating) return;
     setIsSimulating(true);
 
     try {
@@ -253,41 +273,32 @@ export default function Neuron({
       const signalParams: any = {};
 
       switch (signalType) {
-        case "constant":
+        case "Constant":
           signalParams.amplitude = signalAmplitude * 1e-6; // Convert to microamps
           break;
-        case "step":
+        case "Step":
           signalParams.beforeStep = signalOffset * 1e-6;
           signalParams.afterStep = signalAmplitude * 1e-6;
-          signalParams.stepTime = (simTime * 1e-3) / 3; // Step at 1/3 of sim time
+          signalParams.stepTime = stepTime * 1e-3; // Convert to seconds
           break;
-        case "pulse":
-          signalParams.baseline = 0;
+        case "Pulse":
+          signalParams.baseline = pulseBaseline * 1e-6;
           signalParams.amplitude = signalAmplitude * 1e-6;
-          signalParams.pulseStart = 0;
-          signalParams.pulseWidth = 0.5e-3; // 0.5ms pulse width
+          signalParams.pulseStart = pulseStart * 1e-3; // Convert to seconds
+          signalParams.pulseWidth = pulseWidth * 1e-3; // Convert to seconds
           signalParams.pulsePeriod = 1 / signalFrequency;
-          signalParams.pulseNumber = 10;
+          signalParams.pulseNumber = pulseNumber;
           break;
-        case "sine":
+        case "Sine":
           signalParams.offset = signalOffset * 1e-6;
           signalParams.amplitude = signalAmplitude * 1e-6;
           signalParams.frequency = signalFrequency;
-          signalParams.phase = 0;
+          signalParams.phase = sinePhase * (Math.PI / 180); // Convert from degrees to radians
           break;
-        case "pink":
-          signalParams.baseline = 0;
+        case "PinkNoise":
+          signalParams.baseline = noiseBaseline * 1e-6;
           signalParams.amplitude = signalAmplitude * 1e-6;
-          signalParams.frequency = 100;
-          break;
-        case "double_pulse":
-          signalParams.baseline = 0;
-          signalParams.amplitude = signalAmplitude * 1e-6;
-          signalParams.pulseStart = 0.002; // First pulse starts at 2ms
-          signalParams.pulseWidth = 0.0005; // 0.5ms pulse width
-          signalParams.pulsePeriod = 0.002; // 2ms between pulses in pair
-          signalParams.doublePulseInterval = 0.004; // 4ms between double pulse pairs
-          signalParams.numberOfPairs = 2; // Two pairs of pulses
+          signalParams.frequency = noiseFrequency;
           break;
       }
 
@@ -298,67 +309,28 @@ export default function Neuron({
         modVoltage: modVoltage,
         invertMemristor: invertMemristor,
         diodeModel: diodeModel,
-        signalType: signalType.charAt(0).toUpperCase() + signalType.slice(1), // Capitalize first letter for backend
+        signalType: signalType,
         signalParams: signalParams,
         simTime: simTime * 1e-3, // Convert to ms
         timeStep: 5e-8, // Default time step (50ns)
+        rkMethod: rkMethod,
       };
 
       console.log("Sending request:", request);
 
-      // Fetch data based on active tab
-      if (activeTab === "time-series") {
-        const response = await api.neuron.simulate(request);
-        console.log("Received time series data:", response);
+      // Fetch time series data
+      const response = await api.neuron.simulate(request);
+      console.log("Received time series data:", response);
 
-        // Convert the API response to our internal format
-        const formattedData = response.data.map((point: ApiTimePoint) => ({
-          t: point.t,
-          v: point.v,
-          I: point.i,
-          X: point.x,
-        }));
+      // Convert the API response to our internal format
+      const formattedData = response.data.map((point: ApiTimePoint) => ({
+        t: point.t,
+        v: point.v,
+        x: point.x,
+        i: point.i,
+      }));
 
-        setTimeSeriesData(formattedData);
-        renderTimeSeriesChart(formattedData);
-      } else if (activeTab === "excitability") {
-        const response = await api.neuron.excitabilityTest(request);
-        console.log("Received excitability data:", response);
-        setExcitabilityData(response);
-        renderExcitabilityChart(response);
-      } else if (activeTab === "parameter-map") {
-        // Create parameter map request
-        const mapRequest: ParameterMapRequest = {
-          ...request,
-          mapType: mapType,
-          xStart: 0,
-          xEnd: 0.25,
-          xPoints: 20,
-          yStart: mapType === "ETDvsC" ? 1e-9 : -0.15,
-          yEnd: mapType === "ETDvsC" ? 100e-9 : 0.15,
-          yPoints: 20,
-        };
-
-        // API call for parameter map
-        const response = await api.neuron.parameterMap(mapRequest);
-        console.log("Received parameter map data:", response);
-
-        setParameterMapData({
-          x: response.xValues || [],
-          y: response.yValues || [],
-          z: response.classes || [[]],
-          labels: {
-            x: "Tunnel Diode Voltage",
-            y: mapType === "ETDvsC" ? "Capacitance" : "Memristor Voltage",
-            z: "Excitability Class",
-          },
-          mapType: mapType,
-          xValues: response.xValues,
-          yValues: response.yValues,
-          classes: response.classes,
-        });
-        renderParameterMapChart(response);
-      }
+      setTimeSeriesData(formattedData);
     } catch (error) {
       console.error("Simulation error:", error);
     } finally {
@@ -366,24 +338,8 @@ export default function Neuron({
     }
   };
 
-  // Placeholder rendering functions - these would use a chart library
-  const renderTimeSeriesChart = (data: TimePoint[]) => {
-    console.log("Rendering time series chart with data:", data);
-    setTimeSeriesData(data);
-  };
-
-  const renderExcitabilityChart = (data: any) => {
-    console.log("Rendering excitability chart with data:", data);
-    setExcitabilityData(data);
-  };
-
-  const renderParameterMapChart = (data: any) => {
-    console.log("Rendering parameter map chart with data:", data);
-    setParameterMapData(data);
-  };
-
   // Helper functions to prepare chart data
-  const prepareTimeSeriesData = (): ChartData<"line"> => {
+  const prepareVoltageChartData = (): ChartData<"line"> => {
     if (!timeSeriesData || timeSeriesData.length === 0) {
       return {
         labels: [],
@@ -417,7 +373,7 @@ export default function Neuron({
       labels: downsampledData.map((point) => (point.t * 1000).toFixed(2)), // Convert to ms
       datasets: [
         {
-          label: "Membrane Potential (V)",
+          label: "Output Voltage (V)",
           data: downsampledData.map((point) => point.v),
           borderColor: "rgba(75, 192, 192, 1)",
           backgroundColor: "rgba(75, 192, 192, 0.2)",
@@ -428,8 +384,8 @@ export default function Neuron({
         {
           label: "Input Current (μA)",
           data: downsampledData.map((point) => {
-            if (point.I === undefined || point.I === null) return 0;
-            return point.I * 1e6; // Convert to μA
+            if (point.i === undefined || point.i === null) return 0;
+            return point.i * 1e6; // Convert to μA
           }),
           borderColor: "rgba(255, 99, 132, 1)",
           backgroundColor: "rgba(255, 99, 132, 0.2)",
@@ -442,9 +398,10 @@ export default function Neuron({
     };
   };
 
-  const preparePhaseSpaceData = (): ChartData<"scatter"> => {
+  const prepareMemristorChartData = (): ChartData<"line"> => {
     if (!timeSeriesData || timeSeriesData.length === 0) {
       return {
+        labels: [],
         datasets: [],
       };
     }
@@ -453,82 +410,42 @@ export default function Neuron({
     const validData = timeSeriesData.filter(
       (point) =>
         typeof point.t === "number" &&
-        typeof point.v === "number" &&
-        typeof point.X === "number" &&
+        typeof point.x === "number" &&
         !isNaN(point.t) &&
-        !isNaN(point.v) &&
-        !isNaN(point.X || 0)
+        !isNaN(point.x)
     );
 
     if (validData.length === 0) {
-      console.warn("No valid phase space data points found");
+      console.warn("No valid memristor state data points found");
       return {
+        labels: [],
         datasets: [],
       };
     }
 
-    return {
-      datasets: [
-        {
-          label: "Phase Space",
-          data: validData.map((point: TimePoint) => ({
-            x: point.v,
-            y: point.X || 0,
-          })),
-          backgroundColor: "rgba(75, 192, 192, 0.5)",
-          borderColor: "rgba(75, 192, 192, 1)",
-        },
-      ],
-    };
-  };
-
-  const prepareExcitabilityData = (): ChartData<"line"> => {
-    if (!excitabilityData) return { datasets: [] };
+    // Downsample data if too many points
+    const maxPoints = 1000;
+    const step = Math.max(1, Math.floor(validData.length / maxPoints));
+    const downsampledData = validData.filter((_, index) => index % step === 0);
 
     return {
-      labels: excitabilityData.currents.map((c: number) =>
-        (c * 1e6).toFixed(1)
-      ), // Convert to μA
+      labels: downsampledData.map((point) => (point.t * 1000).toFixed(2)), // Convert to ms
       datasets: [
         {
-          label: "Firing Frequency (Hz)",
-          data: excitabilityData.frequencies,
+          label: "Memristor State",
+          data: downsampledData.map((point) => point.x),
           borderColor: "rgba(153, 102, 255, 1)",
           backgroundColor: "rgba(153, 102, 255, 0.2)",
-          tension: 0.1,
+          tension: 0,
+          pointRadius: 0,
+          borderWidth: 1,
         },
       ],
     };
   };
 
-  const prepareParameterMapData = (): {
-    data: number[][];
-    xLabels: string[];
-    yLabels: string[];
-    mapType: string;
-  } => {
-    if (!parameterMapData || !parameterMapData.classes) {
-      return {
-        data: [[]],
-        xLabels: [],
-        yLabels: [],
-        mapType: mapType,
-      };
-    }
-
-    return {
-      data: parameterMapData.classes,
-      xLabels: parameterMapData.xValues?.map((x: number) => x.toFixed(2)) || [],
-      yLabels:
-        parameterMapData.yValues?.map((y: number) =>
-          parameterMapData.mapType === "ETDvsC" ? y.toFixed(1) : y.toFixed(3)
-        ) || [],
-      mapType: parameterMapData.mapType || "ETDvsC",
-    };
-  };
-
-  // Chart options with dynamic scaling
-  const timeSeriesOptions = useMemo(() => {
+  // Chart options
+  const voltageChartOptions = useMemo(() => {
     // Calculate min/max values for better scaling if we have data
     let yMin = -0.1,
       yMax = 0.3; // Default voltage range
@@ -547,7 +464,7 @@ export default function Neuron({
       // Find current min/max with some padding
       const currentValues = timeSeriesData
         .map((point) =>
-          point.I !== undefined && point.I !== null ? point.I * 1e6 : 0
+          point.i !== undefined && point.i !== null ? point.i * 1e6 : 0
         )
         .filter((i) => !isNaN(i));
       const iMin = Math.min(...currentValues);
@@ -611,38 +528,17 @@ export default function Neuron({
           },
         },
       },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              const label = context.dataset.label || "";
-              const value = context.raw as number;
-              return `${label}: ${value.toFixed(3)}`;
-            },
-          },
-        },
-      },
     } as ChartOptions<"line">;
   }, [timeSeriesData]);
 
-  const phaseSpaceOptions = useMemo(() => {
+  const memristorChartOptions = useMemo(() => {
     // Calculate min/max values for better scaling if we have data
-    let xMin = -0.1,
-      xMax = 0.3; // Default voltage range
     let yMin = 0,
       yMax = 1; // Default memristor state range
 
     if (timeSeriesData.length > 0) {
-      // Find voltage min/max with some padding
-      const voltages = timeSeriesData.map((point) => point.v);
-      const vMin = Math.min(...voltages);
-      const vMax = Math.max(...voltages);
-      const vPadding = (vMax - vMin) * 0.1; // 10% padding
-      xMin = vMin - vPadding;
-      xMax = vMax + vPadding;
-
       // Find memristor state min/max with some padding
-      const states = timeSeriesData.map((point) => point.X || 0);
+      const states = timeSeriesData.map((point) => point.x || 0);
       const sMin = Math.min(...states);
       const sMax = Math.max(...states);
       const sPadding = (sMax - sMin) * 0.1; // 10% padding
@@ -653,18 +549,21 @@ export default function Neuron({
     return {
       responsive: true,
       maintainAspectRatio: false,
+      animation: false,
+      elements: {
+        line: {
+          tension: 0,
+        },
+      },
       scales: {
         x: {
           title: {
             display: true,
-            text: "Voltage (V)",
+            text: "Time (ms)",
           },
-          min: xMin,
-          max: xMax,
           ticks: {
-            callback: function (value) {
-              return Number(value).toFixed(2);
-            },
+            autoSkip: true,
+            maxTicksLimit: 10,
           },
         },
         y: {
@@ -685,224 +584,20 @@ export default function Neuron({
         tooltip: {
           callbacks: {
             label: function (context) {
-              const point = context.raw as { x: number; y: number };
-              return `V: ${point.x.toFixed(3)}, X: ${point.y.toFixed(3)}`;
-            },
-          },
-        },
-      },
-    } as ChartOptions<"scatter">;
-  }, [timeSeriesData]);
-
-  // Add excitabilityOptions
-  const excitabilityOptions = useMemo(() => {
-    // Calculate min/max values for better scaling if we have data
-    let yMin = 0,
-      yMax = 500; // Default frequency range
-
-    if (excitabilityData && excitabilityData.frequencies) {
-      // Find frequency min/max with some padding
-      const freqs = excitabilityData.frequencies;
-      const fMin = Math.min(...freqs);
-      const fMax = Math.max(...freqs);
-      const fPadding = (fMax - fMin) * 0.1; // 10% padding
-      yMin = Math.max(0, fMin - fPadding);
-      yMax = fMax + fPadding;
-
-      // Set reasonable minimum if no activity
-      if (yMax < 10) yMax = 10;
-    }
-
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: "Current (μA)",
-          },
-        },
-        y: {
-          title: {
-            display: true,
-            text: "Frequency (Hz)",
-          },
-          min: yMin,
-          max: yMax,
-          beginAtZero: true,
-          ticks: {
-            callback: function (value) {
-              return Number(value).toFixed(0);
-            },
-          },
-        },
-      },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function (context) {
               const label = context.dataset.label || "";
               const value = context.raw as number;
-              return `${label}: ${value.toFixed(1)} Hz`;
+              return `${label}: ${value.toFixed(3)}`;
             },
           },
         },
       },
     } as ChartOptions<"line">;
-  }, [excitabilityData]);
-
-  // Upload custom signal
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const result = await api.neuron.uploadCustomSignal(file);
-      console.log("Custom signal uploaded:", result);
-
-      // Set signal type to custom
-      setSignalType("custom");
-    } catch (error) {
-      console.error("Upload failed:", error);
-    }
-  };
-
-  // Эффект для загрузки данных карты параметров при активации вкладки
-  useEffect(() => {
-    if (activeTab === "parameter-map") {
-      fetchParameterMap();
-    }
-  }, [activeTab, mapType]);
-
-  // Функция для загрузки данных карты параметров
-  const fetchParameterMap = async () => {
-    setIsParamMapLoading(true);
-    try {
-      const response = await fetch(`/api/neuron/parameter-map?type=${mapType}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      // Convert the data to match the ParameterMapData interface
-      setParameterMapData({
-        x: data.xValues || [],
-        y: data.yValues || [],
-        z: data.classes || [[]],
-        labels: {
-          x: "Tunnel Diode Voltage",
-          y: mapType === "ETDvsC" ? "Capacitance" : "Memristor Voltage",
-          z: "Excitability Class",
-        },
-        mapType: mapType, // Use the state variable
-        xValues: data.xValues,
-        yValues: data.yValues,
-        classes: data.classes,
-      });
-    } catch (error) {
-      console.error("Error fetching parameter map data:", error);
-    } finally {
-      setIsParamMapLoading(false);
-    }
-  };
-
-  // Отдельный компонент для отображения карты параметров
-  const ParameterMapRenderer = ({
-    parameterMapData,
-    mapType,
-  }: {
-    parameterMapData: any;
-    mapType: string;
-  }) => {
-    const preparedData = prepareParameterMapData();
-    console.log("Rendering parameter map with data:", preparedData);
-
-    return (
-      <div className="w-full h-[400px] p-4">
-        <div className="text-center mb-4">
-          Parameter Map: Excitability Classes
-        </div>
-        <div className="grid grid-cols-[auto_1fr] gap-2">
-          <div className="w-[50px] h-[300px] relative">
-            {preparedData.yLabels.map((label, idx) => (
-              <div
-                key={idx}
-                className="absolute text-xs right-0"
-                style={{
-                  top: `${(idx / (preparedData.yLabels.length - 1)) * 100}%`,
-                  transform: "translateY(-50%)",
-                }}
-              >
-                {label}
-              </div>
-            ))}
-            <div className="absolute transform -rotate-90 origin-left top-1/2 -translate-y-1/2 -left-8 text-sm">
-              {preparedData.mapType === "ETDvsC"
-                ? "Capacitance (nF)"
-                : "E_VM (V)"}
-            </div>
-          </div>
-          <div>
-            <div className="h-[300px] bg-white relative">
-              {parameterMapData.classes?.map(
-                (row: number[], rowIdx: number) => (
-                  <div key={rowIdx} className="flex h-[15px]">
-                    {row.map((cls: number, colIdx: number) => (
-                      <div
-                        key={colIdx}
-                        className="w-[15px] h-full"
-                        style={{
-                          backgroundColor:
-                            cls === 1
-                              ? "#4ade80"
-                              : cls === 2
-                              ? "#3b82f6"
-                              : cls === 3
-                              ? "#f43f5e"
-                              : "#9ca3af",
-                        }}
-                      />
-                    ))}
-                  </div>
-                )
-              )}
-            </div>
-            <div className="flex justify-between mt-2">
-              {preparedData.xLabels.map((label, idx) =>
-                idx % 3 === 0 ? (
-                  <div key={idx} className="text-xs">
-                    {label}
-                  </div>
-                ) : null
-              )}
-            </div>
-            <div className="text-center text-sm mt-2">E_TD (V)</div>
-          </div>
-        </div>
-        <div className="flex justify-center mt-4 gap-4">
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-[#4ade80] mr-2"></div>
-            <span className="text-xs">Class 1</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-[#3b82f6] mr-2"></div>
-            <span className="text-xs">Class 2</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-[#f43f5e] mr-2"></div>
-            <span className="text-xs">Class 3</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  }, [timeSeriesData]);
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-foreground">
-        Tunnel Diode Neuron Visualization
+        {dict.title}
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -913,19 +608,19 @@ export default function Neuron({
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold mb-3">
-                    Neuron Parameters
+                    {dict.parameters.neuronParameters}
                   </h3>
 
                   <div className="space-y-4">
                     <div>
                       <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                        <Label htmlFor="capacitance">Capacitance (nF)</Label>
+                        <Label htmlFor="capacitance">{dict.parameters.capacitance}</Label>
                         <span>{capacitance}</span>
                       </div>
                       <Slider
                         id="capacitance"
                         min={0.1}
-                        max={1000}
+                        max={200}
                         step={0.1}
                         value={[capacitance]}
                         onValueChange={(value) => setCapacitance(value[0])}
@@ -935,7 +630,7 @@ export default function Neuron({
                     <div>
                       <div className="flex justify-between text-sm text-muted-foreground mb-2">
                         <Label htmlFor="tuningVoltage">
-                          Tuning Voltage (V)
+                          {dict.parameters.tuningVoltage}
                         </Label>
                         <span>{tuningVoltage}</span>
                       </div>
@@ -952,7 +647,7 @@ export default function Neuron({
                     <div>
                       <div className="flex justify-between text-sm text-muted-foreground mb-2">
                         <Label htmlFor="modVoltage">
-                          Modulatory Voltage (V)
+                          {dict.parameters.modVoltage}
                         </Label>
                         <span>{modVoltage}</span>
                       </div>
@@ -971,22 +666,22 @@ export default function Neuron({
                         htmlFor="invertMemristor"
                         className="text-sm text-muted-foreground"
                       >
-                        Invert Memristor
+                        {dict.parameters.invertMemristor}
                       </Label>
                       <Switch
                         id="invertMemristor"
                         checked={invertMemristor}
-                        onCheckedChange={setInvertMemristor}
+                        onCheckedChange={setInvertMemristorAndRun}
                       />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Diode Model</h3>
+                  <h3 className="text-lg font-semibold mb-3">{dict.parameters.diodeModel}</h3>
                   <Select
                     value={diodeModel}
-                    onValueChange={(value) => setDiodeModel(value)}
+                    onValueChange={setDiodeModelAndRun}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select Diode Model" />
@@ -1001,51 +696,136 @@ export default function Neuron({
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Input Signal</h3>
+                  <h3 className="text-lg font-semibold mb-3">{dict.signal.inputSignal}</h3>
                   <Select
                     value={signalType}
-                    onValueChange={(value) => setSignalType(value)}
+                    onValueChange={setSignalTypeAndRun}
                   >
                     <SelectTrigger className="mb-4">
-                      <SelectValue placeholder="Select Signal Type" />
+                      <SelectValue placeholder={dict.signal.signalType} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="constant">Constant Current</SelectItem>
-                      <SelectItem value="step">Step Current</SelectItem>
-                      <SelectItem value="pulse">Pulse Train</SelectItem>
-                      <SelectItem value="sine">Sinusoidal</SelectItem>
-                      <SelectItem value="pink">Pink Noise</SelectItem>
-                      <SelectItem value="double_pulse">Double Pulse</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
+                      <SelectItem value="Constant">{dict.signal.constant}</SelectItem>
+                      <SelectItem value="Step">{dict.signal.step}</SelectItem>
+                      <SelectItem value="Pulse">{dict.signal.pulse}</SelectItem>
+                      <SelectItem value="Sine">{dict.signal.sine}</SelectItem>
+                      <SelectItem value="PinkNoise">{dict.signal.pinkNoise}</SelectItem>
                     </SelectContent>
                   </Select>
 
-                  {signalType !== "custom" && (
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                          <Label htmlFor="signalAmplitude">
-                            Amplitude (μA)
-                          </Label>
-                          <span>{signalAmplitude}</span>
-                        </div>
-                        <Slider
-                          id="signalAmplitude"
-                          min={0}
-                          max={10}
-                          step={0.1}
-                          value={[signalAmplitude]}
-                          onValueChange={(value) =>
-                            setSignalAmplitude(value[0])
-                          }
-                        />
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                        <Label htmlFor="signalAmplitude">
+                          {dict.signal.amplitude}
+                        </Label>
+                        <span>{signalAmplitude}</span>
                       </div>
+                      <Slider
+                        id="signalAmplitude"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={[signalAmplitude]}
+                        onValueChange={(value) =>
+                          setSignalAmplitude(value[0])
+                        }
+                      />
+                    </div>
 
-                      {(signalType === "sine" || signalType === "pulse") && (
+                    {/* Step Signal Parameters */}
+                    {signalType === "Step" && (
+                      <>
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="signalOffset">
+                              {dict.signal.beforeStep}
+                            </Label>
+                            <span>{signalOffset}</span>
+                          </div>
+                          <Slider
+                            id="signalOffset"
+                            min={0}
+                            max={50}
+                            step={0.1}
+                            value={[signalOffset]}
+                            onValueChange={(value) => setSignalOffset(value[0])}
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="stepTime">
+                              {dict.signal.stepTime}
+                            </Label>
+                            <span>{stepTime}</span>
+                          </div>
+                          <Slider
+                            id="stepTime"
+                            min={0}
+                            max={100}
+                            step={0.1}
+                            value={[stepTime]}
+                            onValueChange={(value) => setStepTime(value[0])}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Pulse Signal Parameters */}
+                    {signalType === "Pulse" && (
+                      <>
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="pulseBaseline">
+                              {dict.signal.baseline}
+                            </Label>
+                            <span>{pulseBaseline}</span>
+                          </div>
+                          <Slider
+                            id="pulseBaseline"
+                            min={0}
+                            max={50}
+                            step={0.1}
+                            value={[pulseBaseline]}
+                            onValueChange={(value) => setPulseBaseline(value[0])}
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="pulseStart">
+                              {dict.signal.startTime}
+                            </Label>
+                            <span>{pulseStart}</span>
+                          </div>
+                          <Slider
+                            id="pulseStart"
+                            min={0}
+                            max={50}
+                            step={0.1}
+                            value={[pulseStart]}
+                            onValueChange={(value) => setPulseStart(value[0])}
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="pulseWidth">
+                              {dict.signal.pulseWidth}
+                            </Label>
+                            <span>{pulseWidth}</span>
+                          </div>
+                          <Slider
+                            id="pulseWidth"
+                            min={0.1}
+                            max={10}
+                            step={0.1}
+                            value={[pulseWidth]}
+                            onValueChange={(value) => setPulseWidth(value[0])}
+                          />
+                        </div>
                         <div>
                           <div className="flex justify-between text-sm text-muted-foreground mb-2">
                             <Label htmlFor="signalFrequency">
-                              Frequency (Hz)
+                              {dict.signal.frequency}
                             </Label>
                             <span>{signalFrequency}</span>
                           </div>
@@ -1055,63 +835,129 @@ export default function Neuron({
                             max={5000}
                             step={1}
                             value={[signalFrequency]}
-                            onValueChange={(value) =>
-                              setSignalFrequency(value[0])
-                            }
+                            onValueChange={(value) => setSignalFrequency(value[0])}
                           />
                         </div>
-                      )}
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="pulseNumber">
+                              {dict.signal.numberOfPulses}
+                            </Label>
+                            <span>{pulseNumber}</span>
+                          </div>
+                          <Slider
+                            id="pulseNumber"
+                            min={1}
+                            max={50}
+                            step={1}
+                            value={[pulseNumber]}
+                            onValueChange={(value) => setPulseNumber(value[0])}
+                          />
+                        </div>
+                      </>
+                    )}
 
-                      {(signalType === "sine" || signalType === "step") && (
+                    {/* Sine Signal Parameters */}
+                    {signalType === "Sine" && (
+                      <>
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="signalFrequency">
+                              {dict.signal.frequency}
+                            </Label>
+                            <span>{signalFrequency}</span>
+                          </div>
+                          <Slider
+                            id="signalFrequency"
+                            min={1}
+                            max={5000}
+                            step={1}
+                            value={[signalFrequency]}
+                            onValueChange={(value) => setSignalFrequency(value[0])}
+                          />
+                        </div>
                         <div>
                           <div className="flex justify-between text-sm text-muted-foreground mb-2">
                             <Label htmlFor="signalOffset">
-                              Offset/Initial Value (μA)
+                              {dict.signal.offset}
                             </Label>
                             <span>{signalOffset}</span>
                           </div>
                           <Slider
                             id="signalOffset"
                             min={0}
-                            max={300}
+                            max={50}
                             step={0.1}
                             value={[signalOffset]}
                             onValueChange={(value) => setSignalOffset(value[0])}
                           />
                         </div>
-                      )}
-                    </div>
-                  )}
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="sinePhase">
+                              {dict.signal.phase}
+                            </Label>
+                            <span>{sinePhase}</span>
+                          </div>
+                          <Slider
+                            id="sinePhase"
+                            min={0}
+                            max={360}
+                            step={1}
+                            value={[sinePhase]}
+                            onValueChange={(value) => setSinePhase(value[0])}
+                          />
+                        </div>
+                      </>
+                    )}
 
-                  {signalType === "custom" && (
-                    <div>
-                      <Label
-                        htmlFor="customSignal"
-                        className="text-sm text-muted-foreground mb-2 block"
-                      >
-                        Upload Custom Signal
-                      </Label>
-                      <Input
-                        id="customSignal"
-                        type="file"
-                        accept=".wav,.csv"
-                        onChange={handleFileUpload}
-                        className="mb-2"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Supports WAV and CSV files
-                      </p>
-                    </div>
-                  )}
+                    {/* Pink Noise Signal Parameters */}
+                    {signalType === "PinkNoise" && (
+                      <>
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="noiseBaseline">
+                              {dict.signal.baseline}
+                            </Label>
+                            <span>{noiseBaseline}</span>
+                          </div>
+                          <Slider
+                            id="noiseBaseline"
+                            min={0}
+                            max={50}
+                            step={0.1}
+                            value={[noiseBaseline]}
+                            onValueChange={(value) => setNoiseBaseline(value[0])}
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                            <Label htmlFor="noiseFrequency">
+                              {dict.signal.baseFrequency}
+                            </Label>
+                            <span>{noiseFrequency}</span>
+                          </div>
+                          <Slider
+                            id="noiseFrequency"
+                            min={1}
+                            max={1000}
+                            step={1}
+                            value={[noiseFrequency]}
+                            onValueChange={(value) => setNoiseFrequency(value[0])}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div>
                   <h3 className="text-lg font-semibold mb-3">
-                    Simulation Settings
+                    {dict.simulation.settings}
                   </h3>
                   <div>
                     <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                      <Label htmlFor="simTime">Simulation Time (ms)</Label>
+                      <Label htmlFor="simTime">{dict.simulation.time}</Label>
                       <span>{simTime}</span>
                     </div>
                     <Slider
@@ -1123,75 +969,53 @@ export default function Neuron({
                       onValueChange={(value) => setSimTime(value[0])}
                     />
                   </div>
-                </div>
 
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Presets</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => applyPreset("class1")}
-                      size="sm"
+                  <div className="mt-4">
+                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                      <Label htmlFor="rkMethod">{dict.simulation.rkMethod}</Label>
+                    </div>
+                    <Select
+                      value={rkMethod}
+                      onValueChange={setRKMethodAndRun}
                     >
-                      Class 1 Excitability
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => applyPreset("class2")}
-                      size="sm"
-                    >
-                      Class 2 Excitability
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => applyPreset("class3")}
-                      size="sm"
-                    >
-                      Class 3 Excitability
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => applyPreset("chaos")}
-                      size="sm"
-                    >
-                      Chaotic Mode
-                    </Button>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select RK Method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="RK1">{dict.simulation.rk1}</SelectItem>
+                        <SelectItem value="RK2">{dict.simulation.rk2}</SelectItem>
+                        <SelectItem value="RK4">{dict.simulation.rk4}</SelectItem>
+                        <SelectItem value="RK8">{dict.simulation.rk8}</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                <Button
-                  className="w-full"
-                  onClick={debouncedRunSimulation}
-                  disabled={isSimulating}
-                >
-                  {isSimulating ? (
-                    <>
-                      <svg
-                        className="mr-2 h-4 w-4 animate-spin"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Simulating...
-                    </>
-                  ) : (
-                    "Run Simulation"
-                  )}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    className="w-full"
+                    variant="ghost"
+                    onClick={resetParameters}
+                    disabled={isSimulating}
+                  >
+                    {dict.resetParameters}
+                  </Button>
+
+                  <Button
+                    className="w-full"
+                    onClick={runSimulation}
+                    disabled={isSimulating}
+                  >
+                    {isSimulating ? (
+                      <>
+                        <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        {dict.simulation.simulating}
+                      </>
+                    ) : (
+                      dict.simulation.run
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1201,124 +1025,43 @@ export default function Neuron({
         <div className="lg:col-span-3">
           <Card className="border-border bg-card">
             <CardContent className="p-4 sm:p-6">
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-full"
-              >
-                <TabsList className="mb-4 w-full bg-background border-b border-border">
-                  <TabsTrigger
-                    value="time-series"
-                    className="data-[state=active]:bg-background"
-                  >
-                    Time Series
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="excitability"
-                    className="data-[state=active]:bg-background"
-                  >
-                    Excitability Test
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="parameter-map"
-                    className="data-[state=active]:bg-background"
-                  >
-                    Parameter Maps
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="time-series">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">{dict.visualization.membraneVoltage}</h3>
                   <div className="min-h-[400px] flex items-center justify-center bg-muted rounded-lg border border-dashed border-border">
                     {timeSeriesData.length > 0 ? (
                       <div className="w-full h-[400px]">
                         <Line
-                          data={prepareTimeSeriesData()}
-                          options={timeSeriesOptions}
+                          data={prepareVoltageChartData()}
+                          options={voltageChartOptions}
                         />
                       </div>
                     ) : (
                       <div className="text-muted-foreground">
-                        Run a simulation to see results
+                        {dict.visualization.noData}
                       </div>
                     )}
                   </div>
-                  <div className="mt-4 min-h-[200px] flex items-center justify-center bg-muted rounded-lg border border-dashed border-border">
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">{dict.visualization.memristorState}</h3>
+                  <div className="min-h-[300px] flex items-center justify-center bg-muted rounded-lg border border-dashed border-border">
                     {timeSeriesData.length > 0 ? (
-                      <div className="w-full h-[200px]">
-                        <Scatter
-                          data={preparePhaseSpaceData()}
-                          options={phaseSpaceOptions}
-                        />
-                      </div>
-                    ) : (
-                      <div className="text-muted-foreground">
-                        Run a simulation to see phase space
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="excitability">
-                  <div className="min-h-[400px] flex items-center justify-center bg-muted rounded-lg border border-dashed border-border">
-                    {excitabilityData ? (
-                      <div className="w-full h-[400px]">
+                      <div className="w-full h-[300px]">
                         <Line
-                          data={prepareExcitabilityData()}
-                          options={excitabilityOptions}
+                          data={prepareMemristorChartData()}
+                          options={memristorChartOptions}
                         />
                       </div>
                     ) : (
                       <div className="text-muted-foreground">
-                        Run a simulation to see excitability test results
+                        {dict.visualization.noMemristorData}
                       </div>
                     )}
                   </div>
-                </TabsContent>
-
-                <TabsContent value="parameter-map">
-                  <div className="mb-4">
-                    <Select
-                      value={mapType}
-                      onValueChange={(value) => {
-                        setMapType(value);
-                        // Если у нас уже есть данные и тип карты изменился,
-                        // запускаем симуляцию снова для получения новой карты
-                        if (parameterMapData && activeTab === "parameter-map") {
-                          console.log(
-                            "Changing map type and running new simulation..."
-                          );
-                          debouncedRunSimulation();
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Map Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ETDvsC">
-                          E_TD vs Capacitance
-                        </SelectItem>
-                        <SelectItem value="ETDvsEVM">E_TD vs E_VM</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="min-h-[400px] flex items-center justify-center bg-muted rounded-lg border border-dashed border-border">
-                    {parameterMapData ? (
-                      <ParameterMapRenderer
-                        key={`map-${mapType}-${JSON.stringify(
-                          parameterMapData.xValues || []
-                        )}`}
-                        parameterMapData={parameterMapData}
-                        mapType={mapType}
-                      />
-                    ) : (
-                      <div className="text-muted-foreground">
-                        Run a parameter map simulation to see results
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
