@@ -486,6 +486,11 @@ func (h *NeuronSimulationHandler) derivatives(v, x, t float64, req SimulationReq
 	vd := v + req.ModVoltage    // Tunnel diode voltage includes modulatory voltage
 	vm := v + req.TuningVoltage // Memristor voltage includes tuning voltage
 
+	// Apply invertMemristor if set
+	if req.InvertMemristor {
+		vm = -vm
+	}
+
 	// Calculate tunnel diode current based on model
 	var id float64
 	// Get the diode parameters from the map

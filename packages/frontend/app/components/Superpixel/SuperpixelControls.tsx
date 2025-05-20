@@ -108,7 +108,7 @@ export const SuperpixelControls: React.FC<SuperpixelControlsProps> = ({
           <Slider
             value={[params.numberOfSuperpixels]}
             min={10}
-            max={7500}
+            max={10000}
             step={10}
             onValueChange={(value) =>
               handleParamChange("numberOfSuperpixels")(value[0])

@@ -59,6 +59,7 @@ export default function SuperpixelPage({
   const [highlightedStrokeId, setHighlightedStrokeId] = useState<number | null>(
     null
   );
+  const [originalImageFullDimensions, setOriginalImageFullDimensions] = useState<{ width: number; height: number } | null>(null);
 
   const [drawOptions, setDrawOptions] = useState({
     drawCenters: false,
@@ -140,6 +141,7 @@ export default function SuperpixelPage({
       }
     }
     setImageFile(file);
+    setOriginalImageFullDimensions(null); // Reset while loading new image
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -149,29 +151,35 @@ export default function SuperpixelPage({
         const img = new Image();
         img.onload = () => {
           if (originalCanvasRef.current) {
+            const originalWidth = img.width;
+            const originalHeight = img.height;
+            setOriginalImageFullDimensions({ width: originalWidth, height: originalHeight });
+
             const maxWidth = 800;
             const maxHeight = 600;
-            let width = img.width;
-            let height = img.height;
+            let displayWidth = originalWidth;
+            let displayHeight = originalHeight;
 
-            if (width > maxWidth) {
-              height = (maxWidth / width) * height;
-              width = maxWidth;
+            if (displayWidth > maxWidth) {
+              displayHeight = (maxWidth / displayWidth) * displayHeight;
+              displayWidth = maxWidth;
             }
 
-            if (height > maxHeight) {
-              width = (maxHeight / height) * width;
-              height = maxHeight;
+            if (displayHeight > maxHeight) {
+              displayWidth = (maxHeight / displayHeight) * displayWidth;
+              displayHeight = maxHeight;
             }
 
-            setCanvasSizes(width, height);
-            setScaleX(width / img.width);
-            setScaleY(height / img.height);
+            setCanvasSizes(displayWidth, displayHeight); // Sets originalCanvasRef to display dimensions
+
+            // Scale factors to draw results (in originalFullDimensions) onto display canvases
+            setScaleX(displayWidth / originalWidth);
+            setScaleY(displayHeight / originalHeight);
 
             const ctx = originalCanvasRef.current.getContext("2d");
             if (ctx) {
-              ctx.clearRect(0, 0, width, height);
-              ctx.drawImage(img, 0, 0, width, height);
+              ctx.clearRect(0, 0, displayWidth, displayHeight);
+              ctx.drawImage(img, 0, 0, displayWidth, displayHeight); // Draw scaled image for display
             }
 
             clearCanvases();
@@ -224,10 +232,10 @@ export default function SuperpixelPage({
   };
 
   const processImage = async () => {
-    if (!imageFile) {
+    if (!previewUrl || !originalImageFullDimensions) {
       toast({
         title: "Error",
-        description: "Please select an image first",
+        description: "Please select an image and wait for it to load first.",
         variant: "destructive",
       });
       return;
@@ -237,7 +245,50 @@ export default function SuperpixelPage({
     clearCanvases();
 
     try {
-      const data = await processSuperpixelImage(imageFile, params);
+      // Create an Image object to draw on the offscreen canvas
+      const processingImg = new Image();
+      // Use a promise to ensure the image is loaded before proceeding
+      await new Promise<void>((resolve, reject) => {
+        processingImg.onload = () => resolve();
+        processingImg.onerror = (err) => reject(err);
+        processingImg.src = previewUrl; // previewUrl contains the original image data URL
+      });
+
+      // Create an offscreen canvas with original image dimensions
+      const offscreenCanvas = document.createElement('canvas');
+      offscreenCanvas.width = originalImageFullDimensions.width;
+      offscreenCanvas.height = originalImageFullDimensions.height;
+      const offscreenCtx = offscreenCanvas.getContext('2d');
+
+      if (!offscreenCtx) {
+        toast({
+          title: "Error",
+          description: "Could not create offscreen canvas context",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Draw the full-resolution image onto the offscreen canvas
+      offscreenCtx.drawImage(processingImg, 0, 0, originalImageFullDimensions.width, originalImageFullDimensions.height);
+
+      // Get image data from the offscreen canvas as a Blob
+      const imageBlob = await new Promise<Blob | null>((resolve) =>
+        offscreenCanvas.toBlob(resolve, "image/png")
+      );
+
+      if (!imageBlob) {
+        toast({
+          title: "Error",
+          description: "Could not get image data from offscreen canvas",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      const data = await processSuperpixelImage(imageBlob, params);
 
       setLoading(false);
 

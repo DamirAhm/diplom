@@ -224,6 +224,40 @@ export default function Neuron({
     debouncedRunSimulation();
   };
 
+  // Reset parameters to default values except signalType
+  const resetParameters = () => {
+    setCapacitanceRaw(22);
+    setTuningVoltageRaw(0);
+    setModVoltageRaw(0);
+    setInvertMemristor(false);
+    setDiodeModel("GI401A");
+    setSignalAmplitudeRaw(
+      signalType === "Pulse" ? 14.3 :
+        signalType === "PinkNoise" ? 10 :
+          signalType === "Sine" ? 6 :
+            signalType === "Constant" ? 21 :
+              6
+    );
+    setSignalFrequencyRaw(
+      signalType === "Pulse" ? 434 :
+        signalType === "Sine" ? 650 :
+          signalType === "Step" ? 650 :
+            650
+    );
+    setSignalOffsetRaw(27.5);
+    setStepTimeRaw(10);
+    setPulseBaselineRaw(30);
+    setPulseStartRaw(0);
+    setPulseWidthRaw(1.5);
+    setPulseNumberRaw(50);
+    setSinePhaseRaw(0);
+    setNoiseBaselineRaw(29.5);
+    setNoiseFrequencyRaw(1000);
+    setSimTimeRaw(50);
+    setRKMethod("RK4");
+    debouncedRunSimulation();
+  };
+
   // Run simulation when component mounts
   useEffect(() => {
     runSimulation();
@@ -957,20 +991,31 @@ export default function Neuron({
                   </div>
                 </div>
 
-                <Button
-                  className="w-full"
-                  onClick={runSimulation}
-                  disabled={isSimulating}
-                >
-                  {isSimulating ? (
-                    <>
-                      <Loader className="w-4 h-4 mr-2 animate-spin" />
-                      {dict.simulation.simulating}
-                    </>
-                  ) : (
-                    dict.simulation.run
-                  )}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    className="w-full"
+                    variant="ghost"
+                    onClick={resetParameters}
+                    disabled={isSimulating}
+                  >
+                    {dict.resetParameters}
+                  </Button>
+
+                  <Button
+                    className="w-full"
+                    onClick={runSimulation}
+                    disabled={isSimulating}
+                  >
+                    {isSimulating ? (
+                      <>
+                        <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        {dict.simulation.simulating}
+                      </>
+                    ) : (
+                      dict.simulation.run
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

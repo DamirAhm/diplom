@@ -316,7 +316,8 @@
         "memristorState": "Memristor State",
         "noData": "Run a simulation to see results",
         "noMemristorData": "Run a simulation to see memristor state"
-      }
+      },
+      "resetParameters": "Reset Parameters"
     }
   },
   "admin": {

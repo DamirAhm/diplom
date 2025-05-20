@@ -153,11 +153,11 @@ export interface ParameterMapResponse {
 }
 
 export async function processSuperpixelImage(
-  imageFile: File,
+  imageBlob: Blob,
   params: SuperpixelParams
 ): Promise<SuperpixelResponse> {
   const formData = new FormData();
-  formData.append("image", imageFile);
+  formData.append("image", imageBlob, "image.png");
   formData.append("params", JSON.stringify(params));
 
   const response = await fetch(`${API_URL}/image/superpixels`, {
