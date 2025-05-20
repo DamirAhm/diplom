@@ -514,8 +514,6 @@ export const drawGradientVectors = (
   // Рисуем вектора напрямую без предварительной отрисовки оригинального изображения
   // Это избавит от перекрытия канвасов
 
-  console.log("drawGradientVectors", vectors);
-
   // Draw each vector
   for (const vector of vectors) {
     // Scale coordinates
