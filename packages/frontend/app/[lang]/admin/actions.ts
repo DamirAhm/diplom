@@ -11,6 +11,7 @@ import type {
   TrainingMaterial,
   CreateDiscipline,
 } from "@/app/types";
+import { cookies } from "next/headers";
 
 // Researchers
 export const createResearcher = async (
@@ -27,6 +28,10 @@ export const updateResearcher = async (
   data: Partial<Researcher>,
   lang: Locale
 ) => {
+  const cookieStore = await cookies();
+
+  console.log(cookieStore.get("admin_session")?.value);
+
   await api.researchers.update(id, data);
   revalidatePath(`/${lang}/admin/researchers`);
   revalidatePath(`/${lang}/researchers`);
