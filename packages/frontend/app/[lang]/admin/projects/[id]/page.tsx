@@ -32,6 +32,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { PhotoUpload, PhotoItem } from "@/components/ui/photo-upload";
+import { createProject, updateProject } from "../../actions";
 
 const projectSchema = z.object({
   title: z.object({
@@ -91,11 +92,13 @@ export default function ProjectFormPage({
       setVideos(data.videos);
       setProjectPublications(data.publications);
       // Преобразование ProjectImage[] в PhotoItem[]
-      setImages(data.images?.map(img => ({
-        id: img.id,
-        url: img.url,
-        order: img.order
-      })) || []);
+      setImages(
+        data.images?.map((img) => ({
+          id: img.id,
+          url: img.url,
+          order: img.order,
+        })) || []
+      );
     } catch (error) {
       toast({
         variant: "destructive",
@@ -128,13 +131,16 @@ export default function ProjectFormPage({
         githubLink: formData.githubLink || "",
         videos: videos,
         publications: projectPublications,
-        images: images,
+        images: images.map((el, i) => ({
+          order: i,
+          ...el,
+        })),
       };
 
       if (id !== "new") {
-        await api.projects.update(id, projectData);
+        await updateProject(id, projectData, lang);
       } else {
-        await api.projects.create(projectData);
+        await createProject(projectData, lang);
       }
 
       toast({
@@ -365,9 +371,7 @@ export default function ProjectFormPage({
             <Button variant="outline" onClick={() => setVideoDialogOpen(false)}>
               {dictionary.common.cancel}
             </Button>
-            <Button onClick={handleAddVideo}>
-              {dictionary.common.save}
-            </Button>
+            <Button onClick={handleAddVideo}>{dictionary.common.save}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -16,8 +16,14 @@ import { LocalizedTextField } from "@/components/ui/form-fields";
 import { ProfileDialog } from "@/app/components/ui/profile-dialog";
 import { FormField, FormItem } from "@/components/ui/form";
 import { PhotoUpload } from "@/components/ui/photo-upload";
+import { createResearcher, updateResearcher } from "../../actions";
 
-type ProfileKey = 'researchgate' | 'googleScholar' | 'scopus' | 'publons' | 'orcid';
+type ProfileKey =
+  | "researchgate"
+  | "googleScholar"
+  | "scopus"
+  | "publons"
+  | "orcid";
 
 const emptyForm: ResearcherFormData = {
   name: { en: "", ru: "" },
@@ -73,9 +79,9 @@ export default function ResearcherFormPage({
   const onSubmit = form.handleSubmit(async (data: ResearcherFormData) => {
     try {
       if (id === "new") {
-        await api.researchers.create(data);
+        await createResearcher(data, lang);
       } else {
-        await api.researchers.update(id, data);
+        await updateResearcher(id, data, lang);
       }
 
       toast({
@@ -176,7 +182,9 @@ export default function ResearcherFormPage({
             />
 
             <div className="space-y-2">
-              <div className="text-sm font-medium">{dictionary.admin.photo}</div>
+              <div className="text-sm font-medium">
+                {dictionary.admin.photo}
+              </div>
               <PhotoUpload
                 photoUrl={photoUrl}
                 onPhotoChange={handlePhotoChange}
@@ -197,7 +205,9 @@ export default function ResearcherFormPage({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-medium">{dictionary.admin.profiles}</div>
+                <div className="text-sm font-medium">
+                  {dictionary.admin.profiles}
+                </div>
                 <Button
                   type="button"
                   variant="outline"
@@ -209,25 +219,28 @@ export default function ResearcherFormPage({
                 </Button>
               </div>
               <div className="space-y-2">
-                {profiles && Object.entries(profiles).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between rounded-md border p-2"
-                  >
-                    <div>
-                      <div className="font-medium">{key}</div>
-                      <div className="text-sm text-muted-foreground">{value}</div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleRemoveProfile(key)}
+                {profiles &&
+                  Object.entries(profiles).map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between rounded-md border p-2"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                      <div>
+                        <div className="font-medium">{key}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {value}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleRemoveProfile(key)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
               </div>
               <FormField
                 control={form.control}
@@ -242,7 +255,9 @@ export default function ResearcherFormPage({
           </div>
 
           <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? dictionary.common.saving : dictionary.common.save}
+            {form.formState.isSubmitting
+              ? dictionary.common.saving
+              : dictionary.common.save}
           </Button>
         </form>
       </Form>

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { ImagePreview } from "@/app/components/ImagePreview";
 import { ImageWithFallback } from "../../../components/ImageWithFallback";
+import { deleteTraining } from "../actions";
 
 export default function TrainingAdminPage({
   params: { lang },
@@ -53,7 +54,7 @@ export default function TrainingAdminPage({
   const confirmDelete = async () => {
     try {
       for (const item of itemsToDelete) {
-        await api.training.delete(item.id.toString());
+        await deleteTraining(item.id.toString(), lang);
       }
 
       toast({
