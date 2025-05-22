@@ -42,6 +42,7 @@ type ResearcherRepo interface {
 	GetByIDs(ids []int) ([]models.Researcher, error)
 	GetAll() ([]models.ResearcherWithPublicationsCount, error)
 	FindByFullName(fullName string) (*models.ResearcherWithPublicationsCount, error)
+	FindByLastName(lastName string) ([]models.ResearcherWithPublicationsCount, error)
 	Update(researcher models.Researcher) error
 	Delete(id int) error
 }

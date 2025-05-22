@@ -514,6 +514,61 @@ func (g *GoogleScholar) parseAuthors(authorText string) []models.Author {
 			}
 		}
 
+		// Handle shorthand initial format like "DN Butusov"
+		if len(nameParts) == 2 && len(nameParts[0]) == 2 && nameParts[0] == strings.ToUpper(nameParts[0]) {
+			// Get initials and last name
+			initials := nameParts[0]
+			lastName := nameParts[1]
+
+			// Try to find researchers with matching last name
+			researchers, err := g.researcherRepo.FindByLastName(lastName)
+			if err == nil && len(researchers) > 0 {
+				// Check each researcher if their first name initial matches
+				for _, r := range researchers {
+					// First initial match
+					if len(r.Name.En) > 0 && strings.ToUpper(string(r.Name.En[0])) == string(initials[0]) {
+						// We'll assume the second initial might be from a patronymic/middle name that isn't stored in our db
+						id := r.ID
+						authorObjects = append(authorObjects, models.Author{
+							Name: models.LocalizedString{
+								En: authorName,
+								Ru: authorName,
+							},
+							ID: &id,
+						})
+						break
+					}
+				}
+			}
+		}
+
+		// Handle single initial format like "D Butusov"
+		if len(nameParts) == 2 && len(nameParts[0]) == 1 && nameParts[0] == strings.ToUpper(nameParts[0]) {
+			// Get initial and last name
+			initial := nameParts[0]
+			lastName := nameParts[1]
+
+			// Try to find researchers with matching last name
+			researchers, err := g.researcherRepo.FindByLastName(lastName)
+			if err == nil && len(researchers) > 0 {
+				// Check each researcher if their first name matches the initial
+				for _, r := range researchers {
+					// Check if first name initial matches
+					if len(r.Name.En) > 0 && strings.ToUpper(string(r.Name.En[0])) == initial {
+						id := r.ID
+						authorObjects = append(authorObjects, models.Author{
+							Name: models.LocalizedString{
+								En: authorName,
+								Ru: authorName,
+							},
+							ID: &id,
+						})
+						break
+					}
+				}
+			}
+		}
+
 		authorObjects = append(authorObjects, models.Author{
 			Name: models.LocalizedString{
 				En: authorName,

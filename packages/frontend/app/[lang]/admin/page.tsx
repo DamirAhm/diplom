@@ -41,7 +41,7 @@ export default function AdminLoginPage({
   const onSubmit = async (data: LoginFormData) => {
     try {
       await api.auth.login(data.username, data.password);
-      router.push(`/${lang}/admin/researchers`);
+      document.location = `/${lang}/admin/researchers`;
     } catch (error: any) {
       toast({
         variant: "destructive",

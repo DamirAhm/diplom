@@ -620,3 +620,35 @@ func (r *SQLiteResearcherRepo) syncExternalAuthors(tx *sql.Tx, researcherID int,
 
 	return nil
 }
+
+func (r *SQLiteResearcherRepo) FindByLastName(lastName string) ([]models.ResearcherWithPublicationsCount, error) {
+	query := `
+		SELECT r.id
+		FROM researchers r
+		JOIN localized_strings ln ON r.last_name_id = ln.id
+		WHERE ln.en = ? OR ln.ru = ?
+	`
+
+	rows, err := r.db.Query(query, lastName, lastName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []models.ResearcherWithPublicationsCount
+	for rows.Next() {
+		var researcherID int
+		if err := rows.Scan(&researcherID); err != nil {
+			return nil, err
+		}
+
+		researcher, err := r.GetByID(researcherID)
+		if err != nil {
+			return nil, err
+		}
+
+		results = append(results, *researcher)
+	}
+
+	return results, nil
+}
