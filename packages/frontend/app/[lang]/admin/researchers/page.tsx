@@ -11,6 +11,7 @@ import { Column, DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api } from "../../../../lib/api";
 import { useParams } from "next/navigation";
+import { deleteResearcher } from "../actions";
 
 export default function ResearchersAdminPage() {
   const { lang } = useParams<{ lang: Locale }>();
@@ -49,7 +50,7 @@ export default function ResearchersAdminPage() {
   const confirmDelete = async () => {
     try {
       for (const item of itemsToDelete) {
-        await api.researchers.delete(item.id.toString());
+        await deleteResearcher(item.id.toString(), lang);
       }
 
       toast({
@@ -73,7 +74,8 @@ export default function ResearchersAdminPage() {
   const columns: Column<Researcher>[] = [
     {
       header: dictionary.admin.name,
-      accessorKey: (researcher) => `${researcher.name[lang]} ${researcher.lastName[lang]}`,
+      accessorKey: (researcher) =>
+        `${researcher.name[lang]} ${researcher.lastName[lang]}`,
       sortable: true,
     },
     {

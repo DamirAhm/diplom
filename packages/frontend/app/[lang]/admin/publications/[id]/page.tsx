@@ -15,20 +15,26 @@ import { Form } from "@/components/ui/form";
 import {
   TextField,
   LocalizedTextField,
-  ExternalAuthorsField
+  ExternalAuthorsField,
 } from "@/components/ui/form-fields";
-import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 import { ResearcherSelector } from "@/components/ui/researcher-selector";
+import { createPublication, updatePublication } from "../../actions";
 
 const emptyPublication: PublicationFormData = {
   title: { en: "", ru: "" },
   authors: [],
   externalAuthors: [],
-  publishedAt: new Date().toISOString().split('T')[0], // Format: YYYY-MM-DD
+  publishedAt: new Date().toISOString().split("T")[0], // Format: YYYY-MM-DD
   journal: "",
   link: "",
 };
@@ -44,7 +50,9 @@ export default function PublicationFormPage({
   const [isLoading, setIsLoading] = useState(id !== "new");
   const [researchers, setResearchers] = useState<Researcher[]>([]);
   const [researchersLoading, setResearchersLoading] = useState(true);
-  const [selectedResearchers, setSelectedResearchers] = useState<Set<number>>(new Set());
+  const [selectedResearchers, setSelectedResearchers] = useState<Set<number>>(
+    new Set()
+  );
   const [showResearcherSelector, setShowResearcherSelector] = useState(false);
 
   const form = useForm<PublicationFormData>({
@@ -67,12 +75,12 @@ export default function PublicationFormPage({
       const data = await api.publications.getById(Number(id));
 
       const internalAuthors = data.authors
-        .filter(author => author.id !== undefined)
-        .map(author => author.id!);
+        .filter((author) => author.id !== undefined)
+        .map((author) => author.id!);
 
       const externalAuthors = data.authors
-        .filter(author => author.id === undefined)
-        .map(author => author.name);
+        .filter((author) => author.id === undefined)
+        .map((author) => author.name);
 
       form.reset({
         title: data.title,
@@ -80,7 +88,7 @@ export default function PublicationFormPage({
         externalAuthors: externalAuthors,
         publishedAt: data.publishedAt,
         journal: data.journal,
-        link: data.link
+        link: data.link,
       });
 
       // Initialize selectedResearchers with internal authors
@@ -101,7 +109,7 @@ export default function PublicationFormPage({
       const data = await api.researchers.getAll();
       setResearchers(data);
     } catch (error) {
-      console.error('Error fetching researchers:', error);
+      console.error("Error fetching researchers:", error);
     } finally {
       setResearchersLoading(false);
     }
@@ -112,18 +120,21 @@ export default function PublicationFormPage({
       const apiData = {
         ...formData,
         authors: [
-          ...formData.authors.map(id => ({ id, name: researchers.find(r => r.id === id)?.name })),
-          ...formData.externalAuthors.map(name => ({ name }))
+          ...formData.authors.map((id) => ({
+            id,
+            name: researchers.find((r) => r.id === id)?.name,
+          })),
+          ...formData.externalAuthors.map((name) => ({ name })),
         ],
-        citationsCount: 0
+        citationsCount: 0,
       };
 
       delete (apiData as any).externalAuthors;
 
       if (id !== "new") {
-        await api.publications.update(Number(id), apiData as any);
+        await updatePublication(id, apiData, lang);
       } else {
-        await api.publications.create(apiData as any);
+        await createPublication(apiData, lang);
       }
 
       toast({
@@ -146,7 +157,10 @@ export default function PublicationFormPage({
 
     if (researcherExists) {
       newSelectedResearchers.delete(researcher.id);
-      setValue("authors", formAuthors.filter(id => id !== researcher.id));
+      setValue(
+        "authors",
+        formAuthors.filter((id) => id !== researcher.id)
+      );
     } else {
       newSelectedResearchers.add(researcher.id);
       setValue("authors", [...formAuthors, researcher.id]);
@@ -233,15 +247,13 @@ export default function PublicationFormPage({
               required
             />
 
-            <TextField
-              name="link"
-              label="URL"
-              type="url"
-            />
+            <TextField name="link" label="URL" type="url" />
           </div>
 
           <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? dictionary.common.saving : dictionary.common.save}
+            {form.formState.isSubmitting
+              ? dictionary.common.saving
+              : dictionary.common.save}
           </Button>
         </form>
       </Form>

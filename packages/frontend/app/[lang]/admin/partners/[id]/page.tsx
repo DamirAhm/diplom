@@ -20,6 +20,7 @@ import { api } from "../../../../../lib/api";
 import { FormError } from "@/components/ui/form-error";
 import { useFormValidation, ValidationSchema } from "@/lib/form-validation";
 import { PhotoUpload } from "@/components/ui/photo-upload";
+import { createPartner, updatePartner } from "../../actions";
 
 const emptyPartner: Omit<Partner, "id"> = {
   name: "",
@@ -97,9 +98,9 @@ export default function PartnerFormPage({
 
     try {
       if (id !== "new") {
-        await api.partners.update(id, partner);
+        await updatePartner(id, partner, lang);
       } else {
-        await api.partners.create(partner);
+        await createPartner(partner, lang);
       }
 
       toast({

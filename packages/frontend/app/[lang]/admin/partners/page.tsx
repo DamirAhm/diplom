@@ -11,6 +11,7 @@ import { Column, DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ImageWithFallback } from "@/app/components/ImageWithFallback";
 import { api } from "../../../../lib/api";
+import { deletePartner } from "../actions";
 
 export default function PartnersAdminPage({
   params: { lang },
@@ -52,7 +53,7 @@ export default function PartnersAdminPage({
   const confirmDelete = async () => {
     try {
       for (const item of itemsToDelete) {
-        await api.partners.delete(item.id.toString());
+        await deletePartner(item.id.toString(), lang);
       }
 
       toast({
@@ -98,7 +99,7 @@ export default function PartnersAdminPage({
       header: dictionary.admin.type,
       accessorKey: (partner: Partner) =>
         dictionary.partners[
-        partner.type === "university" ? "universities" : "enterprises"
+          partner.type === "university" ? "universities" : "enterprises"
         ],
       sortable: true,
     },

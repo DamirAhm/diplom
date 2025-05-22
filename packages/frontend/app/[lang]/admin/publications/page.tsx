@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Column, DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api } from "@/lib/api";
+import { deletePublication } from "../actions";
 
 export default function PublicationsAdminPage({
   params: { lang },
@@ -50,7 +51,7 @@ export default function PublicationsAdminPage({
   const confirmDelete = async () => {
     try {
       for (const item of itemsToDelete) {
-        await api.publications.delete(item.id);
+        await deletePublication(item.id.toString(), lang);
       }
 
       toast({
@@ -72,25 +73,24 @@ export default function PublicationsAdminPage({
   };
 
   const getAuthorNames = (authors: Author[]) => {
-    return authors
-      ? authors
-        .map(author => author.name[lang])
-        .join(', ')
-      : '';
+    return authors ? authors.map((author) => author.name[lang]).join(", ") : "";
   };
 
   const columns: Column<Publication>[] = [
     {
       header: dictionary.admin.title,
       accessorKey: (publication: Publication) => {
-        return typeof publication.title === 'object' ? publication.title[lang] : publication.title;
+        return typeof publication.title === "object"
+          ? publication.title[lang]
+          : publication.title;
       },
       sortable: true,
       className: "w-1/3",
     },
     {
       header: dictionary.publications.authors,
-      accessorKey: (publication: Publication) => getAuthorNames(publication.authors),
+      accessorKey: (publication: Publication) =>
+        getAuthorNames(publication.authors),
     },
     {
       header: dictionary.publications.citations,
@@ -161,7 +161,9 @@ export default function PublicationsAdminPage({
         searchPlaceholder={dictionary.admin.searchPublications}
         tableId="publications"
         lang={lang}
-        editPath={(publication) => `/${lang}/admin/publications/${publication.id}`}
+        editPath={(publication) =>
+          `/${lang}/admin/publications/${publication.id}`
+        }
       />
 
       <ConfirmDialog

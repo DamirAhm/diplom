@@ -10,6 +10,7 @@ import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { api } from "@/lib/api";
+import { deleteProject } from "../actions";
 
 export default function ProjectsAdminPage({
   params: { lang },
@@ -50,7 +51,7 @@ export default function ProjectsAdminPage({
   const confirmDelete = async () => {
     try {
       for (const item of itemsToDelete) {
-        await api.projects.delete(item.id.toString());
+        await deleteProject(item.id.toString(), lang);
       }
 
       toast({

@@ -44,6 +44,7 @@ async function request<T>(
     headers: {
       ...(!options.body && { "Content-Type": "application/json" }),
       ...headers,
+      Cookie: "admin_session=true",
     },
     ...customConfig,
   };
@@ -205,7 +206,10 @@ export const api = {
     getAll: () => request<ResearcherWithCount[]>("/researchers"),
     getOne: (id: string) => request<ResearcherWithCount>(`/researchers/${id}`),
     create: (
-      data: Omit<Researcher, "id" | "publications" | "totalCitations" | 'hIndex'>
+      data: Omit<
+        Researcher,
+        "id" | "publications" | "totalCitations" | "hIndex"
+      >
     ) => request<Researcher>("/researchers", { method: "POST", data }),
     update: (id: string, data: Partial<Omit<Researcher, "publications">>) =>
       request<Researcher>(`/researchers/${id}`, { method: "PUT", data }),

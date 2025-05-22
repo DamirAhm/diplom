@@ -14,6 +14,7 @@ import { Form } from "@/components/ui/form";
 import { TextField, LocalizedTextField } from "@/components/ui/form-fields";
 import * as z from "zod";
 import { PhotoUpload } from "@/components/ui/photo-upload";
+import { createTraining, updateTraining, deleteTraining } from "../../actions";
 
 const trainingSchema = z.object({
   name: z.object({
@@ -91,9 +92,9 @@ export default function TrainingFormPage({
       };
 
       if (id !== "new") {
-        await api.training.update(id, materialData);
+        await updateTraining(id, materialData, lang);
       } else {
-        await api.training.create(materialData);
+        await createTraining(materialData, lang);
       }
 
       toast({
@@ -113,37 +114,6 @@ export default function TrainingFormPage({
   const handlePhotoChange = (url: string) => {
     setValue("image", url);
   };
-
-  const handleDelete = async () => {
-    if (!confirm(dictionary.admin.confirmDelete)) return;
-
-    try {
-      await api.training.delete(id);
-      toast({
-        title: dictionary.admin.success,
-        description: dictionary.admin.deleteSuccess,
-      });
-      router.push(`/${lang}/admin/training`);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: dictionary.common.error,
-        description: dictionary.admin.deleteError,
-      });
-    }
-  };
-
-  const handleCancel = () => {
-    router.push(`/${lang}/admin/training`);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -189,7 +159,9 @@ export default function TrainingFormPage({
             />
 
             <div className="space-y-2 mt-4">
-              <div className="text-sm font-medium">{dictionary.admin.photo}</div>
+              <div className="text-sm font-medium">
+                {dictionary.admin.photo}
+              </div>
               <PhotoUpload
                 photoUrl={imageUrl}
                 onPhotoChange={handlePhotoChange}
@@ -202,7 +174,9 @@ export default function TrainingFormPage({
 
           <div className="flex gap-2">
             <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? dictionary.common.saving : dictionary.common.save}
+              {form.formState.isSubmitting
+                ? dictionary.common.saving
+                : dictionary.common.save}
             </Button>
           </div>
         </form>

@@ -152,9 +152,9 @@
   },
   "publications": {
     "title": "Публикации исследователей лаборатории",
-    "sortBy": "Сортировать по:",
+    "sortBy": "Сортировать по",
     "year": "Дата публикации",
-    "filterByYear": "Год:",
+    "filterByYear": "Год",
     "allYears": "Все года",
     "viewPublication": "Просмотреть публикацию",
     "authors": "Авторы",
@@ -162,7 +162,7 @@
     "journal": "Журнал",
     "citations": "Цитирования",
     "publishedAt": "Дата публикации",
-    "filterByAuthor": "Автор:",
+    "filterByAuthor": "Автор",
     "allAuthors": "Все авторы",
     "searchPlaceholder": "Поиск по заголовку..."
   },
