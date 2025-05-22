@@ -149,9 +149,9 @@
   },
   "publications": {
     "title": "Researchers' Publications",
-    "sortBy": "Sort by:",
+    "sortBy": "Sort by",
     "year": "Year",
-    "filterByYear": "Year:",
+    "filterByYear": "Year",
     "allYears": "All years",
     "viewPublication": "View Publication",
     "authors": "Authors",
@@ -159,7 +159,7 @@
     "journal": "Journal",
     "citations": "Citations",
     "publishedAt": "Publication Date",
-    "filterByAuthor": "Author:",
+    "filterByAuthor": "Author",
     "allAuthors": "All authors",
     "searchPlaceholder": "Search by title..."
   },

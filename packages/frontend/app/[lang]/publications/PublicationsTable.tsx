@@ -1,65 +1,73 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import type { Locale, Publication, Author } from "@/app/types"
-import { getDictionary } from "@/app/dictionaries"
-import PublicationItem from "@/app/components/PublicationItem"
-import { Search, SlidersHorizontal, ChevronDown, X } from "lucide-react"
+import { useState } from "react";
+import type { Locale, Publication, Author } from "@/app/types";
+import { getDictionary } from "@/app/dictionaries";
+import PublicationItem from "@/app/components/PublicationItem";
+import { Search, SlidersHorizontal, ChevronDown, X } from "lucide-react";
 
 export type Props = {
-  publications: Publication[]
-  lang: Locale
-}
+  publications: Publication[];
+  lang: Locale;
+};
 
 export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
-  const dictionary = getDictionary(lang)
-  const [sortBy, setSortBy] = useState<"year" | "citations">("year")
-  const [filterYear, setFilterYear] = useState<number | null>(null)
-  const [filterAuthor, setFilterAuthor] = useState<number | null>(null)
-  const [searchQuery, setSearchQuery] = useState<string>("")
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const dictionary = getDictionary(lang);
+  const [sortBy, setSortBy] = useState<"year" | "citations">("year");
+  const [filterYear, setFilterYear] = useState<number | null>(null);
+  const [filterAuthor, setFilterAuthor] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Get unique years and sort them
   const years = Array.from(
     new Set(publications.map((pub) => new Date(pub.publishedAt).getFullYear()))
-  ).sort((a, b) => b - a)
+  ).sort((a, b) => b - a);
 
   // Get unique authors
   const authors = Array.from(
     new Map(
       publications
-        .flatMap(pub => pub.authors)
-        .filter(author => author.id !== undefined)
-        .map(author => [author.id, author])
+        .flatMap((pub) => pub.authors)
+        .filter((author) => author.id !== undefined)
+        .map((author) => [author.id, author])
     ).values()
-  ).sort((a, b) => a.name[lang].localeCompare(b.name[lang]))
+  ).sort((a, b) => a.name[lang].localeCompare(b.name[lang]));
 
   // Sort publications
   const sortedPublications = [...publications].sort((a, b) => {
     if (sortBy === "year") {
-      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      return (
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
     } else {
-      return b.citationsCount - a.citationsCount
+      return b.citationsCount - a.citationsCount;
     }
-  })
+  });
 
   // Apply filters
   const filteredPublications = sortedPublications
-    .filter(pub => filterYear ? new Date(pub.publishedAt).getFullYear() === filterYear : true)
-    .filter(pub => filterAuthor ? pub.authors.some(author => author.id === filterAuthor) : true)
-    .filter(pub => {
+    .filter((pub) =>
+      filterYear ? new Date(pub.publishedAt).getFullYear() === filterYear : true
+    )
+    .filter((pub) =>
+      filterAuthor
+        ? pub.authors.some((author) => author.id === filterAuthor)
+        : true
+    )
+    .filter((pub) => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
       return pub.title[lang].toLowerCase().includes(query);
-    })
+    });
 
   // Reset all filters
   const resetFilters = () => {
-    setSortBy("year")
-    setFilterYear(null)
-    setFilterAuthor(null)
-    setSearchQuery("")
-  }
+    setSortBy("year");
+    setFilterYear(null);
+    setFilterAuthor(null);
+    setSearchQuery("");
+  };
 
   return (
     <div className="space-y-6">
@@ -84,28 +92,42 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
             {/* Desktop filters */}
             <div className="hidden md:flex md:items-center md:space-x-3">
               <div className="flex items-center space-x-2">
-                <label htmlFor="sortBy" className="text-sm text-foreground/70 whitespace-nowrap">
+                <label
+                  htmlFor="sortBy"
+                  className="text-sm text-foreground/70 whitespace-nowrap"
+                >
                   {dictionary.publications.sortBy}:
                 </label>
                 <select
                   id="sortBy"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as "year" | "citations")}
+                  onChange={(e) =>
+                    setSortBy(e.target.value as "year" | "citations")
+                  }
                   className="text-sm rounded-md bg-muted/50 border border-border/50 dark:border-indigo-400/30 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-indigo-400"
                 >
                   <option value="year">{dictionary.publications.year}</option>
-                  <option value="citations">{dictionary.publications.citations}</option>
+                  <option value="citations">
+                    {dictionary.publications.citations}
+                  </option>
                 </select>
               </div>
 
               <div className="flex items-center space-x-2">
-                <label htmlFor="filterYear" className="text-sm text-foreground/70 whitespace-nowrap">
+                <label
+                  htmlFor="filterYear"
+                  className="text-sm text-foreground/70 whitespace-nowrap"
+                >
                   {dictionary.publications.year}:
                 </label>
                 <select
                   id="filterYear"
                   value={filterYear || ""}
-                  onChange={(e) => setFilterYear(e.target.value ? Number.parseInt(e.target.value) : null)}
+                  onChange={(e) =>
+                    setFilterYear(
+                      e.target.value ? Number.parseInt(e.target.value) : null
+                    )
+                  }
                   className="text-sm rounded-md bg-muted/50 border border-border/50 dark:border-indigo-400/30 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-indigo-400"
                 >
                   <option value="">{dictionary.publications.allYears}</option>
@@ -118,13 +140,20 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
               </div>
 
               <div className="flex items-center space-x-2">
-                <label htmlFor="filterAuthor" className="text-sm text-foreground/70 whitespace-nowrap">
+                <label
+                  htmlFor="filterAuthor"
+                  className="text-sm text-foreground/70 whitespace-nowrap"
+                >
                   {dictionary.publications.filterByAuthor}:
                 </label>
                 <select
                   id="filterAuthor"
                   value={filterAuthor || ""}
-                  onChange={(e) => setFilterAuthor(e.target.value ? Number.parseInt(e.target.value) : null)}
+                  onChange={(e) =>
+                    setFilterAuthor(
+                      e.target.value ? Number.parseInt(e.target.value) : null
+                    )
+                  }
                   className="text-sm rounded-md bg-muted/50 border border-border/50 dark:border-indigo-400/30 py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary dark:focus:ring-indigo-400"
                 >
                   <option value="">{dictionary.publications.allAuthors}</option>
@@ -136,7 +165,10 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
                 </select>
               </div>
 
-              {(filterYear !== null || filterAuthor !== null || sortBy !== "year" || searchQuery) && (
+              {(filterYear !== null ||
+                filterAuthor !== null ||
+                sortBy !== "year" ||
+                searchQuery) && (
                 <button
                   onClick={resetFilters}
                   className="flex items-center text-sm text-primary hover:text-primary/80 dark:text-indigo-400 dark:hover:text-indigo-300"
@@ -162,28 +194,42 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
             <div className="mt-4 space-y-3 md:hidden">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="sortBy-mobile" className="block text-sm text-foreground/70 mb-1">
+                  <label
+                    htmlFor="sortBy-mobile"
+                    className="block text-sm text-foreground/70 mb-1"
+                  >
                     {dictionary.publications.sortBy}
                   </label>
                   <select
                     id="sortBy-mobile"
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as "year" | "citations")}
+                    onChange={(e) =>
+                      setSortBy(e.target.value as "year" | "citations")
+                    }
                     className="w-full text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3"
                   >
                     <option value="year">{dictionary.publications.year}</option>
-                    <option value="citations">{dictionary.publications.citations}</option>
+                    <option value="citations">
+                      {dictionary.publications.citations}
+                    </option>
                   </select>
                 </div>
 
                 <div>
-                  <label htmlFor="filterYear-mobile" className="block text-sm text-foreground/70 mb-1">
+                  <label
+                    htmlFor="filterYear-mobile"
+                    className="block text-sm text-foreground/70 mb-1"
+                  >
                     {dictionary.publications.year}
                   </label>
                   <select
                     id="filterYear-mobile"
                     value={filterYear || ""}
-                    onChange={(e) => setFilterYear(e.target.value ? Number.parseInt(e.target.value) : null)}
+                    onChange={(e) =>
+                      setFilterYear(
+                        e.target.value ? Number.parseInt(e.target.value) : null
+                      )
+                    }
                     className="w-full text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3"
                   >
                     <option value="">{dictionary.publications.allYears}</option>
@@ -197,13 +243,20 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
               </div>
 
               <div>
-                <label htmlFor="filterAuthor-mobile" className="block text-sm text-foreground/70 mb-1">
+                <label
+                  htmlFor="filterAuthor-mobile"
+                  className="block text-sm text-foreground/70 mb-1"
+                >
                   {dictionary.publications.filterByAuthor}
                 </label>
                 <select
                   id="filterAuthor-mobile"
                   value={filterAuthor || ""}
-                  onChange={(e) => setFilterAuthor(e.target.value ? Number.parseInt(e.target.value) : null)}
+                  onChange={(e) =>
+                    setFilterAuthor(
+                      e.target.value ? Number.parseInt(e.target.value) : null
+                    )
+                  }
                   className="w-full text-sm rounded-md bg-muted/50 border border-border/50 py-2 px-3"
                 >
                   <option value="">{dictionary.publications.allAuthors}</option>
@@ -215,7 +268,10 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
                 </select>
               </div>
 
-              {(filterYear !== null || filterAuthor !== null || sortBy !== "year" || searchQuery) && (
+              {(filterYear !== null ||
+                filterAuthor !== null ||
+                sortBy !== "year" ||
+                searchQuery) && (
                 <button
                   onClick={resetFilters}
                   className="flex items-center text-sm text-primary py-1"
@@ -260,5 +316,4 @@ export const PublicationsTable: React.FC<Props> = ({ publications, lang }) => {
       )}
     </div>
   );
-}
-
+};
