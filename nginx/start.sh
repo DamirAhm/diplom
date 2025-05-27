@@ -19,6 +19,7 @@ http {
 
     server {
         listen 80;
+        listen 80 http2;
 
         location / {
             proxy_pass http://frontend;
