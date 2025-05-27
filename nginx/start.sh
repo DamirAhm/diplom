@@ -19,7 +19,16 @@ http {
 
     server {
         listen 80;
-        listen 80 http2;
+        return 301 https://$host$request_uri;
+    }
+
+    server {
+        listen 443;
+        listen 443 http2;
+
+        ssl on;
+        ssl_certificate /etc/ssl/certs/cert.pem;
+        ssl_certificate_key /etc/ssl/private/key.pem;
 
         location / {
             proxy_pass http://frontend;

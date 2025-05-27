@@ -52,3 +52,5 @@ cache/
 uploads/
 
 password.txt
+
+*.pem
