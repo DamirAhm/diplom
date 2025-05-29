@@ -9,8 +9,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./cert.pem:/etc/ssl/certs/cert.pem
-      - ./key.pem:/etc/ssl/private/key.pem
+      - ./nginx/cert.pem:/etc/ssl/certs/cert.pem
+      - ./nginx/key.pem:/etc/ssl/private/key.pem
     environment:
       - FRONTEND_PORT=${FRONTEND_PORT}
       - BACKEND_PORT=${BACKEND_PORT}
