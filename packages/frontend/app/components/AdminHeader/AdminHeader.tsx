@@ -67,7 +67,7 @@ export const AdminHeader = ({
 
   const handleLogout = async () => {
     await api.auth.logout();
-    router.push(`/${lang}/admin`);
+    document.location.replace(`/${lang}/admin`);
   };
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
