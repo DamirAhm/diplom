@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -1356,13 +1357,15 @@ func (h *ImageProcessingHandler) processDisconnectedStrokes(strokes []Stroke, wi
 	wg.Add(len(strokes))
 	resultChan := make(chan []Stroke, len(strokes))
 
+	nextIdx := atomic.Int32{}
+	nextIdx.Store(int32(len(strokes)))
+
 	for i := range strokes {
 		go func(idx int, stroke Stroke) {
 			defer wg.Done()
 
 			localResults := make([]Stroke, 0)
 			localAssignedPixels := make(map[[2]int]bool)
-			localNextID := 0 // We'll adjust this later
 
 			if len(stroke.Pixels) < 5 {
 				// Too small strokes are not processed
@@ -1402,8 +1405,8 @@ func (h *ImageProcessingHandler) processDisconnectedStrokes(strokes []Stroke, wi
 
 						validComponents = append(validComponents, component)
 
-						newStroke := h.createStrokeFromPixels(component, stroke.Color, localNextID)
-						localNextID++
+						newStroke := h.createStrokeFromPixels(component, stroke.Color, int(nextIdx.Load()))
+						nextIdx.Add(1)
 						localResults = append(localResults, newStroke)
 
 						// Mark pixels as assigned
@@ -1426,8 +1429,8 @@ func (h *ImageProcessingHandler) processDisconnectedStrokes(strokes []Stroke, wi
 						// If there are no valid components but there are unassigned pixels,
 						// create a separate stroke for them
 						if len(unassignedPixels) >= 5 {
-							newStroke := h.createStrokeFromPixels(unassignedPixels, stroke.Color, localNextID)
-							localNextID++
+							newStroke := h.createStrokeFromPixels(unassignedPixels, stroke.Color, int(nextIdx.Load()))
+							nextIdx.Add(1)
 							localResults = append(localResults, newStroke)
 
 							for _, p := range unassignedPixels {

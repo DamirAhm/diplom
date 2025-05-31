@@ -229,6 +229,9 @@ export const SuperpixelCanvas: React.FC<SuperpixelCanvasProps> = ({
         let minDistance = Infinity;
         const searchRadius = 100;
 
+        console.log(strokes, mouseX, mouseY);
+
+
         for (const stroke of strokes) {
             // Scale center coordinates
             const centerX = stroke.centerX * scaleX;
